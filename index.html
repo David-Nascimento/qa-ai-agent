@@ -276,6 +276,14 @@ tr.is-live td{background:var(--primary-softer)}
 @media (max-width:1300px){.lv-cards{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media (max-width:760px){.lv-cards{grid-template-columns:1fr}.feed ol{grid-template-columns:1fr}}
 @media (prefers-reduced-motion:reduce){.live-dot,.spin,.lc-prog i.run{animation:none}}
+.formula{display:flex;flex-direction:column;gap:4px;background:var(--primary-softer);border:1px solid #e1ddfb;border-radius:12px;padding:14px 16px;margin-bottom:18px;font-size:14px;color:var(--fg-2)}
+.formula>b{margin-bottom:4px}
+.au-r{grid-template-columns:110px 1fr 120px!important}
+.au-t{display:flex;flex-direction:column;gap:4px}
+.au-r .v small{display:block;color:var(--muted);font-weight:500;font-size:12px}
+.au-table small.calc{display:block;color:var(--muted);font-size:12px;font-weight:500}
+.au-table tr.sub td{background:var(--head);font-weight:600;color:var(--fg-2)}
+.au-table tr.total td{background:var(--primary-soft);font-weight:700;color:var(--fg);border-bottom:0}
 .an-head{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;margin:30px 0 16px;padding-top:22px;border-top:1px solid var(--line)}
 .an-head h2{margin:0;font-size:19px}.an-head span{color:var(--muted);font-size:14.5px}
 .an-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}
@@ -482,7 +490,7 @@ tr.is-live td{background:var(--primary-softer)}
       <header class="ph"><div><h1>Análises</h1><p>Indicadores e tendências de qualidade dos testes.</p></div>
         <div class="sel cal"><svg class="ico-cal" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2a2b3f" stroke-width="1.8" stroke-linecap="round"><rect x="3.5" y="5" width="17" height="15.5" rx="2"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg><select id="aPeriod" aria-label="Período"><option value="7">Últimos 7 dias</option><option value="30" selected>Últimos 30 dias</option><option value="90">Últimos 90 dias</option></select></div></header>
       <div class="card card-pad">
-        <div class="tabs" id="aTabs"><button data-t="geral" class="on">Visão Geral</button><button data-t="tend">Tendências</button><button data-t="falhas">Falhas</button><button data-t="flaky">Flaky Tests</button></div>
+        <div class="tabs" id="aTabs"><button data-t="geral" class="on">Visão Geral</button><button data-t="tend">Tendências</button><button data-t="falhas">Falhas</button><button data-t="flaky">Flaky Tests</button><button data-t="audit">Auditoria de tempo</button></div>
         <div id="aBody"></div>
       </div>
     </section>
@@ -692,7 +700,7 @@ function renderPipes(){
   fillSelect('#pGroup','Todas as pastas',groups());
   const q=$('#pSearch').value.toLowerCase(),g=$('#pGroup').value,st=$('#pStatus').value,tc=$('#pTech').value;
   const rows=PIPES.map(p=>({p,last:RUNS.find(r=>r.p===p.name)})).filter(({p,last})=>p.name.toLowerCase().includes(q)&&(!g||p.group===g)&&(!tc||p.tech===tc)&&(!st||(last&&last.s===st)));
-  const cells=({p,last})=>`<td>${techBadge(p.tech)}</td><td>${last?(last.s==='Executando'?'agora':fmtDate(last.at)):'—'}</td><td>${last?pill(last.s):'<span class="pill off">Sem execuções</span>'}</td><td>${pct(p.rate)}</td><td><button class="kebab" data-menu="${esc(p.name)}" aria-label="Ações de ${esc(p.name)}">${KEBAB}</button></td>`;
+  const cells=({p,last})=>`<td>${techBadge(p.tech)}${p.active===false?' <span class="pill off sm">Inativo</span>':''}</td><td>${last?(last.s==='Executando'?'agora':fmtDate(last.at)):'—'}</td><td>${last?pill(last.s):'<span class="pill off">Sem execuções</span>'}</td><td>${pct(p.rate)}</td><td><button class="kebab" data-menu="${esc(p.name)}" aria-label="Ações de ${esc(p.name)}">${KEBAB}</button></td>`;
   const nameCell=p=>`<td><div class="pl"><span class="pl-ico">${icoOf(p.name)}</span>${esc(p.name)}</div></td>`;
   const folders=[...new Set(rows.map(x=>x.p.group))];
   $('#pipeSummary').innerHTML=`<div class="psum"><div><b>${rows.length}</b> componente${rows.length===1?'':'s'} em <b>${folders.length}</b> pasta${folders.length===1?'':'s'}</div><div class="chips">${TECHS.map(t=>`<button type="button" class="chip ${tc===t?'on':''}" data-techf="${t}" aria-pressed="${tc===t}" title="Filtrar por ${t}">${techBadge(t,rows.filter(x=>x.p.tech===t).length)}</button>`).join('')}</div></div>`;
@@ -811,6 +819,7 @@ let aTab='geral';
 function renderAnalises(){
   const A=AN[$('#aPeriod').value],labels=PERIODS[7].labels;
   $$('#aTabs button').forEach(b=>b.classList.toggle('on',b.dataset.t===aTab));
+  if(aTab==='audit')return renderAudit();
   const kpis=`<div class="kpis k4" style="margin-bottom:22px">
    <div class="card kpi"><div class="kpi-h">Taxa de sucesso</div><div class="kpi-v">${A.rate}</div><div class="kpi-s ok">+ ${A.rateD.replace('+','')}</div></div>
    <div class="card kpi"><div class="kpi-h">Total de falhas</div><div class="kpi-v">${A.fails}</div><div class="kpi-s ${A.failsD.startsWith('+')?'bad':'ok'}">${A.failsD}</div></div>
@@ -868,6 +877,75 @@ function renderAnalises(){
     $('#aBody').innerHTML=kpis+`<div class="table-wrap"><table><thead><tr><th>ID</th><th>Cenário</th><th>Pipeline</th><th>Falhas intermitentes</th><th>Taxa de falha</th><th></th></tr></thead><tbody>${fl.map(r=>`<tr><td>${r[0]}</td><td><b style="color:var(--fg)">${r[1]}</b></td><td>${r[2]}</td><td>${r[3]}</td><td><span class="pill fail">${r[4]}</span></td><td><button class="btn-out pri" data-ask="${r[2]}">Analisar com IA</button></td></tr>`).join('')}</tbody></table></div>`;
   }
 }
+/* ---------- Auditoria de tempo de execução ---------- */
+const AUF={proj:'',tech:'',active:true};
+const secs=n=>Math.round(n).toLocaleString('pt-BR')+'s';
+function renderAudit(){
+  const days=$('#aPeriod').selectedOptions[0].textContent.toLowerCase();
+  $('#aBody').innerHTML=`<div id="auditRoot">
+   <div class="toolbar">
+     <div class="sel"><select id="auProj" aria-label="Projeto"><option value="">Todos os projetos</option>${groups().map(g=>`<option ${AUF.proj===g?'selected':''}>${esc(g)}</option>`).join('')}</select></div>
+     <div class="sel"><select id="auTech" aria-label="Tecnologia"><option value="">Todas as tecnologias</option>${TECHS.map(t=>`<option ${AUF.tech===t?'selected':''}>${t}</option>`).join('')}</select></div>
+     <label class="switch-inline"><input type="checkbox" id="auActive" ${AUF.active?'checked':''}> Somente componentes ativos</label>
+     <button type="button" class="btn-out" id="auCopy" style="margin-left:auto">Copiar relatório (CSV)</button>
+   </div>
+   <div class="kpis k4" id="auKpis" style="margin-bottom:18px"></div>
+   <div class="formula"><b>Como o cálculo é feito</b>
+     <span><b>Média do componente</b> = soma das durações das execuções concluídas no período (${days}) ÷ nº de execuções.</span>
+     <span><b>Tempo total</b> = soma das médias dos componentes filtrados (quanto leva rodar todos uma vez).</span>
+     <span><b>Tempo real</b> = duração da última execução concluída; se o componente estiver rodando agora, o tempo decorrido ao vivo.</span>
+     <span><b>Totais e subtotais</b> usam a última execução concluída de cada componente, para comparar ciclos completos. O que está rodando aparece em “Em execução agora” e na projeção da linha.</span></div>
+   <div class="an-grid" style="margin-bottom:18px"><div class="an-card wide"><h3>Tempo total por projeto</h3><div class="hbar" id="auProjBars"></div></div></div>
+   <div class="table-wrap"><table class="au-table"><thead><tr><th>Projeto</th><th>Componente</th><th>Tecnologia</th><th>Status</th><th>Execuções</th><th>Σ durações</th><th>Média</th><th>Tempo real</th><th>Δ real vs média</th></tr></thead><tbody id="auRows"></tbody></table></div>
+  </div>`;
+  updateAudit();
+}
+function auditData(){
+  const lim=new Date(BASE-(+$('#aPeriod').value)*864e5);
+  const comps=PIPES.filter(p=>(!AUF.proj||p.group===AUF.proj)&&(!AUF.tech||p.tech===AUF.tech)&&(!AUF.active||p.active!==false))
+    .sort((a,b)=>a.group.localeCompare(b.group,'pt-BR')||a.name.localeCompare(b.name,'pt-BR'));
+  return comps.map(p=>{
+    const hist=RUNS.filter(r=>r.p===p.name&&(r.s==='Sucesso'||r.s==='Falha')&&r.at>=lim);
+    const sum=hist.reduce((a,r)=>a+r.d,0),n=hist.length,avg=n?sum/n:p.dur;
+    const live=LIVE.find(r=>r.p===p.name&&r.s==='Executando');
+    const last=hist[0]?hist[0].d:0;let real=last,proj=real;
+    if(live){const lv=live.live,dn=lv.sc.filter(c=>c.st==='pass'||c.st==='fail').length;real=lv.el;proj=dn?lv.el/dn*live.t:avg}
+    return {p,n,sum,avg,live,real,proj,last,ref:!n,delta:avg&&(live||n)?(proj/avg-1)*100:null};
+  });
+}
+function updateAudit(){
+  const rows=auditData(),N=rows.length;
+  const totAvg=rows.reduce((a,r)=>a+r.avg,0),totReal=rows.reduce((a,r)=>a+r.last,0),running=rows.filter(r=>r.live);
+  const liveSum=running.reduce((a,r)=>a+r.real,0),dTot=totAvg?Math.round((totReal/totAvg-1)*100):0;
+  $('#auKpis').innerHTML=`
+   <div class="card kpi"><div class="kpi-h">Tempo total (soma das médias)</div><div class="kpi-v">${fmtDur(Math.round(totAvg))}</div><div class="kpi-s">${N} componente${N===1?'':'s'} ${AUF.active?'ativos':''}${AUF.proj?' em '+esc(AUF.proj):''}</div></div>
+   <div class="card kpi"><div class="kpi-h">${running.length?'<span class="live-dot"></span>':''}Tempo total real (último ciclo)</div><div class="kpi-v">${fmtDur(Math.round(totReal))}</div><div class="kpi-s"><span class="delta ${dTot>0?'up':'dn'}">${dTot>0?'+':''}${dTot}%</span> vs soma das médias</div></div>
+   <div class="card kpi"><div class="kpi-h">${running.length?'<span class="live-dot"></span>':''}Em execução agora</div><div class="kpi-v">${fmtDur(Math.round(liveSum))}</div><div class="kpi-s">${running.length} componente${running.length===1?'':'s'} rodando</div></div>
+   <div class="card kpi"><div class="kpi-h">Média por componente</div><div class="kpi-v">${fmtDur(Math.round(N?totAvg/N:0))}</div><div class="kpi-s">${secs(totAvg)} ÷ ${N}</div></div>`;
+  const byProj=[...new Set(rows.map(r=>r.p.group))].map(g=>{const rs=rows.filter(r=>r.p.group===g);return {g,rs,avg:rs.reduce((a,r)=>a+r.avg,0),real:rs.reduce((a,r)=>a+r.last,0),n:rs.reduce((a,r)=>a+r.n,0),sum:rs.reduce((a,r)=>a+r.sum,0)}});
+  const mx=Math.max(1,...byProj.map(x=>Math.max(x.avg,x.real)));
+  $('#auProjBars').innerHTML=byProj.map(x=>`<div class="r au-r"><span>${esc(x.g)}</span><div class="au-t"><div class="t"><span style="width:${x.avg/mx*100}%;background:var(--primary-2)"></span></div><div class="t"><span style="width:${x.real/mx*100}%;background:var(--orange)"></span></div></div><span class="v">${fmtDur(Math.round(x.avg))}<small>real ${fmtDur(Math.round(x.real))}</small></span></div>`).join('')+`<div class="chart-legend" style="flex-direction:row;gap:18px;margin-top:4px"><span><i style="background:var(--primary-2)"></i>Soma das médias</span><span><i style="background:var(--orange)"></i>Tempo real</span></div>`;
+  const dcell=r=>r.delta===null?'—':`<span class="delta ${r.delta>0?'up':'dn'}">${r.delta>0?'+':''}${Math.round(r.delta)}%${r.live?' <small>(proj.)</small>':''}</span>`;
+  $('#auRows').innerHTML=byProj.map(x=>x.rs.map(r=>`<tr${r.live?' class="is-live"':''}><td>${esc(r.p.group)}</td><td><b style="color:var(--fg)">${esc(r.p.name)}</b></td><td>${techBadge(r.p.tech)}</td>
+     <td>${r.live?`<span class="pill run"><span class="live-dot"></span> Executando</span>`:r.p.active===false?'<span class="pill off">Inativo</span>':'<span class="pill pass">Ativo</span>'}</td>
+     <td>${r.n}</td><td>${r.n?secs(r.sum):'—'}</td>
+     <td><b>${fmtDur(Math.round(r.avg))}</b><small class="calc">${r.n?`${secs(r.sum)} ÷ ${r.n}`:'referência (sem execuções)'}</small></td>
+     <td><b>${fmtDur(Math.round(r.real))}</b>${r.live?`<small class="calc">projeção ${fmtDur(Math.round(r.proj))} · última ${fmtDur(r.last)}</small>`:''}</td><td>${dcell(r)}</td></tr>`).join('')
+    +`<tr class="sub"><td colspan="4">Subtotal ${esc(x.g)} · ${x.rs.length} componente${x.rs.length===1?'':'s'}</td><td>${x.n}</td><td>${secs(x.sum)}</td><td>${fmtDur(Math.round(x.avg))}</td><td>${fmtDur(Math.round(x.real))}<small class="calc">último ciclo</small></td><td></td></tr>`).join('')
+    +(N?`<tr class="total"><td colspan="4">Total geral · ${N} componentes</td><td>${rows.reduce((a,r)=>a+r.n,0)}</td><td>${secs(rows.reduce((a,r)=>a+r.sum,0))}</td><td>${fmtDur(Math.round(totAvg))}</td><td>${fmtDur(Math.round(totReal))}<small class="calc">último ciclo</small></td><td><span class="delta ${dTot>0?'up':'dn'}">${dTot>0?'+':''}${dTot}%</span></td></tr>`:'<tr><td colspan="9" class="empty">Nenhum componente para os filtros escolhidos.</td></tr>');
+}
+function auditCsv(){
+  const rows=auditData(),q=v=>`"${String(v).replace(/"/g,'""')}"`;
+  const head=['Projeto','Componente','Tecnologia','Status','Execuções','Soma das durações (s)','Média (s)','Tempo real agora (s)','Última concluída (s)','Delta real vs média (%)'];
+  const lines=rows.map(r=>[r.p.group,r.p.name,r.p.tech,r.live?'Executando':r.p.active===false?'Inativo':'Ativo',r.n,Math.round(r.sum),Math.round(r.avg),Math.round(r.real),Math.round(r.last),r.delta===null?'':Math.round(r.delta)]);
+  const tAvg=rows.reduce((a,r)=>a+r.avg,0),tReal=rows.reduce((a,r)=>a+r.last,0);
+  lines.push(['TOTAL','','','',rows.reduce((a,r)=>a+r.n,0),Math.round(rows.reduce((a,r)=>a+r.sum,0)),Math.round(tAvg),'',Math.round(tReal),tAvg?Math.round((tReal/tAvg-1)*100):'']);
+  return [`# Auditoria de tempo de execução · ${$('#aPeriod').selectedOptions[0].textContent} · projeto: ${AUF.proj||'todos'} · tecnologia: ${AUF.tech||'todas'} · gerado em ${simNow().toLocaleString('pt-BR')}`,head.map(q).join(';'),...lines.map(l=>l.map(q).join(';'))].join('\n');
+}
+$('#aBody').addEventListener('input',e=>{if(!e.target.closest('#auditRoot'))return;AUF.proj=$('#auProj').value;AUF.tech=$('#auTech').value;AUF.active=$('#auActive').checked;updateAudit()});
+$('#aBody').addEventListener('click',e=>{if(e.target.id!=='auCopy')return;const csv=auditCsv();
+  const fallback=()=>{$('#modalBox').innerHTML=`<div class="mrow"><h3 id="mTitle">Relatório de auditoria (CSV)</h3><button class="close" data-close aria-label="Fechar">×</button></div><p style="margin:0 0 10px;color:var(--muted)">Selecione e copie o texto abaixo.</p><textarea readonly style="width:100%;height:260px;font-family:var(--mono);font-size:12px" id="csvBox">${esc(csv)}</textarea>`;$('#modal').hidden=false;$('#csvBox').select()};
+  try{navigator.clipboard.writeText(csv).then(()=>toast('Relatório copiado. Cole no Excel ou no Google Planilhas.'),fallback)}catch(_){fallback()}});
 $('#aTabs').addEventListener('click',e=>{const b=e.target.closest('[data-t]');if(b){aTab=b.dataset.t;renderAnalises()}});
 $('#aPeriod').addEventListener('change',renderAnalises);
 
@@ -1014,8 +1092,9 @@ function curView(){const h=location.hash.slice(1)||'dashboard';return h.startsWi
 function liveRefresh(changed,ended){
   const v=curView();
   if(v==='aovivo')renderLive();
+  if(v==='analises'&&aTab==='audit'&&$('#auditRoot'))updateAudit();
   if(changed){if(v==='execucoes')renderExecs();if(v==='detalhe'){const id=+location.hash.split('-')[1],r=RUNS.find(x=>x.id===id);if(r&&r.live&&(r.s==='Executando'||ended))renderDetail(id)}}
-  if(ended){if(v==='dashboard')$('#lastRuns').innerHTML=RUNS.filter(r=>r.s!=='Executando').slice(0,4).map(runRow).join('');if(v==='pipelines')renderPipes();if(v==='analises')renderAnalises()}
+  if(ended){if(v==='dashboard')$('#lastRuns').innerHTML=RUNS.filter(r=>r.s!=='Executando').slice(0,4).map(runRow).join('');if(v==='pipelines')renderPipes();if(v==='analises'&&aTab!=='audit')renderAnalises()}
   const n=LIVE.filter(r=>r.s==='Executando').length,lc=$('#liveCount');lc.hidden=!n;lc.textContent=n;
 }
 function fillLivePipe(){const el=$('#lvPipe'),v=el.value;el.innerHTML=PIPES.map(p=>`<option>${esc(p.name)}</option>`).join('');if(PIPES.some(p=>p.name===v))el.value=v}
@@ -1134,6 +1213,7 @@ document.addEventListener('click',e=>{
   const ts=e.target.closest('[data-toggle-scen]');if(ts){e.preventDefault();const s=SCENS.find(x=>x.id===ts.dataset.toggleScen);s.s=s.s==='Ativo'?'Inativo':'Ativo';saveData();renderScens();toast(`${s.id} ${s.s==='Ativo'?'ativado':'desativado'}`)}
   const pm=e.target.closest('[data-menu]');if(pm){const n=pm.dataset.menu;openMenu(pm,[
      {t:'Executar agora',f:()=>startRun(n)},
+     {t:pipeOf(n)?.active===false?'Ativar componente':'Desativar componente',f:()=>{const p=pipeOf(n);p.active=p.active===false;saveData();renderPipes();toast(`${n} ${p.active?'ativado':'desativado'}`)}},
      {t:'Ver execuções',f:()=>{go('execucoes');$('#ePipe').value=n;page=1;renderExecs()}},
      {t:'Analisar com IA',f:()=>{go('agente');askAgent(`Quais foram as principais falhas da pipeline de ${n} nesta semana?`)}},
      {t:'Excluir pipeline',danger:true,f:()=>modal('Excluir pipeline',`<p style="margin:0">Excluir a pipeline <b>${esc(n)}</b>? O histórico de execuções continua disponível.</p>`,()=>{PIPES=PIPES.filter(p=>p.name!==n);saveData();renderPipes();toast(`Pipeline ${n} excluída`)})}])}

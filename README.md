@@ -100,6 +100,28 @@ O projeto tem duas partes:
 
 ![Análises](docs/img/analises.png)
 
+#### Auditoria de tempo (aba de Análises)
+Pensada para auditoria do tempo de execução dos componentes **ativos** no portal.
+
+- **Filtros:** **projeto** (pasta), **tecnologia**, *somente componentes ativos* e o período do topo da tela (7, 30 ou 90 dias).
+- **Indicadores:**
+  - **Tempo total (soma das médias):** quanto leva rodar todos os componentes filtrados uma vez.
+  - **Tempo total real (último ciclo):** soma da última execução concluída de cada componente, com o Δ em relação à soma das médias.
+  - **Em execução agora:** soma, **ao vivo**, do tempo decorrido dos componentes rodando.
+  - **Média por componente:** com a conta exibida, por exemplo `1.936s ÷ 5`.
+- **Fórmulas na tela:**
+  - média do componente = Σ durações das execuções concluídas no período ÷ nº de execuções;
+  - tempo total = Σ médias;
+  - tempo real = última execução concluída, ou o tempo decorrido se estiver rodando.
+- **Tempo total por projeto:** barras comparando a soma das médias com o tempo real.
+- **Tabela por componente:**
+  - colunas projeto, componente, tecnologia, status (Ativo, Inativo ou Executando ao vivo), nº de execuções, Σ durações, média (com a conta), tempo real (com projeção para quem está rodando) e Δ real vs média;
+  - **subtotal por projeto** e **total geral**.
+- **Copiar relatório (CSV):** copia a tabela filtrada, com cabeçalho de período e filtros, para colar no Excel ou no Google Planilhas.
+- Para tirar um componente da auditoria, use o menu ⋮ em **Pipelines → Desativar componente**.
+
+![Auditoria de tempo](docs/img/auditoria.png)
+
 ### 8. Agente de QA (chat)
 - Chat em tela cheia, que é o mesmo do painel do dashboard, com sugestões de perguntas.
 - Responde sobre:
