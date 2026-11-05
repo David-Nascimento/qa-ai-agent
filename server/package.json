@@ -1,0 +1,15 @@
+{
+  "name": "qa-ai-agent-server",
+  "version": "0.1.0",
+  "description": "Servidor de tempo real do QA AI Agent: lê execuções do Jenkins e integra com o Jira via API REST, enviando eventos por Server-Sent Events.",
+  "type": "module",
+  "main": "server.js",
+  "engines": { "node": ">=20.6" },
+  "scripts": {
+    "start": "node --env-file=.env server.js",
+    "demo": "DEMO=true node server.js",
+    "test": "node --test test/*.test.js"
+  },
+  "license": "UNLICENSED",
+  "private": true
+}
