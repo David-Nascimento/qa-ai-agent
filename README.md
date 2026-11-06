@@ -53,7 +53,7 @@ Cada informação aparece **em um lugar só**: o resumo fica no Dashboard, os co
 | **Integrações / Configurações** | Conexões e preferências |
 
 ### 1. Dashboard (visão geral)
-- Indicadores do período (7, 30 ou 90 dias): **execuções**, **sucessos**, **falhas** e **duração média por plataforma**.
+- Mostra sempre os **últimos 7 dias**, calculados a partir das execuções: **execuções** (com a variação em relação aos 7 dias anteriores), **sucessos**, **falhas** e **duração média por plataforma**. O filtro de período fica em **Análises**.
 - **Duração média por plataforma:** o card mostra em destaque a média de **API**, **Mobile** e **Web**, cada uma com uma barra comparativa e o número de execuções.
   - **Cada plataforma tem a sua própria média**, que não é derivada do total: soma das durações das execuções concluídas daquela plataforma no período ÷ nº de execuções dela.
   - Passar o mouse mostra a conta (por exemplo `5.628s ÷ 20 execuções`).
@@ -118,12 +118,12 @@ Cada informação aparece **em um lugar só**: o resumo fica no Dashboard, os co
 ![Cenários do Jira](docs/img/cenarios.png)
 
 ### 6. Análises
-O período (7, 30 ou 90 dias) fica no topo e vale para as três abas.
+O **filtro de período** (7, 15, 30 ou 90 dias) fica no topo e vale para as três abas. O intervalo de datas aparece logo abaixo do título. Tudo é **recalculado a partir das execuções do período**, e cada indicador é comparado com o período anterior de mesmo tamanho (por exemplo, 30 dias contra os 30 dias antes deles).
 
 **Qualidade:** o que aconteceu no período.
-- Indicadores: taxa de sucesso, total de falhas, testes instáveis e MTTR.
-- Sucessos e falhas por dia e evolução da taxa de sucesso.
-- Falhas por causa raiz e **mapa de calor de falhas por dia e horário**.
+- Indicadores: execuções, taxa de sucesso, execuções com falha e **MTTR** (tempo médio entre uma falha e a próxima execução com sucesso do mesmo componente).
+- Sucessos e falhas **por dia**, ou **por semana** no filtro de 90 dias, e a evolução da taxa de sucesso.
+- Falhas por causa raiz, agrupadas pela mensagem de erro, e **mapa de calor de falhas por dia da semana e horário**, com o pico destacado.
 
 ![Análises — Qualidade](docs/img/analises.png)
 
@@ -145,7 +145,7 @@ O período (7, 30 ou 90 dias) fica no topo e vale para as três abas.
 **Estabilidade:** onde e o que falha.
 - **Falhas por componente**, só com quem falhou, e a contagem de quem não falhou.
 - **Abaixo da meta de sucesso**: os componentes abaixo da meta definida em Configurações.
-- **Testes instáveis (flaky)**, com a taxa de falha intermitente e o atalho para a análise da IA.
+- **Testes instáveis (flaky):** cenários que falharam e também passaram no período, com falhas / execuções, taxa de falha e o atalho para a análise da IA.
 
 ### 7. Agente de QA (chat)
 - Chat em tela cheia, que é o mesmo do painel do dashboard, com sugestões de perguntas.
@@ -570,7 +570,7 @@ es.addEventListener('scenario', e => console.log(JSON.parse(e.data)));
 
 ## Dados, persistência e limitações do MVP
 
-- Sem servidor, a plataforma usa **dados de exemplo**: 13 componentes em 4 pastas, cerca de 50 execuções e cenários `CT-001…`.
+- Sem servidor, a plataforma usa **dados de exemplo**: 13 componentes em 4 pastas, cerca de 7.600 execuções distribuídas em 6 meses (para o filtro de período e a comparação com o período anterior funcionarem) e cenários `CT-001…`.
 - Pipelines, cenários, integrações e configurações criados na interface ficam no **`localStorage` do navegador**. Eles não são compartilhados entre pessoas ou máquinas. *Configurações → Dados → Restaurar dados de exemplo* limpa tudo.
 - No modo conectado, as execuções reais aparecem em **Execuções** (Histórico e Ao vivo), no **Detalhe**, nas **Últimas execuções** e em **Análises › Tempo de execução**, e os cenários vêm do **Jira**. O histórico de longo prazo e os indicadores de **Análises** ainda vêm dos dados de exemplo, até que exista um banco (veja o roadmap).
 - O **agente de IA** responde por regras. As **Configurações → IA e Prompts** já guardam provedor, modelo, prompt e temperatura para a integração real.
