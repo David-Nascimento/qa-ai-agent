@@ -42,6 +42,7 @@ O projeto tem duas partes:
 
 ### 1. Dashboard (visão geral)
 - Indicadores do período (7, 30 ou 90 dias): **execuções**, **sucessos**, **falhas** e **duração média**, comparados com o período anterior.
+- A **duração média** vem dividida entre **API**, **Mobile** e **Web**, com uma barra por tecnologia. A divisão segue a proporção das médias reais de cada tecnologia, então a média ponderada pelas execuções bate com o valor do card.
 - Gráfico de **evolução da taxa de sucesso**.
 - **Falhas por pipeline:** rosca com o total no centro e o % das execuções que falharam. A legenda mostra, por pipeline, a quantidade de falhas, o % e uma barra proporcional. Passar o mouse destaca o segmento na rosca, e clicar manda a pipeline para análise da IA. No rodapé fica um resumo de onde as falhas se concentram.
 - Tabela das **últimas execuções**, com acesso ao detalhe.
