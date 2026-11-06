@@ -32,6 +32,8 @@ const CFG = {
     autoBug: env.JIRA_AUTO_BUG === 'true',
     issueType: env.JIRA_ISSUE_TYPE || 'Bug',
     labels: list(env.JIRA_LABELS || 'qa-ai-agent'),
+    scenarioJql: env.JIRA_SCENARIOS_JQL || 'project = QA AND issuetype = Test ORDER BY key',
+    pipelineField: env.JIRA_PIPELINE_FIELD || 'components',
   },
 };
 
@@ -244,6 +246,36 @@ async function reportBug({ job, build, scenario, buildUrl, details = '' }) {
   return { key: created.key, action: 'create' };
 }
 
+// Cenários de teste lidos do Jira pela API de busca (JQL), com paginação.
+// field: campo que indica o componente/pipeline (components, labels ou customfield_xxxxx).
+async function jiraScenarios({ jql = CFG.jira.scenarioJql, field = CFG.jira.pipelineField, max = 1000 } = {}) {
+  const fields = ['summary', 'status', 'components', 'labels', 'updated', field].filter((v, i, a) => v && a.indexOf(v) === i).join(',');
+  const out = [];
+  let startAt = 0, token = null;
+  for (;;) {
+    const q = new URLSearchParams({ jql, fields, maxResults: '100' });
+    if (CFG.jira.version === '3') { if (token) q.set('nextPageToken', token); }
+    else q.set('startAt', String(startAt));
+    const d = await jira(`${CFG.jira.version === '3' ? '/search/jql' : '/search'}?${q}`);
+    for (const it of d.issues || []) {
+      const f = it.fields || {};
+      const v = f[field];
+      const pipeline = Array.isArray(v) ? (v[0]?.name ?? v[0]?.value ?? v[0] ?? '') : (v?.value ?? v?.name ?? v ?? '');
+      out.push({ key: it.key, name: f.summary || it.key, status: f.status?.name || '', pipeline: String(pipeline || ''), updated: f.updated, url: `${CFG.jira.url}/browse/${it.key}` });
+    }
+    if (out.length >= max) break;
+    if (CFG.jira.version === '3') { if (!d.nextPageToken || d.isLast) break; token = d.nextPageToken; }
+    else { startAt += (d.issues || []).length; if (!d.issues?.length || startAt >= (d.total || 0)) break; }
+  }
+  return out.slice(0, max);
+}
+
+const DEMO_SCENARIOS = [
+  ['QA-101', 'CT-001 Fluxo de compra completo', 'Checkout'], ['QA-102', 'CT-002 Aplicar cupom de desconto', 'Checkout'],
+  ['QA-103', 'CT-003 Pagamento com cartão inválido', 'Pagamento'], ['QA-104', 'CT-004 Timeout na API de pagamento', 'Pagamento'],
+  ['QA-105', 'CT-005 Validação de carrinho vazio', 'Checkout'], ['QA-130', 'CT-030 Login no app', 'App do Cliente'],
+].map(([key, name, pipeline]) => ({ key, name, status: 'Pronto', pipeline, url: '' }));
+
 /* ------------------------------------------------------------------ */
 /* Modo demonstração (sem Jenkins)                                     */
 /* ------------------------------------------------------------------ */
@@ -328,6 +360,15 @@ const server = http.createServer(async (req, res) => {
       if (!job || !build) return send(res, 400, { error: 'Informe "job" e "build"' });
       if (!CFG.demo) await stopBuild(job, build);
       return send(res, 202, { ok: true });
+    }
+    if (req.method === 'GET' && url.pathname === '/api/jira/scenarios') {
+      if (CFG.demo && !jiraReady()) return send(res, 200, { demo: true, scenarios: DEMO_SCENARIOS });
+      if (!jiraReady()) return send(res, 400, { error: 'Jira não configurado no servidor' });
+      const scenarios = await jiraScenarios({
+        jql: url.searchParams.get('jql') || undefined,
+        field: url.searchParams.get('field') || undefined,
+      });
+      return send(res, 200, { scenarios });
     }
     if (req.method === 'POST' && url.pathname === '/api/jira/bug') {
       if (!jiraReady()) return send(res, 400, { error: 'Jira não configurado' });

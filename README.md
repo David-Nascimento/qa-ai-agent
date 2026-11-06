@@ -40,107 +40,114 @@ O projeto tem duas partes:
 
 ## Funcionalidades
 
+Cada informação aparece **em um lugar só**: o resumo fica no Dashboard, os componentes em Pipelines, o acompanhamento em Execuções, os cenários do Jira em Cenários e as métricas em Análises.
+
+| Tela | Para que serve |
+|---|---|
+| **Dashboard** | Resumo do período e painel do agente de IA |
+| **Pipelines** | Pastas (projetos) e componentes; único lugar da contagem por pasta |
+| **Execuções** | Abas **Histórico** e **Ao vivo** |
+| **Cenários** | Cenários lidos do **Jira pela API**, com o último resultado |
+| **Análises** | Abas **Qualidade**, **Tempo de execução** e **Estabilidade**, sem sobreposição |
+| **Agente de QA** | Chat com análises e recomendações |
+| **Integrações / Configurações** | Conexões e preferências |
+
 ### 1. Dashboard (visão geral)
-- Indicadores do período (7, 30 ou 90 dias): **execuções**, **sucessos**, **falhas** e **duração média**, comparados com o período anterior.
-- **Duração média por plataforma:** o card mostra em destaque a média de **API**, **Mobile** e **Web**, cada uma com uma barra comparativa e o número de execuções. **Cada plataforma tem a sua própria média**, que não é derivada do total: soma das durações das execuções concluídas daquela plataforma no período ÷ nº de execuções dela. Passar o mouse mostra a conta (por exemplo `5.628s ÷ 20 execuções`). A média geral do período aparece pequena no rodapé do card, só como referência. Os valores se atualizam quando uma execução termina.
+- Indicadores do período (7, 30 ou 90 dias): **execuções**, **sucessos**, **falhas** e **duração média por plataforma**.
+- **Duração média por plataforma:** o card mostra em destaque a média de **API**, **Mobile** e **Web**, cada uma com uma barra comparativa e o número de execuções.
+  - **Cada plataforma tem a sua própria média**, que não é derivada do total: soma das durações das execuções concluídas daquela plataforma no período ÷ nº de execuções dela.
+  - Passar o mouse mostra a conta (por exemplo `5.628s ÷ 20 execuções`).
+  - A média geral do período aparece pequena no rodapé do card, só como referência.
 - Gráfico de **evolução da taxa de sucesso**.
-- **Falhas por pipeline:** rosca com o total no centro e o % das execuções que falharam. A legenda mostra, por pipeline, a quantidade de falhas, o % e uma barra proporcional. Passar o mouse destaca o segmento na rosca, e clicar manda a pipeline para análise da IA. No rodapé fica um resumo de onde as falhas se concentram.
-- Tabela das **últimas execuções**, com acesso ao detalhe.
-- Painel do **Agente de QA (IA)** ao lado, com a conversa e a recomendação.
+- **Falhas por pipeline:** rosca com o total no centro e legenda com quantidade, % e barra por pipeline. Passar o mouse destaca o segmento na rosca.
+- **Últimas execuções** e painel do **Agente de QA (IA)**.
 
 ### 2. Pipelines (por pasta)
-- **Visão por pasta** (padrão). Cada pasta (Cliente, E-commerce, Catálogo, Plataforma…) mostra a contagem de componentes por tecnologia, como *“3 componentes de API, 1 de Mobile e 1 de Web”*, com badges, uma barra de composição, o tempo médio e quantos estão com falha. A pasta abre e fecha e lista seus componentes.
-- Resumo geral no topo (*“13 componentes em 4 pastas”*), com contadores por tecnologia que também funcionam como filtro.
-- **Visão em lista**, com filtros por texto, pasta, status e tecnologia (**API**, **Mobile**, **Web**).
-- **Menu ⋮ de cada pasta:**
-  - **Executar todos os componentes** da pasta;
-  - **Ver na Auditoria de tempo**, já filtrada pelo projeto;
+- **Visão por pasta** (padrão). Cada pasta (projeto) mostra:
+  - em uma frase, a composição, como *“3 componentes de API, 1 de Mobile e 1 de Web”*;
+  - a barra de composição, o tempo médio e o estado (*tudo passando* ou *N com falha*).
+- Resumo no topo (*“13 componentes em 4 pastas”*), com contadores por tecnologia que também filtram.
+- **Visão em lista**, com filtros por texto, pasta, status e tecnologia.
+- **Menu ⋮ da pasta:**
+  - **Executar todos os componentes**;
+  - **Ver tempo de execução**, que abre Análises já filtrada pelo projeto;
   - **Renomear pasta**;
-  - **Excluir pasta**. A exclusão remove a pasta e todos os componentes dela. A janela de confirmação lista os componentes e avisa se há execuções em andamento, que são interrompidas. Ela oferece duas opções: excluir também os cenários vinculados (marcada por padrão) e apagar o histórico de execuções (desmarcada por padrão, para manter a auditoria). Para confirmar, é preciso **digitar o nome da pasta**. Depois de excluir, o aviso traz **Desfazer** por alguns segundos.
-- Menu ⋮ de cada pipeline: **executar agora**, **ver execuções**, **analisar com IA** e **excluir**. O botão **+ Nova Pipeline** pede nome, pasta, número de cenários e tecnologia.
+  - **Excluir pasta**. A confirmação lista os componentes e avisa sobre execuções em andamento, que são interrompidas. Ela oferece duas opções: excluir os cenários vinculados (marcada por padrão) e apagar o histórico (desmarcada por padrão, para preservar a auditoria). É preciso **digitar o nome da pasta** para confirmar, e há **Desfazer** por alguns segundos.
+- **Menu ⋮ do componente:** executar agora, ativar ou desativar, ver execuções, analisar com IA e excluir. O botão **+ Nova Pipeline** pede nome, pasta, número de cenários e tecnologia.
 
 ![Pipelines por pasta](docs/img/pipelines.png)
 
 ### 3. Execuções
-- Histórico paginado, com busca por número ou pipeline e filtros por pipeline, status e período.
-- **Importar JSON**: carrega execuções de um arquivo (veja o [formato](#formato-do-importar-json)).
+- Duas abas no topo: **Histórico** e **Ao vivo**. O contador vermelho mostra quantas esteiras estão rodando.
+- **Histórico:** lista paginada, com busca por número ou pipeline, filtros por pipeline, status e período, e **Importar JSON** (veja o [formato](#formato-do-importar-json)).
+- **Ao vivo** (atualiza a cada segundo):
+  - indicadores: esteiras em execução, cenários concluídos, falhas (quantas por timeout) e tempo médio de resposta;
+  - **um card por esteira:**
+    - tempo decorrido × média, tempo restante e Δ projetado;
+    - barra com um segmento por cenário: verde se passou, vermelho se falhou, roxo se está rodando, cinza se está pendente;
+    - lista dos cenários com status, **tempo de resposta (ms)** e duração;
+    - ações **Ver detalhes** e **Parar**, que no modo conectado para o build no Jenkins;
+  - **concluídas recentemente**, com Analisar com IA e Reexecutar;
+  - **eventos**: feed com cada cenário, início e fim de esteira, estágios do Jenkins e bugs do Jira.
+
+![Execuções ao vivo](docs/img/aovivo.png)
 
 ### 4. Detalhe da execução
-- Cabeçalho com pipeline, grupo, tecnologia, data e duração.
-- Indicadores de **cenários**, **sucessos**, **falhas** e **taxa de sucesso**.
-- Abas **Cenários** (status e duração de cada um), **Logs** (log colorido) e **Evidências** (capturas dos cenários que falharam).
+- Cabeçalho com pipeline, pasta, tecnologia, data e duração.
+- Indicadores de cenários, sucessos, falhas e taxa de sucesso.
+- Abas **Cenários**, **Logs** e **Evidências**.
 - Botões **Analisar falhas com IA** e **Reexecutar pipeline**.
-- Atualiza ao vivo enquanto a execução está rodando, com cada cenário como Pendente, Executando, Sucesso ou Falha.
+- Atualiza ao vivo enquanto a execução está rodando.
 
 ![Detalhe da execução](docs/img/exec.png)
 
-### 5. Tempo real
-- Indicadores ao vivo: **esteiras em execução**, **cenários concluídos**, **falhas** (quantas por timeout) e **tempo médio de resposta**.
-- **Um card por esteira em execução**, com:
-  - tempo decorrido × média histórica, tempo restante estimado e **Δ projetado**;
-  - barra com **um segmento por cenário**: verde se passou, vermelho se falhou, roxo piscando se está rodando, cinza se está pendente;
-  - lista dos **cenários vinculados à esteira**, com status, **tempo de resposta (ms)** (em vermelho acima de 1 s) e duração;
-  - ações **Ver detalhes** e **Parar**, que no modo conectado para o build no Jenkins.
-- **Concluídas recentemente**: as últimas 6, com **Analisar com IA** e **Reexecutar**.
-- **Tempo da esteira por componente**: tabela com todos os componentes, mostrando o que está rodando agora, o tempo atual, a projeção, a média, o Δ vs média, o tempo de resposta médio e os cenários que passaram e falharam.
-- **Eventos**: feed com horário de cada cenário que passou ou falhou, de cada esteira que começou ou terminou, dos estágios do Jenkins e dos bugs abertos no Jira.
-- O menu lateral mostra quantas esteiras estão rodando.
+### 5. Cenários de teste (lidos do Jira)
+- Os cenários **não são cadastrados na plataforma**. Eles vêm do **Jira pela API REST**: o servidor chama o endpoint de busca de issues com uma consulta **JQL**, a linguagem de busca da própria API do Jira.
+- A faixa **Origem: Jira** mostra a consulta usada, quantos cenários vieram e a hora da última atualização.
+  - **Editar consulta** permite trocar a JQL e o **campo que indica o componente** (`components`, `labels` ou um campo personalizado como `customfield_10045`).
+  - **Atualizar do Jira** recarrega a lista.
+- Colunas:
+  - **chave Jira**, com link para a issue;
+  - **cenário** (ID `CT-xxx` e nome);
+  - **componente**;
+  - **status no Jira**;
+  - **último resultado**: Sucesso, Falha ou Executando, com link para a execução.
+- Filtros por texto (chave, ID ou nome), componente, status no Jira e último resultado.
+- Sem servidor conectado, a tela mostra cenários de exemplo no mesmo formato.
 
-![Tempo real](docs/img/aovivo.png)
+![Cenários do Jira](docs/img/cenarios.png)
 
-### 6. Cenários de teste
-- Lista com ID (`CT-001`…), nome, pipeline e status (Ativo ou Inativo), com busca e filtros.
-- **+ Novo Cenário** e botão para **ativar ou desativar** cada cenário.
+### 6. Análises
+O período (7, 30 ou 90 dias) fica no topo e vale para as três abas.
 
-### 7. Análises (analytics)
-- Abas **Visão Geral**, **Tendências**, **Falhas** e **Flaky Tests**.
-- Indicadores: taxa de sucesso, total de falhas, testes instáveis e **MTTR**.
-- **Tempo de execução por tecnologia** (atualiza ao vivo, a cada segundo):
-  - lê os **componentes cadastrados e ativos** no portal, incluindo os adicionados depois, e usa a **execução mais recente** de cada um;
-  - **filtro por componente**: escolha um ou vários, agrupados por projeto, com *Selecionar todos* e *Limpar*;
-  - badges *Todas*, *API*, *Mobile* e *Web*, cada uma com:
-    - o **tempo total atual** (soma das execuções mais recentes);
-    - a **média histórica**, com o Δ e uma barra comparando o atual com a média;
-    - o tempo atual e a média **por componente**;
-    - o componente **mais lento** e o **mais rápido**;
-    - quantos estão **em execução agora** e o tempo decorrido;
-  - tabela **Execução mais recente por componente**: número e data da última execução, tempo mais recente, média (com a conta `Σ ÷ n`), Δ e o tempo decorrido de quem está rodando.
+**Qualidade:** o que aconteceu no período.
+- Indicadores: taxa de sucesso, total de falhas, testes instáveis e MTTR.
+- Sucessos e falhas por dia e evolução da taxa de sucesso.
+- Falhas por causa raiz e **mapa de calor de falhas por dia e horário**.
 
-  ![Tempo de execução por tecnologia](docs/img/tecnologia.png)
-- **Componentes por pasta**: tabela pasta × API, Mobile e Web, com total, tempo médio e taxa de sucesso.
-- Gráfico de **tendência de sucessos e falhas** e seção **Analytics**:
-  - taxa de sucesso por pipeline, comparada com a meta das Configurações;
-  - falhas por causa raiz;
-  - duração média por pipeline;
-  - falhas por pipeline;
-  - **mapa de calor de falhas por dia e horário**;
-  - **top 5 testes instáveis**.
+![Análises — Qualidade](docs/img/analises.png)
 
-![Análises](docs/img/analises.png)
+**Tempo de execução:** uma única visão para acompanhamento e **auditoria**.
+- **Filtros:** projeto (pasta), plataforma, **componentes** (um ou vários, agrupados por projeto) e *somente ativos*.
+- **Cards Todas, API, Mobile e Web**, cada um com:
+  - a **média própria da plataforma** (Σ durações das execuções dela ÷ nº de execuções dela);
+  - o **tempo total atual** (soma da execução mais recente de cada componente) com o Δ em relação à soma das médias;
+  - quantos estão **rodando agora** e o tempo decorrido.
+- **Tabela por componente**, agrupada por projeto:
+  - colunas: execução agora (ao vivo), última execução (número e data), tempo mais recente, média com a conta `Σ ÷ n` e Δ;
+  - **subtotal por projeto** e **total geral**, comparando a soma dos mais recentes com a soma das médias.
+- **Como os tempos são calculados:** um painel expansível com as fórmulas.
+- **Copiar relatório (CSV):** copia a tabela filtrada, com período, filtros e a média de cada plataforma, para colar no Excel ou no Google Planilhas.
+- Atualiza ao vivo a cada segundo. Os componentes adicionados depois entram sozinhos.
 
-#### Auditoria de tempo (aba de Análises)
-Pensada para auditoria do tempo de execução dos componentes **ativos** no portal.
+![Análises — Tempo de execução](docs/img/tempo.png)
 
-- **Filtros:** **projeto** (pasta), **tecnologia**, *somente componentes ativos* e o período do topo da tela (7, 30 ou 90 dias).
-- **Indicadores:**
-  - **Tempo total (soma das médias):** quanto leva rodar todos os componentes filtrados uma vez.
-  - **Tempo total real (último ciclo):** soma da última execução concluída de cada componente, com o Δ em relação à soma das médias.
-  - **Em execução agora:** soma, **ao vivo**, do tempo decorrido dos componentes rodando.
-  - **Média por componente:** com a conta exibida, por exemplo `1.936s ÷ 5`.
-- **Fórmulas na tela:**
-  - média do componente = Σ durações das execuções concluídas no período ÷ nº de execuções;
-  - tempo total = Σ médias;
-  - tempo real = última execução concluída, ou o tempo decorrido se estiver rodando.
-- **Tempo total por projeto:** barras comparando a soma das médias com o tempo real.
-- **Tabela por componente:**
-  - colunas projeto, componente, tecnologia, status (Ativo, Inativo ou Executando ao vivo), nº de execuções, Σ durações, média (com a conta), tempo real (com projeção para quem está rodando) e Δ real vs média;
-  - **subtotal por projeto** e **total geral**.
-- **Copiar relatório (CSV):** copia a tabela filtrada, com cabeçalho de período e filtros, para colar no Excel ou no Google Planilhas.
-- Para tirar um componente da auditoria, use o menu ⋮ em **Pipelines → Desativar componente**.
+**Estabilidade:** onde e o que falha.
+- **Falhas por componente**, só com quem falhou, e a contagem de quem não falhou.
+- **Abaixo da meta de sucesso**: os componentes abaixo da meta definida em Configurações.
+- **Testes instáveis (flaky)**, com a taxa de falha intermitente e o atalho para a análise da IA.
 
-![Auditoria de tempo](docs/img/auditoria.png)
-
-### 8. Agente de QA (chat)
+### 7. Agente de QA (chat)
 - Chat em tela cheia, que é o mesmo do painel do dashboard, com sugestões de perguntas.
 - Responde sobre:
   - falhas por pipeline;
@@ -155,13 +162,13 @@ Pensada para auditoria do tempo de execução dos componentes **ativos** no port
 
 ![Agente de QA](docs/img/agente.png)
 
-### 9. Integrações
+### 8. Integrações
 - **Azure DevOps**, **GitLab CI**, **Jenkins**, **Jira** e **Importação de Arquivo (JSON)**.
 - Cada uma tem uma tela de configuração (URL, projeto e token), o status *Conectado* e as opções de sincronizar e desconectar.
 
 > As telas de integração do front-end guardam só o estado da interface. **A conexão real com Jenkins e Jira é feita pelo [servidor](#servidor-de-tempo-real)**, que mantém os tokens fora do navegador.
 
-### 10. Configurações
+### 9. Configurações
 - **Geral**: nome do workspace, idioma, fuso horário, alertas de falha e resumo semanal.
 - **IA e Prompts**: provedor (OpenAI, Anthropic, Azure OpenAI), modelo, **prompt do agente**, temperatura e análise automática de falhas.
 - **Dados**: retenção do histórico, meta de taxa de sucesso e restauração dos dados de exemplo.
@@ -185,7 +192,7 @@ python3 -m http.server 8080
 # acesse http://localhost:8080
 ```
 
-Sem servidor conectado, a tela **Tempo real** roda uma **simulação 10× acelerada**: três esteiras já em andamento ao abrir e novas execuções iniciadas automaticamente. Ela pode ser desligada em *Simulação automática*.
+Sem servidor conectado, a aba **Execuções › Ao vivo** roda uma **simulação 10× acelerada**: três esteiras já em andamento ao abrir e novas execuções iniciadas automaticamente. Ela pode ser desligada em *Simulação automática*.
 
 ### Plataforma + servidor de tempo real
 
@@ -204,7 +211,8 @@ http://localhost:8080/index.html?api=https://qa-api.suaempresa.com&key=SUA_API_K
 
 Com `?api=`:
 - a simulação é desligada;
-- a etiqueta muda para **“Ao vivo · Jenkins”**;
+- a aba muda para **“Ao vivo · Jenkins”**;
+- a tela **Cenários** passa a ler os cenários do Jira (botão **Atualizar do Jira**);
 - os cards passam a refletir os builds reais;
 - **Executar** dispara o build no Jenkins e **Parar** interrompe o build.
 
@@ -250,7 +258,8 @@ qa-ai-agent/
     ├── package.json        # scripts start / demo / test (sem dependências)
     ├── .env.example        # todas as variáveis de configuração
     └── test/
-        └── jenkins.test.js # teste de integração com Jenkins falso
+        ├── jenkins.test.js # teste de integração com Jenkins falso
+        └── jira.test.js    # leitura de cenários no Jira falso (paginação v3)
 ```
 
 Dentro do `index.html`, o script está dividido em blocos comentados:
@@ -259,7 +268,7 @@ Dentro do `index.html`, o script está dividido em blocos comentados:
 |---|---|
 | Dados de exemplo | Pipelines (pasta e tecnologia), execuções, cenários e suítes |
 | 1. Dashboard … 9. Configurações | Renderização de cada tela |
-| Navegação | Rotas por hash (`#dashboard`, `#pipelines`, `#execucoes`, `#aovivo`, `#exec-10432`, `#cenarios`, `#analises`, `#agente`, `#integracoes`, `#config`) |
+| Navegação | Rotas por hash (`#dashboard`, `#pipelines`, `#execucoes`, `#aovivo` (Execuções › Ao vivo), `#exec-10432`, `#cenarios`, `#analises`, `#agente`, `#integracoes`, `#config`) |
 | Motor de tempo real | Simulação, cards ao vivo, tabela por componente e feed de eventos |
 | Eventos reais (SSE) | `extStart`, `extScenario` e `extEnd`, que traduzem os eventos do servidor para a tela |
 | Agente de IA | Regras de resposta e conversa |
@@ -370,6 +379,8 @@ Os comandos da tela, como executar e parar, vão por `POST` normal.
 | `JIRA_AUTO_BUG` | `false` | Abre ou comenta um bug para cada cenário que falhar |
 | `JIRA_ISSUE_TYPE` | `Bug` | Tipo de issue criado |
 | `JIRA_LABELS` | `qa-ai-agent` | Labels aplicadas, separadas por vírgula |
+| `JIRA_SCENARIOS_JQL` | `project = QA AND issuetype = Test ORDER BY key` | Consulta (JQL) usada na API do Jira para buscar os cenários |
+| `JIRA_PIPELINE_FIELD` | `components` | Campo do Jira que indica o componente do cenário (`components`, `labels` ou `customfield_xxxxx`) |
 
 ---
 
@@ -456,7 +467,23 @@ O servidor associa a linha `[resp]` ao cenário pelo nome ou pelo ID `CT-xxx`, e
 | **Cloud** | E-mail + API token (gere em `id.atlassian.com → Security → API tokens`) | `3` |
 | **Server / Data Center** | Usuário + Personal Access Token | `2` |
 
-### O que o servidor faz
+### Cenários de teste (leitura pela API)
+A tela **Cenários** chama `GET /api/jira/scenarios`. O servidor então consulta a API de busca do Jira com a JQL configurada, paginando até 1000 issues:
+- **Cloud (v3):** `GET /rest/api/3/search/jql?jql=…&fields=summary,status,components,labels,updated&nextPageToken=…`
+- **Server/DC (v2):** `GET /rest/api/2/search?jql=…&startAt=…`
+
+O resultado vem assim:
+
+```json
+{ "scenarios": [ { "key": "QA-101", "name": "CT-001 Fluxo de compra completo", "status": "Pronto",
+                   "pipeline": "Checkout", "url": "https://suaempresa.atlassian.net/browse/QA-101" } ] }
+```
+
+- **Consulta padrão:** `JIRA_SCENARIOS_JQL`. A plataforma pode mandar outra com *Editar consulta*.
+- **Componente/pipeline:** vem do campo `JIRA_PIPELINE_FIELD`: `components` (padrão), `labels` ou `customfield_xxxxx`.
+- **ID do cenário:** se o título da issue começa com `CT-xxx`, esse ID liga o cenário às linhas do log do Jenkins e ao último resultado.
+
+### O que o servidor faz com as falhas
 Com `JIRA_AUTO_BUG=true`, ao fim de cada build, para cada cenário que falhou:
 
 1. **Procura um bug aberto** do mesmo cenário:
@@ -526,6 +553,7 @@ es.addEventListener('scenario', e => console.log(JSON.parse(e.data)));
 | `GET` | `/api/state` | `x-api-key` ou `?key=` | Builds em acompanhamento, com cenários e estágios |
 | `POST` | `/api/build` | `x-api-key` | `{ "job": "E-commerce/Checkout", "params": { "AMBIENTE": "hml" } }` dispara o build |
 | `POST` | `/api/stop` | `x-api-key` | `{ "job": "...", "build": 77 }` para o build |
+| `GET` | `/api/jira/scenarios` | `x-api-key` | `?jql=...&field=components` busca os cenários de teste no Jira |
 | `POST` | `/api/jira/bug` | `x-api-key` | `{ "job", "build", "scenario", "details?" }` abre ou comenta o bug |
 
 ---
@@ -544,7 +572,7 @@ es.addEventListener('scenario', e => console.log(JSON.parse(e.data)));
 
 - Sem servidor, a plataforma usa **dados de exemplo**: 13 componentes em 4 pastas, cerca de 50 execuções e cenários `CT-001…`.
 - Pipelines, cenários, integrações e configurações criados na interface ficam no **`localStorage` do navegador**. Eles não são compartilhados entre pessoas ou máquinas. *Configurações → Dados → Restaurar dados de exemplo* limpa tudo.
-- No modo conectado, as execuções reais aparecem no **Tempo real**, nas **Execuções**, no **Detalhe** e nas **Últimas execuções**. O histórico de longo prazo e os indicadores de **Análises** ainda vêm dos dados de exemplo, até que exista um banco (veja o roadmap).
+- No modo conectado, as execuções reais aparecem em **Execuções** (Histórico e Ao vivo), no **Detalhe**, nas **Últimas execuções** e em **Análises › Tempo de execução**, e os cenários vêm do **Jira**. O histórico de longo prazo e os indicadores de **Análises** ainda vêm dos dados de exemplo, até que exista um banco (veja o roadmap).
 - O **agente de IA** responde por regras. As **Configurações → IA e Prompts** já guardam provedor, modelo, prompt e temperatura para a integração real.
 - As telas de **Integrações** do front-end são visuais. A conexão de fato é feita pelo servidor.
 

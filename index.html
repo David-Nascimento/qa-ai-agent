@@ -127,6 +127,46 @@ a{color:var(--primary);font-weight:600;text-decoration:none}a:hover{text-decorat
 .toast{display:flex;align-items:center;gap:12px}
 .toast-btn{border:0;background:rgba(255,255,255,.16);color:#fff;font-weight:600;border-radius:7px;padding:6px 10px}
 .toast-btn:hover{background:rgba(255,255,255,.26)}
+.ptabs{display:inline-flex;gap:4px;background:var(--card);border:1px solid #e3e5ee;border-radius:11px;padding:4px;margin:-6px 0 20px}
+.ptabs button{border:0;background:none;padding:8px 16px;border-radius:8px;font-weight:600;font-size:14.5px;color:var(--muted);display:inline-flex;align-items:center;gap:8px}
+.ptabs button:hover{color:var(--fg)}
+.ptabs button.on{background:var(--primary-soft);color:var(--primary)}
+.ptabs .live-dot{width:7px;height:7px}
+.tab-count{background:#ef4444;color:#fff;font-size:11px;border-radius:999px;padding:1px 7px}
+/* Limpeza visual: menos fundos, menos cartões aninhados */
+.tech{background:none!important;padding:0!important;gap:5px!important;font-weight:600}
+.tech.all{color:var(--primary)}
+.chip .tech{padding:5px 11px!important}
+.chip{background:var(--card);border:1px solid var(--line)!important;border-radius:999px}
+.chip.on{border-color:var(--primary)!important;background:var(--primary-softer)}
+#aBody .kpi,#lvKpis .kpi,#v-detalhe .kpi{box-shadow:none;border:1px solid var(--line);background:var(--card)}
+#aBody .kpi{padding:16px 18px}
+#aBody .kpi-v{font-size:30px;margin:8px 0 4px}
+.an-sec{padding:20px 0;border-top:1px solid var(--line)}
+.an-sec:first-of-type{border-top:0}
+.an-sec h3{margin:0 0 14px;font-size:16px}
+.an-split{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 36px;border-top:1px solid var(--line)}
+.an-split>.an-sec{border-top:0}
+#aBody>.kpis+.an-sec{border-top:0;padding-top:4px}
+.tcard{box-shadow:none}
+.tc-row{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-top:12px;font-size:13.5px;color:var(--muted)}
+.tc-row b{color:var(--fg);font-variant-numeric:tabular-nums}
+.how{margin:14px 0 16px;font-size:13.5px;color:var(--fg-2)}
+.how summary{cursor:pointer;color:var(--primary);font-weight:600;width:max-content}
+.how>div{margin-top:10px;background:var(--primary-softer);border-radius:10px;padding:12px 14px;display:flex;flex-direction:column;gap:6px}
+.how p{margin:0}
+.au-table tr.grp td{background:none;font-weight:700;color:var(--fg);font-size:13px;text-transform:uppercase;letter-spacing:.04em;padding-top:18px;border-bottom:1px solid var(--line)}
+.muted{color:var(--muted)}
+.key{font-family:var(--mono);font-size:12.5px;color:var(--primary);font-weight:600}
+@media (max-width:900px){.an-split{grid-template-columns:1fr}}
+.jsrc{display:flex;align-items:center;gap:10px 14px;flex-wrap:wrap;background:var(--head);border-radius:10px;padding:10px 14px;margin-bottom:16px;font-size:13.5px}
+.jsrc-l{display:inline-flex;align-items:center;gap:6px}
+.jsrc code{font-family:var(--mono);font-size:12.5px;background:var(--card);border:1px solid var(--line);border-radius:6px;padding:3px 8px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.link-btn{border:0;background:none;color:var(--primary);font-weight:600;padding:0;margin-left:auto}
+.jst{font-size:13px;font-weight:600}
+.jst.ok{color:var(--fg-2);font-weight:500}.jst.wip{color:#b4540a}.jst.off{color:var(--muted)}
+#v-pipelines .pill.pass,#v-cenarios .pill.pass,#v-execucoes .pill.pass,#v-detalhe td .pill.pass{background:none;padding-left:0;color:var(--green-ink);font-weight:500}
+#v-pipelines .pill.pass::before,#v-cenarios .pill.pass::before,#v-execucoes .pill.pass::before,#v-detalhe td .pill.pass::before{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--green-2);margin-right:7px;vertical-align:1px}
 .chart{width:100%;height:auto;display:block}
 .donut-wrap{display:flex;align-items:center;gap:22px;padding-top:12px;flex-wrap:wrap}
 .donut-wrap svg{flex:none}
@@ -220,7 +260,7 @@ tbody tr.click{cursor:pointer}tbody tr.click:hover td{background:#fafafd}
 
 /* Análises */
 .hbar{display:flex;flex-direction:column;gap:14px}
-.hbar .r{display:grid;grid-template-columns:110px 1fr 64px;gap:12px;align-items:center;font-size:14.5px}
+.hbar .r{display:grid;grid-template-columns:140px 1fr 64px;gap:12px;align-items:center;font-size:14.5px}
 .hbar .t{height:12px;background:#eef0f5;border-radius:999px;overflow:hidden}
 .hbar .t span{display:block;height:100%;border-radius:999px}
 .hbar .v{text-align:right;font-weight:600;font-variant-numeric:tabular-nums}
@@ -292,7 +332,8 @@ tbody tr.click{cursor:pointer}tbody tr.click:hover td{background:#fafafd}
 .lc-id{min-width:0;display:flex;flex-direction:column;gap:3px}
 .lc-id b{font-size:15.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .lc-id small{color:var(--muted);font-size:12.5px;display:flex;align-items:center;gap:6px;white-space:nowrap}
-.lc-id .tech{font-size:11.5px;padding:2px 8px}
+.lc-id .tech{font-size:11.5px}
+.lc-id small{overflow:hidden}
 .lc-time{font-size:13.5px;color:var(--muted);display:flex;flex-direction:column;gap:2px}
 .lc-clock{display:flex;align-items:baseline;gap:8px}
 .lc-clock b{font-size:24px;color:var(--fg);font-variant-numeric:tabular-nums;letter-spacing:-.01em}
@@ -510,8 +551,9 @@ tr.is-live td{background:var(--primary-softer)}
 
     <!-- 3. EXECUÇÕES -->
     <section class="view" id="v-execucoes" hidden>
-      <header class="ph"><div><h1>Execuções</h1><p>Histórico de execuções das pipelines.</p></div>
+      <header class="ph"><div><h1>Execuções</h1><p>Histórico e acompanhamento ao vivo das esteiras.</p></div>
         <label class="btn-pri" tabindex="0"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><path d="M12 15V3m0 0-4 4m4-4 4 4M4 15v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4"/></svg> Importar JSON<input id="importJson" type="file" accept=".json,application/json" hidden></label></header>
+      <div class="ptabs" role="tablist"><button type="button" data-go="execucoes" class="on">Histórico</button><button type="button" data-go="aovivo" class=""><span class="live-dot"></span>Ao vivo<span class="tab-count" data-livecount hidden></span></button></div>
       <div class="card card-pad">
         <div class="toolbar">
           <label class="search"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#55576b" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg><input id="eSearch" type="search" placeholder="Buscar execução..." aria-label="Buscar execução"></label>
@@ -529,32 +571,33 @@ tr.is-live td{background:var(--primary-softer)}
 
     <!-- TEMPO REAL -->
     <section class="view" id="v-aovivo" hidden>
-      <header class="ph"><div><h1>Tempo real</h1><p>Acompanhe cada esteira em execução, cenário a cenário, com tempo de resposta e duração.</p></div>
-        <div class="ph-actions"><span class="live-tag"><span class="live-dot"></span>Ao vivo</span>
+      <header class="ph"><div><h1>Execuções</h1><p>Histórico e acompanhamento ao vivo das esteiras.</p></div>
+        <div class="ph-actions">
           <label class="switch-inline"><input type="checkbox" id="lvAuto" checked> Simulação automática</label>
           <div class="sel"><select id="lvPipe" aria-label="Pipeline para executar"></select></div>
           <button class="btn-pri" id="lvRunBtn" type="button"><svg width="14" height="14" viewBox="0 0 24 24" fill="#fff" aria-hidden="true"><path d="M7 4v16l13-8z"/></svg> Executar</button></div></header>
+      <div class="ptabs" role="tablist"><button type="button" data-go="execucoes" class="">Histórico</button><button type="button" data-go="aovivo" class="on"><span class="live-dot"></span>Ao vivo<span class="tab-count" data-livecount hidden></span></button></div>
       <div class="kpis k4" id="lvKpis" style="margin-bottom:22px"></div>
         <div class="stack">
           <div><h2 class="lv-sec">Em execução</h2><div class="lv-cards" id="lvRun"></div><p class="empty card" id="lvRunEmpty" hidden>Nenhuma esteira em execução. Escolha uma pipeline e clique em Executar.</p></div>
           <div><h2 class="lv-sec">Concluídas recentemente</h2><div class="lv-cards" id="lvDone"></div><p class="empty card" id="lvDoneEmpty" hidden>As execuções concluídas aparecem aqui assim que terminam.</p></div>
         </div>
-      <div class="card card-pad" style="margin-top:22px"><h2>Tempo da esteira por componente</h2><p class="an-note" style="margin:-8px 0 14px">Atualizado a cada segundo. Tempos simulados em velocidade acelerada (10×). Δ compara o tempo (ou a projeção, se ainda estiver rodando) com a média histórica do componente.</p>
-        <div class="table-wrap"><table><thead><tr><th>Componente</th><th>Pasta</th><th>Tecnologia</th><th>Agora</th><th>Tempo da esteira</th><th>Média</th><th>Δ vs média</th><th>Resp. médio</th><th>Cenários ✓ / ✗</th></tr></thead><tbody id="lvComp"></tbody></table></div></div>
       <div class="card feed" style="margin-top:22px"><h2 class="lv-sec">Eventos</h2><ol id="lvFeed"></ol></div>
     </section>
 
     <!-- 5. CENÁRIOS -->
     <section class="view" id="v-cenarios" hidden>
-      <header class="ph"><div><h1>Cenários de Teste</h1><p>Visualize e gerencie os cenários automatizados.</p></div>
-        <button class="btn-pri" data-open="newScen"><span aria-hidden="true">+</span> Novo Cenário</button></header>
+      <header class="ph"><div><h1>Cenários de Teste</h1><p>Cenários lidos do Jira pela API, com o último resultado de cada um.</p></div>
+        <button class="btn-pri" type="button" id="jiraSync"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M20 11a8 8 0 0 0-14.3-4.9L4 8M4 4v4h4M4 13a8 8 0 0 0 14.3 4.9L20 16m0 4v-4h-4"/></svg> Atualizar do Jira</button></header>
       <div class="card card-pad">
+        <div class="jsrc" id="jiraSrc"></div>
         <div class="toolbar">
-          <label class="search"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#55576b" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg><input id="cSearch" type="search" placeholder="Buscar cenário..." aria-label="Buscar cenário"></label>
-          <div class="sel"><select id="cPipe" aria-label="Pipeline"></select></div>
-          <div class="sel"><select id="cStatus" aria-label="Status"><option value="">Todos os status</option><option>Ativo</option><option>Inativo</option></select></div>
+          <label class="search"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#55576b" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg><input id="cSearch" type="search" placeholder="Buscar por chave, ID ou nome..." aria-label="Buscar cenário"></label>
+          <div class="sel"><select id="cPipe" aria-label="Componente"></select></div>
+          <div class="sel"><select id="cStatus" aria-label="Status no Jira"></select></div>
+          <div class="sel"><select id="cRes" aria-label="Último resultado"><option value="">Todos os resultados</option><option>Sucesso</option><option>Falha</option><option>Sem execução</option></select></div>
         </div>
-        <div class="table-wrap"><table><thead><tr><th>ID</th><th>Cenário</th><th>Pipeline</th><th>Status</th><th></th></tr></thead><tbody id="scenRows"></tbody></table></div>
+        <div class="table-wrap"><table><thead><tr><th>Chave Jira</th><th>Cenário</th><th>Componente</th><th>Status no Jira</th><th>Último resultado</th></tr></thead><tbody id="scenRows"></tbody></table></div>
       </div>
     </section>
 
@@ -563,7 +606,7 @@ tr.is-live td{background:var(--primary-softer)}
       <header class="ph"><div><h1>Análises</h1><p>Indicadores e tendências de qualidade dos testes.</p></div>
         <div class="sel cal"><svg class="ico-cal" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2a2b3f" stroke-width="1.8" stroke-linecap="round"><rect x="3.5" y="5" width="17" height="15.5" rx="2"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg><select id="aPeriod" aria-label="Período"><option value="7">Últimos 7 dias</option><option value="30" selected>Últimos 30 dias</option><option value="90">Últimos 90 dias</option></select></div></header>
       <div class="card card-pad">
-        <div class="tabs" id="aTabs"><button data-t="geral" class="on">Visão Geral</button><button data-t="tend">Tendências</button><button data-t="falhas">Falhas</button><button data-t="flaky">Flaky Tests</button><button data-t="audit">Auditoria de tempo</button></div>
+        <div class="tabs" id="aTabs"><button data-t="geral" class="on">Qualidade</button><button data-t="tempo">Tempo de execução</button><button data-t="estab">Estabilidade</button></div>
         <div id="aBody"></div>
       </div>
     </section>
@@ -644,10 +687,10 @@ const ICO_SEARCH='<svg width="16" height="16" viewBox="0 0 24 24" fill="none" st
 const ICO_LOCK='<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#5b4bdb" stroke-width="2"><rect x="5" y="10" width="14" height="11" rx="2.5"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>';
 const KEBAB='<svg width="18" height="18" viewBox="0 0 24 24" fill="#2a2b3f"><circle cx="12" cy="5" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="12" cy="19" r="1.8"/></svg>';
 
-const NAV=[['dashboard','Dashboard','home'],['pipelines','Pipelines','pipe'],['execucoes','Execuções','play'],['aovivo','Tempo real','pulse'],['cenarios','Cenários','scen'],['analises','Análises','chart'],['agente','Agente de QA','spark'],null,['integracoes','Integrações','plug'],['config','Configurações','gear']];
+const NAV=[['dashboard','Dashboard','home'],['pipelines','Pipelines','pipe'],['execucoes','Execuções','play'],['cenarios','Cenários','scen'],['analises','Análises','chart'],['agente','Agente de QA','spark'],null,['integracoes','Integrações','plug'],['config','Configurações','gear']];
 $('#nav').innerHTML=NAV.map(n=>n?`<button data-view="${n[0]}" aria-label="${n[1]}">${svg(I[n[2]],24,'currentColor',n[2]==='spark'?1.6:1.8)}${n[1]}</button>`:'<div class="nav-sep"></div>').join('');
 
-$('[data-view="aovivo"]').insertAdjacentHTML('beforeend','<span class="nav-live" id="liveCount" hidden></span>');
+$('[data-view="execucoes"]').insertAdjacentHTML('beforeend','<span class="nav-live" id="liveCount" hidden></span>');
 /* ---------- Dados de exemplo ---------- */
 let PIPES=store.get('pipes2',null)||[
  {name:'Checkout',group:'E-commerce',ico:'box',rate:91.2,dur:542,scen:15},
@@ -809,8 +852,7 @@ function renderPipes(){
       <svg class="f-chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>
       <svg width="26" height="26" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6.5A2.5 2.5 0 0 1 5.5 4h4l2 2.5h7A2.5 2.5 0 0 1 21 9v8.5a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 17.5z" fill="#ebe8fd" stroke="#5b4bdb" stroke-width="1.6"/></svg>
       <span class="f-txt"><span class="f-name">${esc(gn)}</span><span class="f-desc">${phrase}</span></span>
-      <span class="f-chips">${counts.map(([t,n])=>techBadge(t,n)).join('')}</span>
-      <span class="f-meta"><span>${items.length} componente${items.length===1?'':'s'}</span><span>média ${fmtDur(avg)}</span><span class="${fails?'bad':'ok'}">${fails?fails+' com falha':'tudo passando'}</span></span></button><button type="button" class="kebab f-menu" data-foldermenu="${esc(gn)}" aria-label="Ações da pasta ${esc(gn)}">${KEBAB}</button></div>
+      <span class="f-meta"><span>média ${fmtDur(avg)}</span><span class="${fails?'bad':'ok'}">${fails?fails+' com falha':'tudo passando'}</span></span></button><button type="button" class="kebab f-menu" data-foldermenu="${esc(gn)}" aria-label="Ações da pasta ${esc(gn)}">${KEBAB}</button></div>
       <div class="f-bar" aria-hidden="true">${counts.map(([t,n])=>`<span class="${techCls(t)}" style="flex:${n}"></span>`).join('')}</div>
       ${open?`<div class="table-wrap f-body"><table><thead><tr><th>Componente</th><th>Tecnologia</th><th>Última execução</th><th>Status</th><th>Taxa de sucesso</th><th></th></tr></thead><tbody>${items.map(x=>`<tr>${nameCell(x.p)}${cells(x)}</tr>`).join('')}</tbody></table></div>`:''}</div>`;
   }).join('')||'<p class="empty">Nenhum componente encontrado.</p>';
@@ -894,205 +936,188 @@ function logFor(r,sc){
 $('#v-detalhe').addEventListener('click',e=>{const t=e.target.closest('[data-dt]');if(t){detTab=t.dataset.dt;renderDetail(location.hash.split('-')[1])}});
 
 /* ---------- 5. Cenários ---------- */
-function renderScens(){
-  fillSelect('#cPipe','Todas as pipelines',PIPES.map(p=>p.name));
-  const q=$('#cSearch').value.toLowerCase(),pp=$('#cPipe').value,st=$('#cStatus').value;
-  const list=SCENS.filter(s=>(s.name.toLowerCase().includes(q)||s.id.toLowerCase().includes(q))&&(!pp||s.p===pp)&&(!st||s.s===st));
-  $('#scenRows').innerHTML=list.map(s=>`<tr><td><a href="#cenarios" data-toggle-scen="${s.id}" title="Clique para ativar/desativar">${s.id}</a></td><td>${esc(s.name)}</td><td>${esc(s.p)}</td><td>${pill(s.s)}</td>
-   <td><button class="btn-out" data-toggle-scen="${s.id}">${s.s==='Ativo'?'Desativar':'Ativar'}</button></td></tr>`).join('')||'<tr><td colspan="5" class="empty">Nenhum cenário encontrado.</td></tr>';
+// Cenários vêm do Jira (API REST). Sem servidor, usa os dados de exemplo no mesmo formato.
+let JIRA_SYNC=store.get('jiraSync',null);
+const scKey=s=>s.key||('QA-'+(100+(+String(s.id).replace(/\D/g,'')||0)));
+const scJira=s=>s.js||(s.s==='Inativo'?'Obsoleto':'Pronto');
+function lastResult(sc){
+  const run=RUNS.find(r=>r.p===sc.p&&r.s!=='Cancelada');if(!run)return null;
+  const id=String(sc.id||'').match(/CT-\d+/)?.[0];
+  const list=run.live?run.live.sc.map(x=>({n:x.n,st:x.st})):suiteFor(run).map(x=>({n:x.n,st:x.f?'fail':'pass'}));
+  const hit=list.find(x=>(id&&x.n.includes(id))||x.n.includes(sc.name));
+  if(!hit)return null;
+  return {run,st:hit.st};
 }
-['#cSearch','#cPipe','#cStatus'].forEach(s=>$(s).addEventListener('input',renderScens));
+function renderScens(){
+  fillSelect('#cPipe','Todos os componentes',[...new Set(SCENS.map(s=>s.p))].sort());
+  fillSelect('#cStatus','Todos os status do Jira',[...new Set(SCENS.map(scJira))].sort());
+  const q=$('#cSearch').value.toLowerCase(),pp=$('#cPipe').value,st=$('#cStatus').value,rs=$('#cRes').value;
+  const jUrl=(INTS.find(i=>i.k==='jira')||{}).url||'';
+  $('#jiraSrc').innerHTML=`<span class="jsrc-l">${svg('<path d="M12 3 21 12l-9 9-9-9z"/>',16,'#1868db',2)} <b>Origem: Jira</b></span>
+    <code title="Consulta usada na API do Jira">${esc(CFG.jql)}</code>
+    <span class="muted">${SCENS.length} cenários${JIRA_SYNC?` · atualizado em ${esc(JIRA_SYNC)}`:' · dados de exemplo'}</span>
+    <button type="button" class="link-btn" id="jiraEdit">Editar consulta</button>`;
+  const list=SCENS.map(s=>({s,res:lastResult(s)})).filter(({s,res})=>{
+    const txt=(scKey(s)+' '+s.id+' '+s.name).toLowerCase();
+    const r=!res?'Sem execução':res.st==='fail'?'Falha':res.st==='pass'?'Sucesso':'Executando';
+    return txt.includes(q)&&(!pp||s.p===pp)&&(!st||scJira(s)===st)&&(!rs||r===rs);
+  });
+  $('#scenRows').innerHTML=list.map(({s,res})=>`<tr><td>${s.url||jUrl?`<a class="key" href="${esc(s.url||jUrl.replace(/\/$/,'')+'/browse/'+scKey(s))}" target="_blank" rel="noopener">${esc(scKey(s))}</a>`:`<span class="key">${esc(scKey(s))}</span>`}</td>
+    <td><span class="muted">${esc(s.id||'')}</span> ${esc(s.name)}</td><td>${esc(s.p||'—')}</td>
+    <td><span class="jst ${scJira(s)==='Obsoleto'?'off':scJira(s)==='Pronto'?'ok':'wip'}">${esc(scJira(s))}</span></td>
+    <td>${!res?'<span class="muted">Sem execução</span>':`${pill(res.st==='fail'?'Falha':res.st==='pass'?'Sucesso':res.st==='run'?'Executando':'Pendente')} <a class="muted" href="#exec-${res.run.id}">#${res.run.id}</a>`}</td></tr>`).join('')||'<tr><td colspan="5" class="empty">Nenhum cenário encontrado.</td></tr>';
+}
+async function syncJira(){
+  if(!API){JIRA_SYNC=new Date().toLocaleString('pt-BR');store.set('jiraSync',JIRA_SYNC);renderScens();toast('Sem servidor conectado: mostrando os cenários de exemplo.');return}
+  try{
+    const r=await fetch(`${API}/api/jira/scenarios?jql=${encodeURIComponent(CFG.jql)}&field=${encodeURIComponent(CFG.jiraField)}`,{headers:API_KEY?{'x-api-key':API_KEY}:{}});
+    const d=await r.json();if(!r.ok)throw new Error(d.error||r.status);
+    SCENS=d.scenarios.map(x=>({key:x.key,id:(x.name.match(/CT-\d+/)||[''])[0],name:x.name.replace(/^CT-\d+\s*[-–:]?\s*/,''),p:x.pipeline||'—',js:x.status,url:x.url}));
+    JIRA_SYNC=new Date().toLocaleString('pt-BR');store.set('jiraSync',JIRA_SYNC);saveData();renderScens();toast(`${SCENS.length} cenários carregados do Jira`);
+  }catch(e){toast(`Não foi possível ler o Jira: ${e.message}`)}
+}
+$('#jiraSync').addEventListener('click',syncJira);
+$('#v-cenarios').addEventListener('click',e=>{if(e.target.id!=='jiraEdit')return;
+  modal('Consulta dos cenários no Jira',`<div class="field"><label for="jq1">Consulta (JQL) enviada à API do Jira</label><textarea id="jq1" name="jql" required>${esc(CFG.jql)}</textarea><small>JQL é a linguagem de busca da própria API do Jira (endpoint de busca de issues). Ex.: project = QA AND issuetype = Test AND labels = automatizado</small></div>
+   <div class="field"><label for="jq2">Campo do Jira que indica o componente (pipeline)</label><input id="jq2" name="field" value="${esc(CFG.jiraField)}"><small>components, labels ou um campo personalizado (ex.: customfield_10045)</small></div>`,fd=>{
+    CFG.jql=fd.get('jql').trim();CFG.jiraField=fd.get('field').trim()||'components';store.set('cfg',CFG);renderScens();syncJira();
+  });
+});
+['#cSearch','#cPipe','#cStatus','#cRes'].forEach(s=>$(s).addEventListener('input',renderScens));
 
 /* ---------- 6. Análises ---------- */
 let aTab='geral';
 function renderAnalises(){
+  if(!['geral','tempo','estab'].includes(aTab))aTab='geral';
   const A=AN[$('#aPeriod').value],labels=PERIODS[7].labels;
   $$('#aTabs button').forEach(b=>b.classList.toggle('on',b.dataset.t===aTab));
-  if(aTab==='audit')return renderAudit();
+  if(aTab==='tempo')return renderTempo();
   const kpis=`<div class="kpis k4" style="margin-bottom:22px">
    <div class="card kpi"><div class="kpi-h">Taxa de sucesso</div><div class="kpi-v">${A.rate}</div><div class="kpi-s ok">+ ${A.rateD.replace('+','')}</div></div>
    <div class="card kpi"><div class="kpi-h">Total de falhas</div><div class="kpi-v">${A.fails}</div><div class="kpi-s ${A.failsD.startsWith('+')?'bad':'ok'}">${A.failsD}</div></div>
-   <div class="card kpi"><div class="kpi-h">Testes instáveis</div><div class="kpi-v">${A.flaky} <small>(Flaky)</small></div><div class="kpi-s">em ${PIPES.length} pipelines</div></div>
+   <div class="card kpi"><div class="kpi-h">Testes instáveis</div><div class="kpi-v">${A.flaky}</div><div class="kpi-s">cenários flaky</div></div>
    <div class="card kpi"><div class="kpi-h">MTTR (médio)</div><div class="kpi-v">${A.mttr}</div><div class="kpi-s ${A.mttrD.startsWith('+')?'bad':'ok'}">${A.mttrD}</div></div></div>`;
   if(aTab==='geral'){
+    // Qualidade: o que aconteceu no período
     const l=44,r=640,t=14,b=210,max=250,y=v=>b-v/max*(b-t),bw=34,step=(r-l)/7;
-    let g='';[0,50,100,150,200,250].forEach(v=>{g+=`<line x1="${l}" x2="${r}" y1="${y(v)}" y2="${y(v)}" stroke="#e8e9f0"/><text x="${l-8}" y="${y(v)+4}" text-anchor="end" font-size="12" fill="#33344a">${v}</text>`});
+    let g='';[0,50,100,150,200,250].forEach(v=>{g+=`<line x1="${l}" x2="${r}" y1="${y(v)}" y2="${y(v)}" stroke="#eceef3"/><text x="${l-8}" y="${y(v)+4}" text-anchor="end" font-size="12" fill="#55576b">${v}</text>`});
     A.ok.forEach((v,i)=>{const x=l+step*i+(step-bw)/2,k=A.ko[i];
-      g+=`<rect x="${x}" y="${y(v+k)}" width="${bw}" height="${y(v)-y(v+k)}" fill="#ef4444"><title>${labels[i]}: ${k} falhas</title></rect><rect x="${x}" y="${y(v)}" width="${bw}" height="${b-y(v)}" fill="#22c55e"><title>${labels[i]}: ${v} sucessos</title></rect><text x="${x+bw/2}" y="${b+22}" text-anchor="middle" font-size="12.5" fill="#33344a">${labels[i]}</text>`});
-    const mxD=Math.max(...PIPES.map(x=>x.dur));
-    const per=PIPES.map(p=>({n:p.name,f:RUNS.filter(r=>r.p===p.name&&r.s==='Falha').length}));
+      g+=`<rect x="${x}" y="${y(v+k)}" width="${bw}" height="${y(v)-y(v+k)}" fill="#ef4444"><title>${labels[i]}: ${k} falhas</title></rect><rect x="${x}" y="${y(v)}" width="${bw}" height="${b-y(v)}" fill="#22c55e"><title>${labels[i]}: ${v} sucessos</title></rect><text x="${x+bw/2}" y="${b+22}" text-anchor="middle" font-size="12.5" fill="#55576b">${labels[i]}</text>`});
     const days=['Seg','Ter','Qua','Qui','Sex','Sáb','Dom'],hours=[8,9,10,11,12,13,14,15,16,17,18,19,20];
     const heat=days.map((d,di)=>hours.map(h=>{const peak=Math.max(0,6-Math.abs(h-11)*2.2);const base=di>4?0.3:1;return Math.max(0,Math.round((peak+((di*7+h*3)%4)*.6)*base))}));
-    const hmax=Math.max(...heat.flat());
-    const cell=v=>v===0?'#f1f2f6':`rgba(220,38,38,${(.15+.85*v/hmax).toFixed(2)})`;
-    const fl=[['CT-004','Timeout na API de pagamento',12.0],['CT-011','Confirmar pedido',8.0],['CT-003','Pagamento com cartão inválido',6.1],['CT-008','Estorno parcial',5.2],['CT-005','Validação de carrinho vazio',4.1]];
-    const all=techStats(),mxT=Math.max(...TECHS.map(t=>techStats(t).avg),all.avg,1);
-    const tcard=(label,s,cls)=>`<div class="tcard ${cls}"><div class="tc-top">${label}<span class="tc-sub">${s.pipes} componente${s.pipes===1?'':'s'}${cls==='t-all'?' em '+groups().length+' pastas':''}</span></div>
-      <div class="tc-v">${fmtDur(s.avg)}</div><div class="tc-l">tempo médio de execução</div>
-      <div class="tc-bar"><span style="width:${s.avg/mxT*100}%"></span></div>
-      <div class="tc-stats"><span><b>${s.runs}</b> execuções</span><span><b>${pct(s.rate)}</b> sucesso</span><span><b>${s.fails}</b> falhas</span><span><b>${s.avgScen}s</b> por cenário</span></div>
-      <div class="tc-range">Mais rápida ${fmtDur(s.min)} · mais lenta ${fmtDur(s.max)}</div></div>`;
-    const ts=TECHS.map(t=>({t,s:techStats(t)})).filter(x=>x.s.runs).sort((x,y)=>y.s.avg-x.s.avg);
-    const slow=ts[0],fast=ts.at(-1),diff=fast&&fast.s.avg?Math.round((slow.s.avg/fast.s.avg-1)*100):0;
-    const fRows=groups().map(gn=>{const ps=PIPES.filter(p=>p.group===gn),runs=RUNS.filter(r=>ps.some(p=>p.name===r.p)&&r.s!=='Executando'),avg=runs.length?Math.round(runs.reduce((a,r)=>a+r.d,0)/runs.length):0,ok=runs.filter(r=>r.s==='Sucesso').length;
-      return `<tr><td><b style="color:var(--fg)">${esc(gn)}</b></td>${TECHS.map(t=>{const n=ps.filter(p=>p.tech===t).length;return `<td>${n?techBadge(t,n):'<span style="color:var(--muted)">—</span>'}</td>`}).join('')}<td><b>${ps.length}</b></td><td>${fmtDur(avg)}</td><td>${runs.length?pct(ok/runs.length*100):'—'}</td></tr>`}).join('');
-    const techHtml=techSkeleton()+`
-      <h3 class="sub-h">Componentes por pasta</h3>
-      <div class="table-wrap" style="margin-bottom:26px"><table><thead><tr><th>Pasta</th>${TECHS.map(t=>`<th>${t}</th>`).join('')}<th>Total</th><th>Tempo médio</th><th>Sucesso</th></tr></thead><tbody>${fRows}</tbody></table></div>`;
-    $('#aBody').innerHTML=kpis+techHtml+`<h2 style="font-size:17px">Tendência de sucessos e falhas</h2><div class="chart-row"><svg class="chart" viewBox="0 0 650 240" role="img" aria-label="Sucessos e falhas por dia">${g}</svg><div class="chart-legend"><span><i style="background:#22c55e"></i>Sucessos</span><span><i style="background:#ef4444"></i>Falhas</span></div></div>
-     <div class="an-head"><h2>Analytics</h2><span>Detalhamento de qualidade por pipeline, causa e horário</span></div>
-     <div class="an-grid">
-       <div class="an-card"><h3>Taxa de sucesso por pipeline</h3><div class="hbar">${PIPES.map(p=>`<div class="r"><span>${esc(p.name)}</span><div class="t"><span style="width:${Math.max(4,(p.rate-85)/15*100)}%;background:${p.rate<CFG.goal?'var(--orange)':'var(--green-2)'}"></span></div><span class="v">${pct(p.rate)}</span></div>`).join('')}</div><p class="an-note">Meta: ${CFG.goal}% · em laranja, abaixo da meta</p></div>
-       <div class="an-card"><h3>Falhas por causa raiz</h3><div class="hbar">${[['Timeout de API',50,'#ef4444'],['HTTP 500',33,'#f59e0b'],['Dados inválidos',17,'#6d5ef0']].map(x=>`<div class="r"><span>${x[0]}</span><div class="t"><span style="width:${x[1]}%;background:${x[2]}"></span></div><span class="v">${x[1]}%</span></div>`).join('')}</div><p class="an-note">Classificação feita pelo agente de IA a partir dos logs</p></div>
-       <div class="an-card"><h3>Duração média por pipeline</h3><div class="hbar">${PIPES.map(p=>`<div class="r"><span>${esc(p.name)}</span><div class="t"><span style="width:${p.dur/mxD*100}%;background:var(--primary-2)"></span></div><span class="v">${fmtDur(p.dur)}</span></div>`).join('')}</div></div>
-       <div class="an-card"><h3>Falhas por pipeline</h3><div class="hbar">${per.map(x=>`<div class="r"><span>${esc(x.n)}</span><div class="t"><span style="width:${x.f/Math.max(1,...per.map(y=>y.f))*100}%;background:var(--red-2)"></span></div><span class="v">${x.f}</span></div>`).join('')}</div><p class="an-note">Execuções com falha no histórico carregado</p></div>
-       <div class="an-card wide"><h3>Concentração de falhas por horário</h3>
-         <div class="heat-wrap"><div class="heat" style="grid-template-columns:40px repeat(${hours.length},minmax(22px,1fr))"><span></span>${hours.map(h=>`<span class="hl">${h}h</span>`).join('')}
-         ${days.map((d,di)=>`<span class="hl dl">${d}</span>`+heat[di].map((v,hi)=>`<i style="background:${cell(v)}" title="${d} ${hours[hi]}h: ${v} falhas"></i>`).join('')).join('')}</div></div>
-         <p class="an-note">Pico entre 10h e 12h nos dias úteis, quando o serviço de pagamento tem maior carga</p></div>
-       <div class="an-card wide"><h3>Top 5 testes instáveis</h3><div class="table-wrap"><table><thead><tr><th>ID</th><th>Cenário</th><th>Taxa de falha</th><th></th></tr></thead><tbody>${fl.map(r=>`<tr><td>${r[0]}</td><td><b style="color:var(--fg)">${r[1]}</b></td><td><div class="mini"><span style="width:${r[2]/12*100}%"></span></div>${pct(r[2])}</td><td><button class="btn-out pri" data-suggest="Existe algum teste instável (flaky)?">Analisar com IA</button></td></tr>`).join('')}</tbody></table></div></div>
-     </div>`;
-    updateTech();
-  }else if(aTab==='tend'){
-    $('#aBody').innerHTML=kpis+`<div class="row2"><div><h2 style="font-size:17px">Evolução da taxa de sucesso</h2><svg id="aLine" class="chart" viewBox="0 0 480 230"></svg></div><div><h2 style="font-size:17px">Duração média por pipeline</h2><div class="hbar">${PIPES.map(p=>`<div class="r"><span>${esc(p.name)}</span><div class="t"><span style="width:${p.dur/Math.max(...PIPES.map(x=>x.dur))*100}%;background:var(--primary-2)"></span></div><span class="v">${fmtDur(p.dur)}</span></div>`).join('')}</div></div></div>`;
+    const hmax=Math.max(...heat.flat()),cell=v=>v===0?'#f1f2f6':`rgba(220,38,38,${(.15+.85*v/hmax).toFixed(2)})`;
+    $('#aBody').innerHTML=kpis+`
+     <div class="an-sec"><h3>Sucessos e falhas por dia</h3><div class="chart-row"><svg class="chart" viewBox="0 0 650 240" role="img" aria-label="Sucessos e falhas por dia">${g}</svg><div class="chart-legend"><span><i style="background:#22c55e"></i>Sucessos</span><span><i style="background:#ef4444"></i>Falhas</span></div></div></div>
+     <div class="an-split">
+       <div class="an-sec"><h3>Evolução da taxa de sucesso</h3><svg id="aLine" class="chart" viewBox="0 0 480 230" role="img" aria-label="Taxa de sucesso por dia"></svg></div>
+       <div class="an-sec"><h3>Falhas por causa raiz</h3><div class="hbar">${[['Timeout de API',50,'#ef4444'],['HTTP 500',33,'#f59e0b'],['Dados inválidos',17,'#6d5ef0']].map(x=>`<div class="r"><span>${x[0]}</span><div class="t"><span style="width:${x[1]}%;background:${x[2]}"></span></div><span class="v">${x[1]}%</span></div>`).join('')}</div><p class="an-note">Classificação feita pelo agente de IA a partir dos logs.</p></div>
+     </div>
+     <div class="an-sec"><h3>Concentração de falhas por horário</h3>
+       <div class="heat-wrap"><div class="heat" style="grid-template-columns:40px repeat(${hours.length},minmax(22px,1fr))"><span></span>${hours.map(h=>`<span class="hl">${h}h</span>`).join('')}
+       ${days.map((d,di)=>`<span class="hl dl">${d}</span>`+heat[di].map((v,hi)=>`<i style="background:${cell(v)}" title="${d} ${hours[hi]}h: ${v} falhas"></i>`).join('')).join('')}</div></div>
+       <p class="an-note">Pico entre 10h e 12h nos dias úteis.</p></div>`;
     const P=PERIODS[$('#aPeriod').value];drawLine('#aLine',P.labels,P.vals);
-  }else if(aTab==='falhas'){
-    const per=PIPES.map(p=>({n:p.name,f:RUNS.filter(r=>r.p===p.name&&r.s==='Falha').length})),mx=Math.max(1,...per.map(x=>x.f));
-    $('#aBody').innerHTML=kpis+`<div class="row2"><div><h2 style="font-size:17px">Falhas por pipeline</h2><div class="hbar">${per.map(x=>`<div class="r"><span>${esc(x.n)}</span><div class="t"><span style="width:${x.f/mx*100}%;background:var(--red-2)"></span></div><span class="v">${x.f}</span></div>`).join('')}</div></div>
-     <div><h2 style="font-size:17px">Padrões de falha</h2><div class="hbar">${[['Timeout API',50],['HTTP 500',33],['Validação',17]].map(x=>`<div class="r"><span>${x[0]}</span><div class="t"><span style="width:${x[1]}%;background:var(--orange)"></span></div><span class="v">${x[1]}%</span></div>`).join('')}</div></div></div>`;
   }else{
-    const fl=[['CT-004','Timeout na API de pagamento','Pagamento',6,'12,0%'],['CT-011','Confirmar pedido','Checkout',4,'8,0%'],['CT-003','Pagamento com cartão inválido','Pagamento',3,'6,1%'],['CT-008','Estorno parcial','Pagamento',3,'5,2%'],['CT-005','Validação de carrinho vazio','Checkout',2,'4,1%'],['CT-010','Validar CPF duplicado','Cadastro',2,'3,4%']];
-    $('#aBody').innerHTML=kpis+`<div class="table-wrap"><table><thead><tr><th>ID</th><th>Cenário</th><th>Pipeline</th><th>Falhas intermitentes</th><th>Taxa de falha</th><th></th></tr></thead><tbody>${fl.map(r=>`<tr><td>${r[0]}</td><td><b style="color:var(--fg)">${r[1]}</b></td><td>${r[2]}</td><td>${r[3]}</td><td><span class="pill fail">${r[4]}</span></td><td><button class="btn-out pri" data-ask="${r[2]}">Analisar com IA</button></td></tr>`).join('')}</tbody></table></div>`;
+    // Estabilidade: onde e o que falha
+    const per=PIPES.map(p=>({n:p.name,rate:p.rate,f:RUNS.filter(r=>r.p===p.name&&r.s==='Falha').length})).sort((a,b)=>b.f-a.f),mx=Math.max(1,...per.map(x=>x.f));
+    const fl=[['CT-004','Timeout na API de pagamento','Pagamento',6,12.0],['CT-011','Confirmar pedido','Checkout',4,8.0],['CT-003','Pagamento com cartão inválido','Pagamento',3,6.1],['CT-008','Estorno parcial','Pagamento',3,5.2],['CT-005','Validação de carrinho vazio','Checkout',2,4.1],['CT-010','Validar CPF duplicado','Cadastro',2,3.4]];
+    const withF=per.filter(x=>x.f),below=[...PIPES].filter(p=>p.rate<CFG.goal).sort((a,b)=>a.rate-b.rate),okN=PIPES.length-below.length;
+    $('#aBody').innerHTML=`<div class="an-split" style="border-top:0">
+      <div class="an-sec"><h3>Falhas por componente</h3><div class="hbar">${withF.map(x=>`<div class="r"><span>${esc(x.n)}</span><div class="t"><span style="width:${x.f/mx*100}%;background:var(--red-2)"></span></div><span class="v">${x.f}</span></div>`).join('')||'<p class="an-note">Nenhuma falha no histórico carregado.</p>'}</div>${withF.length&&withF.length<per.length?`<p class="an-note">${per.length-withF.length} componentes sem falhas no período.</p>`:''}</div>
+      <div class="an-sec"><h3>Abaixo da meta de sucesso (${CFG.goal}%)</h3><div class="hbar">${below.map(p=>`<div class="r"><span>${esc(p.name)}</span><div class="t"><span style="width:${Math.max(4,(p.rate-85)/15*100)}%;background:${p.rate<CFG.goal?'var(--orange)':'var(--green-2)'}"></span></div><span class="v">${pct(p.rate)}</span></div>`).join('')||'<p class="an-note">Todos os componentes estão na meta.</p>'}</div>${okN?`<p class="an-note">${okN} componentes na meta ou acima. A meta é definida em Configurações.</p>`:''}</div>
+     </div>
+     <div class="an-sec"><h3>Testes instáveis (flaky)</h3><div class="table-wrap"><table><thead><tr><th>Cenário</th><th>Componente</th><th>Falhas intermitentes</th><th>Taxa de falha</th><th></th></tr></thead><tbody>${fl.map(r=>`<tr><td><span class="key">${r[0]}</span> <b style="color:var(--fg)">${r[1]}</b></td><td>${r[2]}</td><td>${r[3]}</td><td><div class="mini"><span style="width:${r[4]/12*100}%"></span></div>${pct(r[4])}</td><td><button class="link-btn" data-ask="${r[2]}">Analisar com IA</button></td></tr>`).join('')}</tbody></table></div></div>`;
   }
 }
-/* ---------- Tempo de execução por tecnologia (execução mais recente + média, ao vivo) ---------- */
-const TF=new Set(); // componentes selecionados no filtro (vazio = todos)
-function techSkeleton(){
+
+/* ---------- Análises › Tempo de execução (uma única visão: plataforma, projeto, componente e auditoria) ---------- */
+const AUF={proj:'',tech:'',active:true};
+const TF=new Set(); // componentes escolhidos no filtro (vazio = todos)
+const secs=n=>Math.round(n).toLocaleString('pt-BR')+'s';
+function renderTempo(){
   const act=PIPES.filter(p=>p.active!==false);
   const byG=[...new Set(act.map(p=>p.group))].map(g=>`<div class="cf-g"><b>${esc(g)}</b>${act.filter(p=>p.group===g).map(p=>`<label><input type="checkbox" value="${esc(p.name)}" ${!TF.size||TF.has(p.name)?'checked':''}> ${esc(p.name)} ${techBadge(p.tech)}</label>`).join('')}</div>`).join('');
-  return `<div id="techRoot"><div class="an-head" style="margin-top:0;padding-top:0;border:0"><h2>Tempo de execução por tecnologia</h2><span>Execução mais recente de cada componente cadastrado, comparada à média histórica · atualiza ao vivo</span></div>
-    <div class="toolbar"><details class="cf" id="techFilter"><summary id="techFilterLabel"></summary><div class="cf-pop"><div class="cf-act"><button type="button" class="btn-out" data-tf="all">Selecionar todos</button><button type="button" class="btn-out" data-tf="none">Limpar</button></div>${byG}</div></details><span class="an-note" style="margin:0" id="techUpd"></span></div>
-    <div id="techBody"></div></div>`;
-}
-function techRows(list){
-  return list.map(p=>{
-    const hist=RUNS.filter(r=>r.p===p.name&&(r.s==='Sucesso'||r.s==='Falha'));
-    const last=hist[0]||null,n=hist.length,avg=n?hist.reduce((a,r)=>a+r.d,0)/n:p.dur;
-    const live=LIVE.find(r=>r.p===p.name&&r.s==='Executando');
-    return {p,last,n,avg,live,el:live?live.live.el:0};
-  });
-}
-function techCard(label,cls,rows){
-  if(!rows.length)return `<div class="tcard ${cls} t-empty"><div class="tc-top">${label}</div><p class="an-note">Nenhum componente selecionado.</p></div>`;
-  const done=rows.filter(r=>r.last),cur=done.reduce((a,r)=>a+r.last.d,0),avgSum=done.reduce((a,r)=>a+r.avg,0);
-  const d=avgSum?Math.round((cur/avgSum-1)*100):0,mx=Math.max(cur,avgSum,1);
-  const sorted=[...done].sort((a,b)=>b.last.d-a.last.d),slow=sorted[0],fast=sorted.at(-1);
-  const run=rows.filter(r=>r.live),runEl=run.reduce((a,r)=>a+r.el,0);
-  return `<div class="tcard ${cls}"><div class="tc-top">${label}<span class="tc-sub">${rows.length} componente${rows.length===1?'':'s'}</span></div>
-    <div class="tc-v">${fmtDur(Math.round(cur))}</div><div class="tc-l">tempo total atual · soma das execuções mais recentes</div>
-    <div class="tc-cmp"><span>média ${fmtDur(Math.round(avgSum))}</span><span class="delta ${d>0?'up':'dn'}">${d>0?'+':''}${d}%</span></div>
-    <div class="tc-bars"><div class="tc-bar"><span class="now" style="width:${cur/mx*100}%"></span></div><div class="tc-bar"><span class="avg" style="width:${avgSum/mx*100}%"></span></div></div>
-    <div class="tc-stats"><span>Atual por comp.<b>${fmtDur(Math.round(done.length?cur/done.length:0))}</b></span><span>Média por comp.<b>${fmtDur(Math.round(done.length?avgSum/done.length:0))}</b></span>
-      <span class="wide">Mais lento<b title="${esc(slow?slow.p.name:'')}">${slow?esc(slow.p.name)+' · '+fmtDur(slow.last.d):'—'}</b></span><span class="wide">Mais rápido<b title="${esc(fast?fast.p.name:'')}">${fast?esc(fast.p.name)+' · '+fmtDur(fast.last.d):'—'}</b></span></div>
-    <div class="tc-live ${run.length?'on':''}">${run.length?`<span class="live-dot"></span>${run.length} em execução · ${fmtDur(Math.round(runEl))} decorridos`:'Nenhum em execução agora'}</div></div>`;
-}
-function updateTech(){
-  const act=PIPES.filter(p=>p.active!==false),sel=act.filter(p=>!TF.size||TF.has(p.name));
-  $('#techFilterLabel').innerHTML=`${svg('<path d="M4 5h16l-6 8v5l-4 2v-7z"/>',16,'currentColor',1.8)} Componentes: <b>${!TF.size||sel.length===act.length?'Todos':sel.length}</b> <span class="tc-sub">de ${act.length}</span>`;
-  const rows=techRows(sel),last=RUNS.find(r=>sel.some(p=>p.name===r.p)&&(r.s==='Sucesso'||r.s==='Falha'));
-  $('#techUpd').textContent=last?`Última execução concluída: ${last.p} #${last.id} às ${fmtDate(last.at).split(', ')[1]}`:'';
-  const list=[...rows].sort((a,b)=>(b.live?1:0)-(a.live?1:0)||(b.last?b.last.d:0)-(a.last?a.last.d:0));
-  $('#techBody').innerHTML=`<div class="tgrid">${techCard('<span class="tech all">Todas</span>','t-all',rows)}${TECHS.map(t=>techCard(techBadge(t),'t-'+techCls(t),rows.filter(r=>r.p.tech===t))).join('')}</div>
-    <h3 class="sub-h" style="margin-top:18px">Execução mais recente por componente</h3>
-    <div class="table-wrap" style="margin-bottom:26px"><table class="au-table"><thead><tr><th>Componente</th><th>Projeto</th><th>Tecnologia</th><th>Agora</th><th>Última execução</th><th>Tempo mais recente</th><th>Média</th><th>Δ vs média</th></tr></thead><tbody>
-    ${list.map(r=>{const d=r.last&&r.avg?Math.round((r.last.d/r.avg-1)*100):null;return `<tr${r.live?' class="is-live"':''}><td><b style="color:var(--fg)">${esc(r.p.name)}</b></td><td>${esc(r.p.group)}</td><td>${techBadge(r.p.tech)}</td>
-      <td>${r.live?`<span class="pill run"><span class="live-dot"></span> ${fmtDur(Math.round(r.el))}</span>`:'<span class="pill off">Parado</span>'}</td>
-      <td>${r.last?`#${r.last.id} · ${fmtDate(r.last.at)}`:'—'}</td><td><b>${r.last?fmtDur(r.last.d):'—'}</b></td>
-      <td>${fmtDur(Math.round(r.avg))}<small class="calc">${r.n?`${secs(r.n?r.avg*r.n:0)} ÷ ${r.n}`:'referência (sem execuções)'}</small></td>
-      <td>${d===null?'—':`<span class="delta ${d>0?'up':'dn'}">${d>0?'+':''}${d}%</span>`}</td></tr>`}).join('')||'<tr><td colspan="8" class="empty">Nenhum componente selecionado.</td></tr>'}
-    </tbody></table></div>`;
-}
-$('#aBody').addEventListener('change',e=>{
-  const box=e.target.closest('#techFilter');if(!box||e.target.type!=='checkbox')return;
-  const all=[...box.querySelectorAll('input[type=checkbox]')],on=all.filter(i=>i.checked).map(i=>i.value);
-  TF.clear();if(on.length!==all.length)(on.length?on:['__nenhum__']).forEach(v=>TF.add(v));updateTech();
-});
-$('#aBody').addEventListener('click',e=>{
-  const b=e.target.closest('[data-tf]');if(!b)return;
-  const all=[...document.querySelectorAll('#techFilter input[type=checkbox]')];
-  all.forEach(i=>i.checked=b.dataset.tf==='all');TF.clear();if(b.dataset.tf==='none')TF.add('__nenhum__');updateTech();
-});
-document.addEventListener('click',e=>{const d=$('#techFilter');if(d&&d.open&&!e.target.closest('#techFilter'))d.open=false});
-
-/* ---------- Auditoria de tempo de execução ---------- */
-const AUF={proj:'',tech:'',active:true};
-const secs=n=>Math.round(n).toLocaleString('pt-BR')+'s';
-function renderAudit(){
-  const days=$('#aPeriod').selectedOptions[0].textContent.toLowerCase();
-  $('#aBody').innerHTML=`<div id="auditRoot">
+  $('#aBody').innerHTML=`<div id="tempoRoot"><div id="auditRoot">
    <div class="toolbar">
      <div class="sel"><select id="auProj" aria-label="Projeto"><option value="">Todos os projetos</option>${groups().map(g=>`<option ${AUF.proj===g?'selected':''}>${esc(g)}</option>`).join('')}</select></div>
-     <div class="sel"><select id="auTech" aria-label="Tecnologia"><option value="">Todas as tecnologias</option>${TECHS.map(t=>`<option ${AUF.tech===t?'selected':''}>${t}</option>`).join('')}</select></div>
-     <label class="switch-inline"><input type="checkbox" id="auActive" ${AUF.active?'checked':''}> Somente componentes ativos</label>
+     <div class="sel"><select id="auTech" aria-label="Plataforma"><option value="">Todas as plataformas</option>${TECHS.map(t=>`<option ${AUF.tech===t?'selected':''}>${t}</option>`).join('')}</select></div>
+     <details class="cf" id="techFilter"><summary id="techFilterLabel"></summary><div class="cf-pop"><div class="cf-act"><button type="button" class="btn-out" data-tf="all">Selecionar todos</button><button type="button" class="btn-out" data-tf="none">Limpar</button></div>${byG}</div></details>
+     <label class="switch-inline"><input type="checkbox" id="auActive" ${AUF.active?'checked':''}> Somente ativos</label>
      <button type="button" class="btn-out" id="auCopy" style="margin-left:auto">Copiar relatório (CSV)</button>
    </div>
-   <div class="kpis k4" id="auKpis" style="margin-bottom:18px"></div>
-   <div class="formula"><b>Como o cálculo é feito</b>
-     <span><b>Média do componente</b> = soma das durações das execuções concluídas no período (${days}) ÷ nº de execuções.</span>
-     <span><b>Tempo total</b> = soma das médias dos componentes filtrados (quanto leva rodar todos uma vez).</span>
-     <span><b>Tempo real</b> = duração da última execução concluída; se o componente estiver rodando agora, o tempo decorrido ao vivo.</span>
-     <span><b>Totais e subtotais</b> usam a última execução concluída de cada componente, para comparar ciclos completos. O que está rodando aparece em “Em execução agora” e na projeção da linha.</span></div>
-   <div class="an-grid" style="margin-bottom:18px"><div class="an-card wide"><h3>Tempo total por projeto</h3><div class="hbar" id="auProjBars"></div></div></div>
-   <div class="table-wrap"><table class="au-table"><thead><tr><th>Projeto</th><th>Componente</th><th>Tecnologia</th><th>Status</th><th>Execuções</th><th>Σ durações</th><th>Média</th><th>Tempo real</th><th>Δ real vs média</th></tr></thead><tbody id="auRows"></tbody></table></div>
-  </div>`;
-  updateAudit();
+   <div class="tgrid" id="tmCards"></div>
+   <details class="how"><summary>Como os tempos são calculados</summary><div>
+     <p><b>Média da plataforma</b>: média própria de cada plataforma, igual à soma das durações das execuções concluídas dela no período ÷ nº de execuções dela. Não é derivada do total.</p>
+     <p><b>Tempo total atual</b>: soma da execução mais recente de cada componente filtrado (um ciclo completo).</p>
+     <p><b>Δ</b>: tempo total atual comparado com a soma das médias dos mesmos componentes.</p>
+     <p><b>Ao vivo</b>: componentes rodando agora e o tempo decorrido; entram no total quando terminam.</p></div></details>
+   <div class="table-wrap"><table class="au-table"><thead><tr><th>Componente</th><th>Plataforma</th><th>Agora</th><th>Última execução</th><th>Tempo mais recente</th><th>Média</th><th>Δ</th></tr></thead><tbody id="auRows"></tbody></table></div>
+  </div></div>`;
+  updateTempo();
 }
 function auditData(){
   const lim=new Date(BASE-(+$('#aPeriod').value)*864e5);
-  const comps=PIPES.filter(p=>(!AUF.proj||p.group===AUF.proj)&&(!AUF.tech||p.tech===AUF.tech)&&(!AUF.active||p.active!==false))
-    .sort((a,b)=>a.group.localeCompare(b.group,'pt-BR')||a.name.localeCompare(b.name,'pt-BR'));
-  return comps.map(p=>{
-    const hist=RUNS.filter(r=>r.p===p.name&&(r.s==='Sucesso'||r.s==='Falha')&&r.at>=lim);
-    const sum=hist.reduce((a,r)=>a+r.d,0),n=hist.length,avg=n?sum/n:p.dur;
-    const live=LIVE.find(r=>r.p===p.name&&r.s==='Executando');
-    const last=hist[0]?hist[0].d:0;let real=last,proj=real;
-    if(live){const lv=live.live,dn=lv.sc.filter(c=>c.st==='pass'||c.st==='fail').length;real=lv.el;proj=dn?lv.el/dn*live.t:avg}
-    return {p,n,sum,avg,live,real,proj,last,ref:!n,delta:avg&&(live||n)?(proj/avg-1)*100:null};
-  });
+  return PIPES.filter(p=>(!AUF.proj||p.group===AUF.proj)&&(!AUF.tech||p.tech===AUF.tech)&&(!AUF.active||p.active!==false)&&(!TF.size||TF.has(p.name)))
+    .sort((a,b)=>a.group.localeCompare(b.group,'pt-BR')||a.name.localeCompare(b.name,'pt-BR'))
+    .map(p=>{
+      const hist=RUNS.filter(r=>r.p===p.name&&(r.s==='Sucesso'||r.s==='Falha')&&r.at>=lim);
+      const n=hist.length,sum=hist.reduce((a,r)=>a+r.d,0),avg=n?sum/n:p.dur,last=hist[0]||null;
+      const live=LIVE.find(r=>r.p===p.name&&r.s==='Executando');
+      return {p,n,sum,avg,last,live,el:live?live.live.el:0,delta:last&&avg?(last.d/avg-1)*100:null};
+    });
 }
-function updateAudit(){
-  const rows=auditData(),N=rows.length;
-  const totAvg=rows.reduce((a,r)=>a+r.avg,0),totReal=rows.reduce((a,r)=>a+r.last,0),running=rows.filter(r=>r.live);
-  const liveSum=running.reduce((a,r)=>a+r.real,0),dTot=totAvg?Math.round((totReal/totAvg-1)*100):0;
-  $('#auKpis').innerHTML=`
-   <div class="card kpi"><div class="kpi-h">Tempo total (soma das médias)</div><div class="kpi-v">${fmtDur(Math.round(totAvg))}</div><div class="kpi-s">${N} componente${N===1?'':'s'} ${AUF.active?'ativos':''}${AUF.proj?' em '+esc(AUF.proj):''}</div></div>
-   <div class="card kpi"><div class="kpi-h">${running.length?'<span class="live-dot"></span>':''}Tempo total real (último ciclo)</div><div class="kpi-v">${fmtDur(Math.round(totReal))}</div><div class="kpi-s"><span class="delta ${dTot>0?'up':'dn'}">${dTot>0?'+':''}${dTot}%</span> vs soma das médias</div></div>
-   <div class="card kpi"><div class="kpi-h">${running.length?'<span class="live-dot"></span>':''}Em execução agora</div><div class="kpi-v">${fmtDur(Math.round(liveSum))}</div><div class="kpi-s">${running.length} componente${running.length===1?'':'s'} rodando</div></div>
-   <div class="card kpi"><div class="kpi-h">Média por componente</div><div class="kpi-v">${fmtDur(Math.round(N?totAvg/N:0))}</div><div class="kpi-s">${secs(totAvg)} ÷ ${N}</div></div>`;
-  const byProj=[...new Set(rows.map(r=>r.p.group))].map(g=>{const rs=rows.filter(r=>r.p.group===g);return {g,rs,avg:rs.reduce((a,r)=>a+r.avg,0),real:rs.reduce((a,r)=>a+r.last,0),n:rs.reduce((a,r)=>a+r.n,0),sum:rs.reduce((a,r)=>a+r.sum,0)}});
-  const mx=Math.max(1,...byProj.map(x=>Math.max(x.avg,x.real)));
-  $('#auProjBars').innerHTML=byProj.map(x=>`<div class="r au-r"><span>${esc(x.g)}</span><div class="au-t"><div class="t"><span style="width:${x.avg/mx*100}%;background:var(--primary-2)"></span></div><div class="t"><span style="width:${x.real/mx*100}%;background:var(--orange)"></span></div></div><span class="v">${fmtDur(Math.round(x.avg))}<small>real ${fmtDur(Math.round(x.real))}</small></span></div>`).join('')+`<div class="chart-legend" style="flex-direction:row;gap:18px;margin-top:4px"><span><i style="background:var(--primary-2)"></i>Soma das médias</span><span><i style="background:var(--orange)"></i>Tempo real</span></div>`;
-  const dcell=r=>r.delta===null?'—':`<span class="delta ${r.delta>0?'up':'dn'}">${r.delta>0?'+':''}${Math.round(r.delta)}%${r.live?' <small>(proj.)</small>':''}</span>`;
-  $('#auRows').innerHTML=byProj.map(x=>x.rs.map(r=>`<tr${r.live?' class="is-live"':''}><td>${esc(r.p.group)}</td><td><b style="color:var(--fg)">${esc(r.p.name)}</b></td><td>${techBadge(r.p.tech)}</td>
-     <td>${r.live?`<span class="pill run"><span class="live-dot"></span> Executando</span>`:r.p.active===false?'<span class="pill off">Inativo</span>':'<span class="pill pass">Ativo</span>'}</td>
-     <td>${r.n}</td><td>${r.n?secs(r.sum):'—'}</td>
-     <td><b>${fmtDur(Math.round(r.avg))}</b><small class="calc">${r.n?`${secs(r.sum)} ÷ ${r.n}`:'referência (sem execuções)'}</small></td>
-     <td><b>${fmtDur(Math.round(r.real))}</b>${r.live?`<small class="calc">projeção ${fmtDur(Math.round(r.proj))} · última ${fmtDur(r.last)}</small>`:''}</td><td>${dcell(r)}</td></tr>`).join('')
-    +`<tr class="sub"><td colspan="4">Subtotal ${esc(x.g)} · ${x.rs.length} componente${x.rs.length===1?'':'s'}</td><td>${x.n}</td><td>${secs(x.sum)}</td><td>${fmtDur(Math.round(x.avg))}</td><td>${fmtDur(Math.round(x.real))}<small class="calc">último ciclo</small></td><td></td></tr>`).join('')
-    +(N?`<tr class="total"><td colspan="4">Total geral · ${N} componentes</td><td>${rows.reduce((a,r)=>a+r.n,0)}</td><td>${secs(rows.reduce((a,r)=>a+r.sum,0))}</td><td>${fmtDur(Math.round(totAvg))}</td><td>${fmtDur(Math.round(totReal))}<small class="calc">último ciclo</small></td><td><span class="delta ${dTot>0?'up':'dn'}">${dTot>0?'+':''}${dTot}%</span></td></tr>`:'<tr><td colspan="9" class="empty">Nenhum componente para os filtros escolhidos.</td></tr>');
+function tempoCard(label,cls,rows){
+  if(!rows.length)return `<div class="tcard ${cls} t-empty"><div class="tc-top">${label}</div><p class="an-note">Nenhum componente no filtro.</p></div>`;
+  const n=rows.reduce((a,r)=>a+r.n,0),sum=rows.reduce((a,r)=>a+r.sum,0),avg=n?sum/n:0;
+  const done=rows.filter(r=>r.last),cur=done.reduce((a,r)=>a+r.last.d,0),ref=done.reduce((a,r)=>a+r.avg,0),d=ref?Math.round((cur/ref-1)*100):0;
+  const run=rows.filter(r=>r.live),runEl=run.reduce((a,r)=>a+r.el,0);
+  return `<div class="tcard ${cls}"><div class="tc-top">${label}<span class="tc-sub">${rows.length} comp.</span></div>
+    <div class="tc-v" title="${secs(sum)} ÷ ${n} execuções">${n?fmtDur(Math.round(avg)):'—'}</div><div class="tc-l">média por execução · ${n} exec.</div>
+    <div class="tc-row" title="Soma da execução mais recente de cada componente, comparada com a soma das médias deles"><span>Total atual <b>${fmtDur(Math.round(cur))}</b></span>${done.length?`<span class="delta ${d>0?'up':'dn'}">${d>0?'+':''}${d}%</span>`:''}</div>
+    <div class="tc-live ${run.length?'on':''}">${run.length?`<span class="live-dot"></span>${run.length} rodando · ${fmtDur(Math.round(runEl))}`:'Nenhum rodando agora'}</div></div>`;
 }
+function updateTempo(){
+  if(!$('#tempoRoot'))return;
+  const act=PIPES.filter(p=>p.active!==false),selN=act.filter(p=>!TF.size||TF.has(p.name)).length;
+  $('#techFilterLabel').innerHTML=`${svg('<path d="M4 5h16l-6 8v5l-4 2v-7z"/>',16,'currentColor',1.8)} Componentes: <b>${!TF.size||selN===act.length?'Todos':selN}</b>`;
+  const rows=auditData();
+  $('#tmCards').innerHTML=tempoCard('<span class="tech all">Todas</span>','t-all',rows)+TECHS.filter(t=>!AUF.tech||AUF.tech===t).map(t=>tempoCard(techBadge(t),'t-'+techCls(t),rows.filter(r=>r.p.tech===t))).join('');
+  $('#tmCards').style.gridTemplateColumns=AUF.tech?'repeat(2,minmax(0,1fr))':'';
+  const groupsIn=[...new Set(rows.map(r=>r.p.group))];
+  const dcell=d=>d===null?'—':`<span class="delta ${d>0?'up':'dn'}">${d>0?'+':''}${Math.round(d)}%</span>`;
+  const sumRow=(rs,label,cls)=>{const n=rs.reduce((a,r)=>a+r.n,0),s=rs.reduce((a,r)=>a+r.sum,0),done=rs.filter(r=>r.last),cur=done.reduce((a,r)=>a+r.last.d,0),ref=done.reduce((a,r)=>a+r.avg,0);
+    return `<tr class="${cls}"><td colspan="4">${label}</td><td>${fmtDur(Math.round(cur))}<small class="calc">soma dos mais recentes</small></td><td>${fmtDur(Math.round(ref))}<small class="calc">soma das médias</small></td><td>${ref?dcell((cur/ref-1)*100):'—'}</td></tr>`};
+  $('#auRows').innerHTML=groupsIn.map(g=>{const rs=rows.filter(r=>r.p.group===g);
+    return `<tr class="grp"><td colspan="7">${esc(g)}</td></tr>`+rs.map(r=>`<tr${r.live?' class="is-live"':''}><td><b style="color:var(--fg)">${esc(r.p.name)}</b>${r.p.active===false?' <span class="muted">(inativo)</span>':''}</td><td>${techBadge(r.p.tech)}</td>
+      <td>${r.live?`<span class="pill run"><span class="live-dot"></span> ${fmtDur(Math.round(r.el))}</span>`:'<span class="muted">—</span>'}</td>
+      <td>${r.last?`<span class="muted">#${r.last.id} · ${fmtDate(r.last.at)}</span>`:'<span class="muted">sem execução</span>'}</td>
+      <td><b>${r.last?fmtDur(r.last.d):'—'}</b></td>
+      <td>${fmtDur(Math.round(r.avg))}<small class="calc">${r.n?`${secs(r.sum)} ÷ ${r.n}`:'referência'}</small></td><td>${dcell(r.delta)}</td></tr>`).join('')
+      +(rs.length>1?sumRow(rs,`Subtotal ${esc(g)}`,'sub'):'');}).join('')
+    +(rows.length?sumRow(rows,`Total · ${rows.length} componente${rows.length===1?'':'s'}`,'total'):'<tr><td colspan="7" class="empty">Nenhum componente para os filtros escolhidos.</td></tr>');
+}
+const updateTech=updateTempo,updateAudit=updateTempo;
 function auditCsv(){
   const rows=auditData(),q=v=>`"${String(v).replace(/"/g,'""')}"`;
-  const head=['Projeto','Componente','Tecnologia','Status','Execuções','Soma das durações (s)','Média (s)','Tempo real agora (s)','Última concluída (s)','Delta real vs média (%)'];
-  const lines=rows.map(r=>[r.p.group,r.p.name,r.p.tech,r.live?'Executando':r.p.active===false?'Inativo':'Ativo',r.n,Math.round(r.sum),Math.round(r.avg),Math.round(r.real),Math.round(r.last),r.delta===null?'':Math.round(r.delta)]);
-  const tAvg=rows.reduce((a,r)=>a+r.avg,0),tReal=rows.reduce((a,r)=>a+r.last,0);
-  lines.push(['TOTAL','','','',rows.reduce((a,r)=>a+r.n,0),Math.round(rows.reduce((a,r)=>a+r.sum,0)),Math.round(tAvg),'',Math.round(tReal),tAvg?Math.round((tReal/tAvg-1)*100):'']);
-  return [`# Auditoria de tempo de execução · ${$('#aPeriod').selectedOptions[0].textContent} · projeto: ${AUF.proj||'todos'} · tecnologia: ${AUF.tech||'todas'} · gerado em ${simNow().toLocaleString('pt-BR')}`,head.map(q).join(';'),...lines.map(l=>l.map(q).join(';'))].join('\n');
+  const head=['Projeto','Componente','Plataforma','Status','Execuções no período','Soma das durações (s)','Média (s)','Execução mais recente','Tempo mais recente (s)','Delta vs média (%)'];
+  const lines=rows.map(r=>[r.p.group,r.p.name,r.p.tech,r.live?'Executando':r.p.active===false?'Inativo':'Ativo',r.n,Math.round(r.sum),Math.round(r.avg),r.last?'#'+r.last.id:'',r.last?Math.round(r.last.d):'',r.delta===null?'':Math.round(r.delta)]);
+  TECHS.forEach(t=>{const rs=rows.filter(r=>r.p.tech===t),n=rs.reduce((a,r)=>a+r.n,0),s=rs.reduce((a,r)=>a+r.sum,0);if(rs.length)lines.push(['MÉDIA DA PLATAFORMA','',t,'',n,Math.round(s),n?Math.round(s/n):'','',Math.round(rs.reduce((a,r)=>a+(r.last?r.last.d:0),0)),'']);});
+  return [`# Tempo de execução · ${$('#aPeriod').selectedOptions[0].textContent} · projeto: ${AUF.proj||'todos'} · plataforma: ${AUF.tech||'todas'} · componentes: ${TF.size?[...TF].filter(x=>x!=='__nenhum__').join(', ')||'nenhum':'todos'} · gerado em ${simNow().toLocaleString('pt-BR')}`,head.map(q).join(';'),...lines.map(l=>l.map(q).join(';'))].join('\n');
 }
-$('#aBody').addEventListener('input',e=>{if(!e.target.closest('#auditRoot'))return;AUF.proj=$('#auProj').value;AUF.tech=$('#auTech').value;AUF.active=$('#auActive').checked;updateAudit()});
-$('#aBody').addEventListener('click',e=>{if(e.target.id!=='auCopy')return;const csv=auditCsv();
-  const fallback=()=>{$('#modalBox').innerHTML=`<div class="mrow"><h3 id="mTitle">Relatório de auditoria (CSV)</h3><button class="close" data-close aria-label="Fechar">×</button></div><p style="margin:0 0 10px;color:var(--muted)">Selecione e copie o texto abaixo.</p><textarea readonly style="width:100%;height:260px;font-family:var(--mono);font-size:12px" id="csvBox">${esc(csv)}</textarea>`;$('#modal').hidden=false;$('#csvBox').select()};
-  try{navigator.clipboard.writeText(csv).then(()=>toast('Relatório copiado. Cole no Excel ou no Google Planilhas.'),fallback)}catch(_){fallback()}});
+$('#aBody').addEventListener('input',e=>{if(!e.target.closest('#auditRoot')||e.target.closest('#techFilter'))return;AUF.proj=$('#auProj').value;AUF.tech=$('#auTech').value;AUF.active=$('#auActive').checked;updateTempo()});
+$('#aBody').addEventListener('change',e=>{
+  const box=e.target.closest('#techFilter');if(!box||e.target.type!=='checkbox')return;
+  const all=[...box.querySelectorAll('input[type=checkbox]')],on=all.filter(i=>i.checked).map(i=>i.value);
+  TF.clear();if(on.length!==all.length)(on.length?on:['__nenhum__']).forEach(v=>TF.add(v));updateTempo();
+});
+$('#aBody').addEventListener('click',e=>{
+  const b=e.target.closest('[data-tf]');
+  if(b){document.querySelectorAll('#techFilter input[type=checkbox]').forEach(i=>i.checked=b.dataset.tf==='all');TF.clear();if(b.dataset.tf==='none')TF.add('__nenhum__');updateTempo();return}
+  if(e.target.id!=='auCopy')return;const csv=auditCsv();
+  const fallback=()=>{$('#modalBox').innerHTML=`<div class="mrow"><h3 id="mTitle">Relatório (CSV)</h3><button class="close" data-close aria-label="Fechar">×</button></div><p style="margin:0 0 10px;color:var(--muted)">Selecione e copie o texto abaixo.</p><textarea readonly style="width:100%;height:260px;font-family:var(--mono);font-size:12px" id="csvBox">${esc(csv)}</textarea>`;$('#modal').hidden=false;$('#csvBox').select()};
+  try{navigator.clipboard.writeText(csv).then(()=>toast('Relatório copiado. Cole no Excel ou no Google Planilhas.'),fallback)}catch(_){fallback()}
+});
+document.addEventListener('click',e=>{const d=$('#techFilter');if(d&&d.open&&!e.target.closest('#techFilter'))d.open=false});
 $('#aTabs').addEventListener('click',e=>{const b=e.target.closest('[data-t]');if(b){aTab=b.dataset.t;renderAnalises()}});
 $('#aPeriod').addEventListener('change',renderAnalises);
 
@@ -1116,7 +1141,7 @@ function renderInts(){
 /* ---------- 9. Configurações ---------- */
 let CFG=Object.assign({ws:'QA AI Agent',lang:'Português (Brasil)',tz:'America/Fortaleza',prov:'OpenAI',model:'gpt-4o-mini',
  prompt:'Você é um especialista em Quality Assurance (QA). Analise dados de execuções, identifique falhas, padrões e forneça recomendações práticas e objetivas.',
- temp:0.3,ret:'90',goal:95,alerts:true,auto:true,weekly:false},store.get('cfg',{}));
+ temp:0.3,ret:'90',goal:95,alerts:true,auto:true,weekly:false,jql:'project = QA AND issuetype = Test AND labels = automatizado ORDER BY key',jiraField:'components'},store.get('cfg',{}));
 const MODELS={'OpenAI':['gpt-4o-mini','gpt-4o'],'Anthropic':['claude-sonnet-4-5','claude-haiku-4-5'],'Azure OpenAI':['gpt-4o-mini (Azure)','gpt-4o (Azure)']};
 let cfgTab='ia';
 const CFG_TABS=[['geral','Geral',I.gear],['ia','IA e Prompts',I.spark],['dados','Dados','<ellipse cx="12" cy="5.5" rx="7.5" ry="2.5"/><path d="M4.5 5.5v13c0 1.4 3.4 2.5 7.5 2.5s7.5-1.1 7.5-2.5v-13M4.5 12c0 1.4 3.4 2.5 7.5 2.5s7.5-1.1 7.5-2.5"/>'],['users','Usuários (MVP)','<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.5 3.3-5.5 6.5-5.5s5.7 2 6.5 5.5M16 4.5a3.5 3.5 0 0 1 0 7M18 14.8c1.8.7 3 2.5 3.5 5.2"/>']];
@@ -1162,7 +1187,7 @@ function show(h){
   let v=h||'dashboard',id=null;
   if(v.startsWith('exec-')){id=v.split('-')[1];v='detalhe'}
   if(!VIEWS.includes(v)||v==='detalhe'&&!id)v='dashboard';
-  const navKey=v==='detalhe'?'execucoes':v;
+  const navKey=v==='detalhe'||v==='aovivo'?'execucoes':v;
   $$('#nav button').forEach(b=>{b.classList.toggle('active',b.dataset.view===navKey);b.toggleAttribute('aria-current',b.dataset.view===navKey)});
   VIEWS.forEach(k=>$('#v-'+k).hidden=k!==v);
   const ag=$('#agentPanel'),full=v==='agente';
@@ -1249,7 +1274,7 @@ function startLive(name,manual){
   const sc=base.map(x=>({n:x.n,plan:Math.max(/Timeout/.test(x.n)?30:3,Math.round(x.d*k*(.8+Math.random()*.5))),dur:0,st:'pend',resp:null,pref:x.pref}));
   const r={id:Math.max(...RUNS.map(x=>x.id))+1,p:name,s:'Executando',ok:0,t:sc.length,d:0,at:simNow(),live:{sc,i:0,el:0,manual}};
   RUNS.unshift(r);LIVE.unshift(r);logEvent(r,'start',`#${r.id} iniciada · ${sc.length} cenários`);
-  if(manual){toast(`#${r.id} ${name} iniciada — acompanhe em Tempo real`);liveRefresh(true,true)}
+  if(manual){toast(`#${r.id} ${name} iniciada — acompanhe em Execuções › Ao vivo`);liveRefresh(true,true)}
   return r;
 }
 function advance(r,secs,quiet){
@@ -1269,11 +1294,10 @@ function curView(){const h=location.hash.slice(1)||'dashboard';return h.startsWi
 function liveRefresh(changed,ended){
   const v=curView();
   if(v==='aovivo')renderLive();
-  if(v==='analises'&&aTab==='audit'&&$('#auditRoot'))updateAudit();
-  if(v==='analises'&&aTab==='geral'&&$('#techBody')&&!$('#techFilter').open)updateTech();
+  if(v==='analises'&&aTab==='tempo'&&$('#tempoRoot')&&!$('#techFilter').open)updateTempo();
   if(changed){if(v==='execucoes')renderExecs();if(v==='detalhe'){const id=+location.hash.split('-')[1],r=RUNS.find(x=>x.id===id);if(r&&r.live&&(r.s==='Executando'||ended))renderDetail(id)}}
-  if(ended){if(v==='dashboard')renderDashboard();if(v==='pipelines')renderPipes();if(v==='analises'&&aTab!=='audit'&&aTab!=='geral')renderAnalises()}
-  const n=LIVE.filter(r=>r.s==='Executando').length,lc=$('#liveCount');lc.hidden=!n;lc.textContent=n;
+  if(ended){if(v==='dashboard')renderDashboard();if(v==='pipelines')renderPipes();if(v==='analises'&&aTab!=='tempo')renderAnalises()}
+  const n=LIVE.filter(r=>r.s==='Executando').length,lc=$('#liveCount');lc.hidden=!n;lc.textContent=n;$$('[data-livecount]').forEach(x=>{x.hidden=!n;x.textContent=n});
 }
 function fillLivePipe(){const el=$('#lvPipe'),v=el.value;el.innerHTML=PIPES.map(p=>`<option>${esc(p.name)}</option>`).join('');if(PIPES.some(p=>p.name===v))el.value=v}
 const SC_IC={pass:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg>',fail:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2.6" stroke-linecap="round"><path d="m6 6 12 12M18 6 6 18"/></svg>',run:'<span class="spin"></span>',pend:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#b8bac8" stroke-width="2"><circle cx="12" cy="12" r="7"/></svg>',skip:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#b8bac8" stroke-width="2.4" stroke-linecap="round"><path d="M7 12h10"/></svg>'};
@@ -1311,7 +1335,7 @@ function renderLive(){
    <div class="card kpi"><div class="kpi-h">Tempo médio de resposta</div><div class="kpi-v">${rs.length?Math.round(rs.reduce((a,c)=>a+c.resp,0)/rs.length):0} <small>ms</small></div><div class="kpi-s">sem contar timeouts</div></div>`;
   const col={start:'#5b4bdb',pass:'#22c55e',fail:'#ef4444',end:'#14142b',stop:'#9a9cb0'};
   $('#lvFeed').innerHTML=EVENTS.map(e=>`<li class="${e.type}"><time>${hms(e.at)}</time><span class="dt" style="background:${col[e.type]}"></span><span><b>${esc(e.p)}</b> ${esc(e.txt)}</span></li>`).join('')||'<li class="empty">Os eventos aparecem aqui.</li>';
-  $('#lvComp').innerHTML=PIPES.map(p=>{
+  if($('#lvComp'))$('#lvComp').innerHTML=PIPES.map(p=>{
     const live=LIVE.find(r=>r.p===p.name&&r.s==='Executando'),last=live||RUNS.find(r=>r.p===p.name&&r.s!=='Executando'),lv=live&&live.live;
     const dn=lv?lv.sc.filter(c=>c.st==='pass'||c.st==='fail'):[],fc=lv?dn.filter(c=>c.st==='fail').length:(last?last.t-last.ok:0),okc=lv?dn.length-fc:(last?last.ok:0);
     const time=live?(dn.length?Math.round(lv.el/dn.length*live.t):0):(last?last.d:0),delta=time&&p.dur?Math.round((time/p.dur-1)*100):null;
@@ -1355,7 +1379,7 @@ function extEnd(d){
 }
 if(API){
   lvAuto=false;$('#lvAuto').checked=false;$('#lvAuto').parentElement.hidden=true;
-  $('.live-tag').lastChild.textContent='Ao vivo · Jenkins';
+  $$('.ptabs [data-go="aovivo"]').forEach(b=>{b.childNodes[1].textContent='Ao vivo · Jenkins'});
   const es=new EventSource(API+'/events'+(API_KEY?'?key='+encodeURIComponent(API_KEY):''));
   const on=(t,f)=>es.addEventListener(t,e=>{try{f(JSON.parse(e.data));liveRefresh(true,t!=='scenario')}catch(err){console.error(err)}});
   on('build_start',extStart);on('scenario',extScenario);on('build_end',extEnd);
@@ -1390,8 +1414,8 @@ document.addEventListener('click',e=>{
   const tt=e.target.closest('[data-toast]');if(tt)toast(tt.dataset.toast);
   const ts=e.target.closest('[data-toggle-scen]');if(ts){e.preventDefault();const s=SCENS.find(x=>x.id===ts.dataset.toggleScen);s.s=s.s==='Ativo'?'Inativo':'Ativo';saveData();renderScens();toast(`${s.id} ${s.s==='Ativo'?'ativado':'desativado'}`)}
   const fm=e.target.closest('[data-foldermenu]');if(fm){const g=fm.dataset.foldermenu;openMenu(fm,[
-     {t:'Executar todos os componentes',f:()=>{const ps=PIPES.filter(p=>p.group===g&&p.active!==false);ps.forEach(p=>startLive(p.name,false));toast(`${ps.length} componente(s) de ${g} em execução — acompanhe em Tempo real`);liveRefresh(true,true)}},
-     {t:'Ver na Auditoria de tempo',f:()=>{AUF.proj=g;aTab='audit';go('analises')}},
+     {t:'Executar todos os componentes',f:()=>{const ps=PIPES.filter(p=>p.group===g&&p.active!==false);ps.forEach(p=>startLive(p.name,false));toast(`${ps.length} componente(s) de ${g} em execução — acompanhe em Execuções › Ao vivo`);liveRefresh(true,true)}},
+     {t:'Ver tempo de execução',f:()=>{AUF.proj=g;aTab='tempo';go('analises')}},
      {t:'Renomear pasta',f:()=>renameFolder(g)},
      {t:'Excluir pasta',danger:true,f:()=>deleteFolder(g)}])}
   const pm=e.target.closest('[data-menu]');if(pm){const n=pm.dataset.menu;openMenu(pm,[
@@ -1443,7 +1467,7 @@ const KB={
 function answer(q){
   const t=q.toLowerCase(),P=PERIODS[period];
   if(/agora|tempo real|rodando|em andamento|ao vivo/.test(t)){const run=LIVE.filter(r=>r.s==='Executando');if(!run.length)return ['Nenhuma esteira está em execução neste momento.',null];
-    return [`Há <b>${run.length}</b> esteira${run.length===1?'':'s'} em execução agora:`+list(run.map(r=>{const sc=r.live.sc,d=sc.filter(c=>c.st==='pass'||c.st==='fail').length,f=sc.filter(c=>c.st==='fail').length;return `${esc(r.p)} (#${r.id}) – ${d}/${r.t} cenários, ${f} falha${f===1?'':'s'}, ${fmtDur(Math.round(r.live.el))} decorridos`})),run.some(r=>r.live.sc.some(c=>c.st==='fail'))?'Há falhas em andamento. Acompanhe na tela Tempo real e, se o timeout de pagamento se repetir, interrompa a esteira para liberar a fila.':null]}
+    return [`Há <b>${run.length}</b> esteira${run.length===1?'':'s'} em execução agora:`+list(run.map(r=>{const sc=r.live.sc,d=sc.filter(c=>c.st==='pass'||c.st==='fail').length,f=sc.filter(c=>c.st==='fail').length;return `${esc(r.p)} (#${r.id}) – ${d}/${r.t} cenários, ${f} falha${f===1?'':'s'}, ${fmtDur(Math.round(r.live.el))} decorridos`})),run.some(r=>r.live.sc.some(c=>c.st==='fail'))?'Há falhas em andamento. Acompanhe em Execuções › Ao vivo e, se o timeout de pagamento se repetir, interrompa a esteira para liberar a fila.':null]}
   const m=t.match(/#?(\d{5})/);if(m){const r=RUNS.find(x=>x.id===+m[1]);if(r){const f=suiteFor(r).filter(x=>x.f);
     if(!f.length)return [`A execução <b>#${r.id}</b> de ${esc(r.p)} passou em todos os ${r.t} cenários.`,null];
     return [`A execução <b>#${r.id}</b> de <b>${esc(r.p)}</b> falhou em ${f.length} de ${r.t} cenários:`+list(f.map(x=>`${esc(x.n)}${/Timeout/.test(x.n)?' — sem resposta da API de pagamento em 30s':/Confirmar/.test(x.n)?' — HTTP 500 em /checkout/confirm':' — status 422 inesperado'}`)),'A causa provável é instabilidade no serviço de pagamento. Verifique os logs do gateway no horário da execução e considere aumentar o timeout da chamada para 45s.']}}
