@@ -101,6 +101,7 @@ a{color:var(--primary);font-weight:600;text-decoration:none}a:hover{text-decorat
 @container (max-width:210px){.kt-bar{display:none}.kt-r{grid-template-columns:1fr auto}}
 .kpi-tech{display:flex;flex-direction:column;gap:7px;margin-top:14px;padding-top:12px;border-top:1px solid var(--line)}
 .kt-r{display:grid;grid-template-columns:72px minmax(0,1fr) auto;gap:8px;align-items:center;font-size:13px}
+.kt-note{font-size:11.5px;color:var(--muted)}
 .kt-r b{font-variant-numeric:tabular-nums;font-weight:600;font-size:13px}
 .kt-l{display:inline-flex;align-items:center;gap:5px;font-weight:600}
 .kt-l.t-api{color:#1d5fc2}.kt-l.t-mob{color:#b4540a}.kt-l.t-web{color:#0f7a5a}
@@ -726,7 +727,7 @@ function renderDashboard(){
   <div class="card kpi"><div class="kpi-h">${svg('<circle cx="12" cy="12" r="9.5"/><path d="M10 8.3v7.4l5.8-3.7z"/>',28,'#2a2b3f',1.6)}Execuções</div><div class="kpi-v">${P.exec}</div><div class="kpi-s"><span class="ok">↑ ${P.execD}</span> vs. período anterior</div></div>
   <div class="card kpi"><div class="kpi-h">${svg('<circle cx="12" cy="12" r="9.5"/><path d="m7.5 12.3 3 3 6-6.3"/>',28,'#16a34a')}Sucessos</div><div class="kpi-v">${P.succ}</div><div class="kpi-s ok">${P.rate}% de sucesso</div></div>
   <div class="card kpi"><div class="kpi-h">${svg('<circle cx="12" cy="12" r="9.5"/><path d="m8.5 8.5 7 7m0-7-7 7"/>',28,'#dc2626')}Falhas</div><div class="kpi-v">${P.fail}</div><div class="kpi-s bad">${P.failR}% de falhas</div></div>
-  <div class="card kpi"><div class="kpi-h">${svg('<circle cx="12" cy="13.5" r="8"/><path d="M12 9.5v4.2l2.6 1.6M9.5 2.5h5M12 2.5v3M19 6l1.3-1.3"/>',28,'#2a2b3f',1.7)}Duração média</div><div class="kpi-v">${P.dur}</div><div class="kpi-s"><span class="ok">↓ ${P.durD}</span> vs. período anterior</div>${durByTech(P.dur)}</div>`;
+  <div class="card kpi"><div class="kpi-h">${svg('<circle cx="12" cy="13.5" r="8"/><path d="M12 9.5v4.2l2.6 1.6M9.5 2.5h5M12 2.5v3M19 6l1.3-1.3"/>',28,'#2a2b3f',1.7)}Duração média</div><div class="kpi-v">${P.dur}</div><div class="kpi-s"><span class="ok">↓ ${P.durD}</span> vs. período anterior</div>${durByTech()}</div>`;
   drawLine('#lineChart',P.labels,P.vals);
   const cols=['#6d5ef0','#3b82f6','#f59e0b','#22c55e'],names=['Checkout','Pagamento','Cadastro','Outros'];
   const total=parseInt(String(P.fail).replace(/\./g,''),10)||0,counts=P.split.map(v=>Math.round(v/100*total));
@@ -740,13 +741,14 @@ function renderDashboard(){
   $('#fpNote').innerHTML=`<b>${names[0]}</b> concentra ${P.split[0]}% das falhas (${counts[0]} de ${P.fail}).`;
   $('#lastRuns').innerHTML=RUNS.filter(r=>r.s!=='Executando').slice(0,4).map(runRow).join('');
 }
-function durByTech(headline){
-  // Divide a duração média do período entre API, Mobile e Web, na proporção das médias reais de cada tecnologia
-  const m=String(headline).match(/(\d+)m\s*(\d+)s/),head=m?(+m[1])*60+(+m[2]):0;
-  const st=TECHS.map(t=>({t,s:techStats(t)})).filter(x=>x.s.runs);
-  const all=techStats(),k=all.avg?head/all.avg:1;
-  const rows=st.map(x=>({t:x.t,v:Math.round(x.s.avg*k),runs:x.s.runs})),mx=Math.max(1,...rows.map(r=>r.v));
-  return `<div class="kpi-tech" aria-label="Duração média por tecnologia">${rows.map(r=>`<div class="kt-r" title="${r.t}: média de ${r.runs} execuções"><span class="kt-l t-${techCls(r.t)}">${svg(TECH_IC[r.t],13,'currentColor',2.2)}${r.t}</span><span class="kt-bar"><i class="t-${techCls(r.t)}" style="width:${r.v/mx*100}%"></i></span><b>${fmtDur(r.v)}</b></div>`).join('')}</div>`;
+function durByTech(){
+  // Média própria de cada plataforma: soma das durações das execuções concluídas dela ÷ nº de execuções dela (no período do filtro)
+  const lim=new Date(BASE-(+period)*864e5);
+  const rows=TECHS.map(t=>{const names=PIPES.filter(p=>p.tech===t).map(p=>p.name);
+    const runs=RUNS.filter(r=>names.includes(r.p)&&(r.s==='Sucesso'||r.s==='Falha')&&r.at>=lim);
+    const sum=runs.reduce((a,r)=>a+r.d,0);return {t,n:runs.length,sum,v:runs.length?Math.round(sum/runs.length):0}}).filter(r=>r.n);
+  const mx=Math.max(1,...rows.map(r=>r.v));
+  return `<div class="kpi-tech" aria-label="Duração média por plataforma">${rows.map(r=>`<div class="kt-r" title="${r.t}: ${Math.round(r.sum).toLocaleString('pt-BR')}s ÷ ${r.n} execuções = ${fmtDur(r.v)}"><span class="kt-l t-${techCls(r.t)}">${svg(TECH_IC[r.t],13,'currentColor',2.2)}${r.t}</span><span class="kt-bar"><i class="t-${techCls(r.t)}" style="width:${r.v/mx*100}%"></i></span><b>${fmtDur(r.v)}</b></div>`).join('')}<span class="kt-note">Média própria de cada plataforma</span></div>`;
 }
 function drawLine(sel,labels,vals){
   const l=46,r=460,t=16,b=190,min=80,max=100,x=i=>l+20+i*((r-l-30)/(vals.length-1)),y=v=>b-(v-min)/(max-min)*(b-t);
@@ -1221,7 +1223,7 @@ function liveRefresh(changed,ended){
   if(v==='analises'&&aTab==='audit'&&$('#auditRoot'))updateAudit();
   if(v==='analises'&&aTab==='geral'&&$('#techBody')&&!$('#techFilter').open)updateTech();
   if(changed){if(v==='execucoes')renderExecs();if(v==='detalhe'){const id=+location.hash.split('-')[1],r=RUNS.find(x=>x.id===id);if(r&&r.live&&(r.s==='Executando'||ended))renderDetail(id)}}
-  if(ended){if(v==='dashboard')$('#lastRuns').innerHTML=RUNS.filter(r=>r.s!=='Executando').slice(0,4).map(runRow).join('');if(v==='pipelines')renderPipes();if(v==='analises'&&aTab!=='audit'&&aTab!=='geral')renderAnalises()}
+  if(ended){if(v==='dashboard')renderDashboard();if(v==='pipelines')renderPipes();if(v==='analises'&&aTab!=='audit'&&aTab!=='geral')renderAnalises()}
   const n=LIVE.filter(r=>r.s==='Executando').length,lc=$('#liveCount');lc.hidden=!n;lc.textContent=n;
 }
 function fillLivePipe(){const el=$('#lvPipe'),v=el.value;el.innerHTML=PIPES.map(p=>`<option>${esc(p.name)}</option>`).join('');if(PIPES.some(p=>p.name===v))el.value=v}
