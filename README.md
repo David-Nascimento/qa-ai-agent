@@ -24,6 +24,7 @@ O projeto tem duas partes:
 - [Funcionalidades](#funcionalidades)
 - [Como executar](#como-executar)
 - [Estrutura do projeto](#estrutura-do-projeto)
+- [Migração e agentes de código](#migração-e-agentes-de-código)
 - [Tempo real: arquitetura](#tempo-real-arquitetura)
 - [Servidor de tempo real](#servidor-de-tempo-real)
 - [Conexão com o Jenkins (API REST)](#conexão-com-o-jenkins-api-rest)
@@ -147,7 +148,9 @@ O **filtro de período** (7, 15, 30 ou 90 dias) fica no topo e vale para as trê
 - **Abaixo da meta de sucesso**: os componentes abaixo da meta definida em Configurações.
 - **Testes instáveis (flaky):** cenários que falharam e também passaram no período, com falhas / execuções, taxa de falha e o atalho para a análise da IA.
 
-### 7. Agente de QA (chat)
+### 7. Agente de QA (chat) — opcional
+> **Desligado por padrão.** Enquanto as integrações forem só Jenkins e Jira, os recursos de IA ficam ocultos: o menu Agente de QA, o painel do agente no Dashboard, os botões “Analisar com IA” e a aba IA e Prompts. Para mostrar, ligue **Configurações › Geral › Recursos de IA (Agente de QA)**.
+
 - Chat em tela cheia, que é o mesmo do painel do dashboard, com sugestões de perguntas.
 - Responde sobre:
   - falhas por pipeline;
@@ -169,6 +172,7 @@ O **filtro de período** (7, 15, 30 ou 90 dias) fica no topo e vale para as trê
 > As telas de integração do front-end guardam só o estado da interface. **A conexão real com Jenkins e Jira é feita pelo [servidor](#servidor-de-tempo-real)**, que mantém os tokens fora do navegador.
 
 ### 9. Configurações
+- **Recursos de IA (Agente de QA):** interruptor em *Geral*, desligado por padrão. Mostra ou oculta tudo o que é de IA.
 - **Geral**: nome do workspace, idioma, fuso horário, alertas de falha e resumo semanal.
 - **IA e Prompts**: provedor (OpenAI, Anthropic, Azure OpenAI), modelo, **prompt do agente**, temperatura e análise automática de falhas.
 - **Dados**: retenção do histórico, meta de taxa de sucesso e restauração dos dados de exemplo.
@@ -249,31 +253,53 @@ O teste sobe um **Jenkins falso** e verifica:
 
 ```
 qa-ai-agent/
-├── index.html              # plataforma completa (HTML + CSS + JS, sem dependências)
-├── README.md
+├── index.html                 marcação das telas e ordem de carga dos scripts
+├── assets/
+│   ├── css/app.css            estilos (tokens de cor e fonte no :root)
+│   └── js/                    um módulo por tela, carregados em ordem
+│       ├── 00-base.js           utilitários, ícones e menu
+│       ├── 01-dados.js          dados de exemplo (PIPES, RUNS, SCENS)
+│       ├── 10-dashboard.js      Dashboard
+│       ├── 20-pipelines.js      Pipelines
+│       ├── 30-execucoes.js      Execuções › Histórico
+│       ├── 31-detalhe.js        Detalhe da execução
+│       ├── 40-cenarios.js       Cenários (Jira)
+│       ├── 50-analises.js       Análises › Qualidade e Estabilidade
+│       ├── 51-analises-tempo.js Análises › Tempo de execução
+│       ├── 60-integracoes.js    Integrações
+│       ├── 70-configuracoes.js  Configurações
+│       ├── 80-navegacao.js      rotas
+│       ├── 81-acoes.js          modais, menus e ações globais
+│       ├── 90-tempo-real.js     Execuções › Ao vivo
+│       ├── 91-conexao-servidor.js modo conectado (SSE)
+│       ├── 95-agente-ia.js      Agente de QA (opcional)
+│       └── 99-inicio.js         inicialização
+├── server/
+│   ├── server.js              Jenkins + Jira via API REST, SSE e rotas /api
+│   ├── package.json           scripts start / demo / test (sem dependências)
+│   ├── .env.example           todas as variáveis de configuração
+│   └── test/                  testes com Jenkins e Jira falsos
 ├── docs/
-│   └── img/                # capturas de tela usadas no README
-└── server/
-    ├── server.js           # servidor de tempo real (Jenkins + Jira + SSE)
-    ├── package.json        # scripts start / demo / test (sem dependências)
-    ├── .env.example        # todas as variáveis de configuração
-    └── test/
-        ├── jenkins.test.js # teste de integração com Jenkins falso
-        └── jira.test.js    # leitura de cenários no Jira falso (paginação v3)
+│   ├── CONTRATOS.md           formatos de dados, eventos e rotas
+│   ├── MIGRACAO.md            guia para trazer o projeto antigo
+│   ├── migracao/inventario.md tabela origem → destino (preenchida na migração)
+│   └── img/                   capturas do README
+├── AGENTS.md                  regras para agentes de código (Antigravity e outros)
+├── .agents/rules/migracao.md  regras de migração carregadas pelo Antigravity
+├── .prettierrc.json · .editorconfig · .gitattributes   formatação e finais de linha padronizados
+└── README.md
 ```
 
-Dentro do `index.html`, o script está dividido em blocos comentados:
+Não há build. Os módulos são scripts clássicos que **compartilham o escopo global**, por isso a ordem no `index.html` importa: um arquivo só pode executar na carga o que foi definido em arquivos de número menor.
 
-| Bloco | Responsabilidade |
-|---|---|
-| Dados de exemplo | Pipelines (pasta e tecnologia), execuções, cenários e suítes |
-| 1. Dashboard … 9. Configurações | Renderização de cada tela |
-| Navegação | Rotas por hash (`#dashboard`, `#pipelines`, `#execucoes`, `#aovivo` (Execuções › Ao vivo), `#exec-10432`, `#cenarios`, `#analises`, `#agente`, `#integracoes`, `#config`) |
-| Motor de tempo real | Simulação, cards ao vivo, tabela por componente e feed de eventos |
-| Eventos reais (SSE) | `extStart`, `extScenario` e `extEnd`, que traduzem os eventos do servidor para a tela |
-| Agente de IA | Regras de resposta e conversa |
+## Migração e agentes de código
 
----
+O projeto está preparado para um agente (Antigravity, Claude Code, Copilot…) trazer as informações do projeto antigo sem gerar conflitos:
+
+- **[`AGENTS.md`](AGENTS.md)** e **[`.agents/rules/`](.agents/rules)** são carregados sozinhos pelo Antigravity. Eles contêm as regras do projeto: onde cada coisa fica, credenciais só no servidor, contratos estáveis, IA desligada e português.
+- **[`docs/CONTRATOS.md`](docs/CONTRATOS.md)** define os formatos de componente, execução, cenário, eventos SSE e rotas. Dados antigos são **convertidos para esses formatos** no servidor.
+- **[`docs/MIGRACAO.md`](docs/MIGRACAO.md)** traz o passo a passo e um **texto pronto para colar no agente**. Primeiro ele faz o inventário (origem → destino, sem mexer no código), depois migra um item por commit.
+- **Código em módulos pequenos** e formatação padronizada (`.prettierrc.json`, `.editorconfig`, `.gitattributes` com LF) reduzem conflitos de merge.
 
 ## Tempo real: arquitetura
 
@@ -600,11 +626,11 @@ Também é aceito um objeto `{ "executions": [...] }`.
 
 ## Personalização
 
-- **Cores e tipografia:** tokens CSS no `:root` do `index.html`, por exemplo `--sidebar`, `--primary`, `--green`, `--red` e `--font` (Inter).
-- **Tecnologias:** a constante `TECHS = ['API','Mobile','Web']` e os mapas `techCls` e `TECH_IC`.
-- **Pastas e componentes:** o array `PIPES`, com `name`, `group` (pasta), `tech`, `rate`, `dur` e `scen`.
+- **Cores e tipografia:** tokens CSS no `:root` de `assets/css/app.css`, por exemplo `--sidebar`, `--primary`, `--green`, `--red` e `--font` (Inter).
+- **Tecnologias:** a constante `TECHS = ['API','Mobile','Web']` e os mapas `techCls` e `TECH_IC`, em `assets/js/01-dados.js`.
+- **Pastas e componentes:** o array `PIPES` em `assets/js/01-dados.js` (formato em [docs/CONTRATOS.md](docs/CONTRATOS.md)).
 - **Velocidade da simulação:** `SPEED` (padrão 10×).
-- **Regras do agente:** a função `answer()`.
+- **Regras do agente:** a função `answer()` em `assets/js/95-agente-ia.js`.
 
 ---
 
