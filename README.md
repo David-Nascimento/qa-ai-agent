@@ -88,7 +88,18 @@ O projeto tem duas partes:
 ### 7. Análises (analytics)
 - Abas **Visão Geral**, **Tendências**, **Falhas** e **Flaky Tests**.
 - Indicadores: taxa de sucesso, total de falhas, testes instáveis e **MTTR**.
-- **Tempo de execução por tecnologia**: badges *Todas as pipelines*, *API*, *Mobile* e *Web*, calculadas a partir das execuções. Cada uma mostra o tempo médio, o número de execuções, a taxa de sucesso, as falhas, o tempo médio por cenário e a execução mais rápida e a mais lenta, além de uma frase comparando a tecnologia mais lenta com a mais rápida.
+- **Tempo de execução por tecnologia** (atualiza ao vivo, a cada segundo):
+  - lê os **componentes cadastrados e ativos** no portal, incluindo os adicionados depois, e usa a **execução mais recente** de cada um;
+  - **filtro por componente**: escolha um ou vários, agrupados por projeto, com *Selecionar todos* e *Limpar*;
+  - badges *Todas*, *API*, *Mobile* e *Web*, cada uma com:
+    - o **tempo total atual** (soma das execuções mais recentes);
+    - a **média histórica**, com o Δ e uma barra comparando o atual com a média;
+    - o tempo atual e a média **por componente**;
+    - o componente **mais lento** e o **mais rápido**;
+    - quantos estão **em execução agora** e o tempo decorrido;
+  - tabela **Execução mais recente por componente**: número e data da última execução, tempo mais recente, média (com a conta `Σ ÷ n`), Δ e o tempo decorrido de quem está rodando.
+
+  ![Tempo de execução por tecnologia](docs/img/tecnologia.png)
 - **Componentes por pasta**: tabela pasta × API, Mobile e Web, com total, tempo médio e taxa de sucesso.
 - Gráfico de **tendência de sucessos e falhas** e seção **Analytics**:
   - taxa de sucesso por pipeline, comparada com a meta das Configurações;

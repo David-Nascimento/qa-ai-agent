@@ -284,6 +284,26 @@ tr.is-live td{background:var(--primary-softer)}
 .au-table small.calc{display:block;color:var(--muted);font-size:12px;font-weight:500}
 .au-table tr.sub td{background:var(--head);font-weight:600;color:var(--fg-2)}
 .au-table tr.total td{background:var(--primary-soft);font-weight:700;color:var(--fg);border-bottom:0}
+.cf{position:relative}
+.cf summary{list-style:none;cursor:pointer;display:inline-flex;align-items:center;gap:8px;border:1px solid #d9dbe5;background:var(--card);border-radius:10px;padding:10px 14px;font-weight:500}
+.cf summary::-webkit-details-marker{display:none}
+.cf[open] summary{border-color:var(--primary-2)}
+.cf-pop{position:absolute;z-index:30;top:calc(100% + 6px);left:0;width:min(420px,calc(100vw - 32px));max-height:380px;overflow-y:auto;background:var(--card);border:1px solid var(--line);border-radius:12px;box-shadow:0 12px 30px rgba(20,20,60,.14);padding:12px;display:flex;flex-direction:column;gap:12px}
+.cf-act{display:flex;gap:8px}
+.cf-g{display:flex;flex-direction:column;gap:6px}
+.cf-g>b{font-size:12.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+.cf-g label{display:flex;align-items:center;gap:8px;font-size:14px;cursor:pointer}
+.cf-g input{accent-color:var(--primary);width:16px;height:16px}
+.tc-cmp{display:flex;justify-content:space-between;align-items:baseline;margin-top:8px;font-size:13.5px;color:var(--muted)}
+.tc-bars{display:flex;flex-direction:column;gap:4px;margin:10px 0 12px}
+.tc-bars .tc-bar{margin:0;height:7px}
+.tc-bar span.now{background:var(--primary-2)!important}.tc-bar span.avg{background:#c9c5ef!important}
+.tc-stats span{display:flex;flex-direction:column;gap:2px;min-width:0}
+.tc-stats span b{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tc-live{margin-top:12px;padding-top:10px;border-top:1px dashed var(--line);font-size:12.5px;color:var(--muted);display:flex;align-items:center;gap:8px}
+.tc-live.on{color:var(--primary);font-weight:600}
+.t-empty{opacity:.6}
+.tc-stats span.wide{grid-column:1/-1;flex-direction:row;justify-content:space-between;gap:10px}
 .an-head{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;margin:30px 0 16px;padding-top:22px;border-top:1px solid var(--line)}
 .an-head h2{margin:0;font-size:19px}.an-head span{color:var(--muted);font-size:14.5px}
 .an-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}
@@ -847,9 +867,7 @@ function renderAnalises(){
     const slow=ts[0],fast=ts.at(-1),diff=fast&&fast.s.avg?Math.round((slow.s.avg/fast.s.avg-1)*100):0;
     const fRows=groups().map(gn=>{const ps=PIPES.filter(p=>p.group===gn),runs=RUNS.filter(r=>ps.some(p=>p.name===r.p)&&r.s!=='Executando'),avg=runs.length?Math.round(runs.reduce((a,r)=>a+r.d,0)/runs.length):0,ok=runs.filter(r=>r.s==='Sucesso').length;
       return `<tr><td><b style="color:var(--fg)">${esc(gn)}</b></td>${TECHS.map(t=>{const n=ps.filter(p=>p.tech===t).length;return `<td>${n?techBadge(t,n):'<span style="color:var(--muted)">—</span>'}</td>`}).join('')}<td><b>${ps.length}</b></td><td>${fmtDur(avg)}</td><td>${runs.length?pct(ok/runs.length*100):'—'}</td></tr>`}).join('');
-    const techHtml=`<div class="an-head" style="margin-top:0;padding-top:0;border:0"><h2>Tempo de execução por tecnologia</h2><span>Média calculada sobre todas as execuções das pipelines de cada tecnologia</span></div>
-      <div class="tgrid">${tcard('<span class="tech all">Todas as pipelines</span>',all,'t-all')}${TECHS.map(t=>tcard(techBadge(t),techStats(t),'t-'+techCls(t))).join('')}</div>
-      ${slow&&fast&&slow!==fast?`<p class="an-note" style="margin:0 0 22px">Componentes <b>${slow.t}</b> são os mais lentos: levam em média <b>${diff}% mais</b> tempo que os de <b>${fast.t}</b> (${fmtDur(slow.s.avg-fast.s.avg)} a mais por execução).</p>`:''}
+    const techHtml=techSkeleton()+`
       <h3 class="sub-h">Componentes por pasta</h3>
       <div class="table-wrap" style="margin-bottom:26px"><table><thead><tr><th>Pasta</th>${TECHS.map(t=>`<th>${t}</th>`).join('')}<th>Total</th><th>Tempo médio</th><th>Sucesso</th></tr></thead><tbody>${fRows}</tbody></table></div>`;
     $('#aBody').innerHTML=kpis+techHtml+`<h2 style="font-size:17px">Tendência de sucessos e falhas</h2><div class="chart-row"><svg class="chart" viewBox="0 0 650 240" role="img" aria-label="Sucessos e falhas por dia">${g}</svg><div class="chart-legend"><span><i style="background:#22c55e"></i>Sucessos</span><span><i style="background:#ef4444"></i>Falhas</span></div></div>
@@ -865,6 +883,7 @@ function renderAnalises(){
          <p class="an-note">Pico entre 10h e 12h nos dias úteis, quando o serviço de pagamento tem maior carga</p></div>
        <div class="an-card wide"><h3>Top 5 testes instáveis</h3><div class="table-wrap"><table><thead><tr><th>ID</th><th>Cenário</th><th>Taxa de falha</th><th></th></tr></thead><tbody>${fl.map(r=>`<tr><td>${r[0]}</td><td><b style="color:var(--fg)">${r[1]}</b></td><td><div class="mini"><span style="width:${r[2]/12*100}%"></span></div>${pct(r[2])}</td><td><button class="btn-out pri" data-suggest="Existe algum teste instável (flaky)?">Analisar com IA</button></td></tr>`).join('')}</tbody></table></div></div>
      </div>`;
+    updateTech();
   }else if(aTab==='tend'){
     $('#aBody').innerHTML=kpis+`<div class="row2"><div><h2 style="font-size:17px">Evolução da taxa de sucesso</h2><svg id="aLine" class="chart" viewBox="0 0 480 230"></svg></div><div><h2 style="font-size:17px">Duração média por pipeline</h2><div class="hbar">${PIPES.map(p=>`<div class="r"><span>${esc(p.name)}</span><div class="t"><span style="width:${p.dur/Math.max(...PIPES.map(x=>x.dur))*100}%;background:var(--primary-2)"></span></div><span class="v">${fmtDur(p.dur)}</span></div>`).join('')}</div></div></div>`;
     const P=PERIODS[$('#aPeriod').value];drawLine('#aLine',P.labels,P.vals);
@@ -877,6 +896,65 @@ function renderAnalises(){
     $('#aBody').innerHTML=kpis+`<div class="table-wrap"><table><thead><tr><th>ID</th><th>Cenário</th><th>Pipeline</th><th>Falhas intermitentes</th><th>Taxa de falha</th><th></th></tr></thead><tbody>${fl.map(r=>`<tr><td>${r[0]}</td><td><b style="color:var(--fg)">${r[1]}</b></td><td>${r[2]}</td><td>${r[3]}</td><td><span class="pill fail">${r[4]}</span></td><td><button class="btn-out pri" data-ask="${r[2]}">Analisar com IA</button></td></tr>`).join('')}</tbody></table></div>`;
   }
 }
+/* ---------- Tempo de execução por tecnologia (execução mais recente + média, ao vivo) ---------- */
+const TF=new Set(); // componentes selecionados no filtro (vazio = todos)
+function techSkeleton(){
+  const act=PIPES.filter(p=>p.active!==false);
+  const byG=[...new Set(act.map(p=>p.group))].map(g=>`<div class="cf-g"><b>${esc(g)}</b>${act.filter(p=>p.group===g).map(p=>`<label><input type="checkbox" value="${esc(p.name)}" ${!TF.size||TF.has(p.name)?'checked':''}> ${esc(p.name)} ${techBadge(p.tech)}</label>`).join('')}</div>`).join('');
+  return `<div id="techRoot"><div class="an-head" style="margin-top:0;padding-top:0;border:0"><h2>Tempo de execução por tecnologia</h2><span>Execução mais recente de cada componente cadastrado, comparada à média histórica · atualiza ao vivo</span></div>
+    <div class="toolbar"><details class="cf" id="techFilter"><summary id="techFilterLabel"></summary><div class="cf-pop"><div class="cf-act"><button type="button" class="btn-out" data-tf="all">Selecionar todos</button><button type="button" class="btn-out" data-tf="none">Limpar</button></div>${byG}</div></details><span class="an-note" style="margin:0" id="techUpd"></span></div>
+    <div id="techBody"></div></div>`;
+}
+function techRows(list){
+  return list.map(p=>{
+    const hist=RUNS.filter(r=>r.p===p.name&&(r.s==='Sucesso'||r.s==='Falha'));
+    const last=hist[0]||null,n=hist.length,avg=n?hist.reduce((a,r)=>a+r.d,0)/n:p.dur;
+    const live=LIVE.find(r=>r.p===p.name&&r.s==='Executando');
+    return {p,last,n,avg,live,el:live?live.live.el:0};
+  });
+}
+function techCard(label,cls,rows){
+  if(!rows.length)return `<div class="tcard ${cls} t-empty"><div class="tc-top">${label}</div><p class="an-note">Nenhum componente selecionado.</p></div>`;
+  const done=rows.filter(r=>r.last),cur=done.reduce((a,r)=>a+r.last.d,0),avgSum=done.reduce((a,r)=>a+r.avg,0);
+  const d=avgSum?Math.round((cur/avgSum-1)*100):0,mx=Math.max(cur,avgSum,1);
+  const sorted=[...done].sort((a,b)=>b.last.d-a.last.d),slow=sorted[0],fast=sorted.at(-1);
+  const run=rows.filter(r=>r.live),runEl=run.reduce((a,r)=>a+r.el,0);
+  return `<div class="tcard ${cls}"><div class="tc-top">${label}<span class="tc-sub">${rows.length} componente${rows.length===1?'':'s'}</span></div>
+    <div class="tc-v">${fmtDur(Math.round(cur))}</div><div class="tc-l">tempo total atual · soma das execuções mais recentes</div>
+    <div class="tc-cmp"><span>média ${fmtDur(Math.round(avgSum))}</span><span class="delta ${d>0?'up':'dn'}">${d>0?'+':''}${d}%</span></div>
+    <div class="tc-bars"><div class="tc-bar"><span class="now" style="width:${cur/mx*100}%"></span></div><div class="tc-bar"><span class="avg" style="width:${avgSum/mx*100}%"></span></div></div>
+    <div class="tc-stats"><span>Atual por comp.<b>${fmtDur(Math.round(done.length?cur/done.length:0))}</b></span><span>Média por comp.<b>${fmtDur(Math.round(done.length?avgSum/done.length:0))}</b></span>
+      <span class="wide">Mais lento<b title="${esc(slow?slow.p.name:'')}">${slow?esc(slow.p.name)+' · '+fmtDur(slow.last.d):'—'}</b></span><span class="wide">Mais rápido<b title="${esc(fast?fast.p.name:'')}">${fast?esc(fast.p.name)+' · '+fmtDur(fast.last.d):'—'}</b></span></div>
+    <div class="tc-live ${run.length?'on':''}">${run.length?`<span class="live-dot"></span>${run.length} em execução · ${fmtDur(Math.round(runEl))} decorridos`:'Nenhum em execução agora'}</div></div>`;
+}
+function updateTech(){
+  const act=PIPES.filter(p=>p.active!==false),sel=act.filter(p=>!TF.size||TF.has(p.name));
+  $('#techFilterLabel').innerHTML=`${svg('<path d="M4 5h16l-6 8v5l-4 2v-7z"/>',16,'currentColor',1.8)} Componentes: <b>${!TF.size||sel.length===act.length?'Todos':sel.length}</b> <span class="tc-sub">de ${act.length}</span>`;
+  const rows=techRows(sel),last=RUNS.find(r=>sel.some(p=>p.name===r.p)&&(r.s==='Sucesso'||r.s==='Falha'));
+  $('#techUpd').textContent=last?`Última execução concluída: ${last.p} #${last.id} às ${fmtDate(last.at).split(', ')[1]}`:'';
+  const list=[...rows].sort((a,b)=>(b.live?1:0)-(a.live?1:0)||(b.last?b.last.d:0)-(a.last?a.last.d:0));
+  $('#techBody').innerHTML=`<div class="tgrid">${techCard('<span class="tech all">Todas</span>','t-all',rows)}${TECHS.map(t=>techCard(techBadge(t),'t-'+techCls(t),rows.filter(r=>r.p.tech===t))).join('')}</div>
+    <h3 class="sub-h" style="margin-top:18px">Execução mais recente por componente</h3>
+    <div class="table-wrap" style="margin-bottom:26px"><table class="au-table"><thead><tr><th>Componente</th><th>Projeto</th><th>Tecnologia</th><th>Agora</th><th>Última execução</th><th>Tempo mais recente</th><th>Média</th><th>Δ vs média</th></tr></thead><tbody>
+    ${list.map(r=>{const d=r.last&&r.avg?Math.round((r.last.d/r.avg-1)*100):null;return `<tr${r.live?' class="is-live"':''}><td><b style="color:var(--fg)">${esc(r.p.name)}</b></td><td>${esc(r.p.group)}</td><td>${techBadge(r.p.tech)}</td>
+      <td>${r.live?`<span class="pill run"><span class="live-dot"></span> ${fmtDur(Math.round(r.el))}</span>`:'<span class="pill off">Parado</span>'}</td>
+      <td>${r.last?`#${r.last.id} · ${fmtDate(r.last.at)}`:'—'}</td><td><b>${r.last?fmtDur(r.last.d):'—'}</b></td>
+      <td>${fmtDur(Math.round(r.avg))}<small class="calc">${r.n?`${secs(r.n?r.avg*r.n:0)} ÷ ${r.n}`:'referência (sem execuções)'}</small></td>
+      <td>${d===null?'—':`<span class="delta ${d>0?'up':'dn'}">${d>0?'+':''}${d}%</span>`}</td></tr>`}).join('')||'<tr><td colspan="8" class="empty">Nenhum componente selecionado.</td></tr>'}
+    </tbody></table></div>`;
+}
+$('#aBody').addEventListener('change',e=>{
+  const box=e.target.closest('#techFilter');if(!box||e.target.type!=='checkbox')return;
+  const all=[...box.querySelectorAll('input[type=checkbox]')],on=all.filter(i=>i.checked).map(i=>i.value);
+  TF.clear();if(on.length!==all.length)(on.length?on:['__nenhum__']).forEach(v=>TF.add(v));updateTech();
+});
+$('#aBody').addEventListener('click',e=>{
+  const b=e.target.closest('[data-tf]');if(!b)return;
+  const all=[...document.querySelectorAll('#techFilter input[type=checkbox]')];
+  all.forEach(i=>i.checked=b.dataset.tf==='all');TF.clear();if(b.dataset.tf==='none')TF.add('__nenhum__');updateTech();
+});
+document.addEventListener('click',e=>{const d=$('#techFilter');if(d&&d.open&&!e.target.closest('#techFilter'))d.open=false});
+
 /* ---------- Auditoria de tempo de execução ---------- */
 const AUF={proj:'',tech:'',active:true};
 const secs=n=>Math.round(n).toLocaleString('pt-BR')+'s';
@@ -1093,8 +1171,9 @@ function liveRefresh(changed,ended){
   const v=curView();
   if(v==='aovivo')renderLive();
   if(v==='analises'&&aTab==='audit'&&$('#auditRoot'))updateAudit();
+  if(v==='analises'&&aTab==='geral'&&$('#techBody')&&!$('#techFilter').open)updateTech();
   if(changed){if(v==='execucoes')renderExecs();if(v==='detalhe'){const id=+location.hash.split('-')[1],r=RUNS.find(x=>x.id===id);if(r&&r.live&&(r.s==='Executando'||ended))renderDetail(id)}}
-  if(ended){if(v==='dashboard')$('#lastRuns').innerHTML=RUNS.filter(r=>r.s!=='Executando').slice(0,4).map(runRow).join('');if(v==='pipelines')renderPipes();if(v==='analises'&&aTab!=='audit')renderAnalises()}
+  if(ended){if(v==='dashboard')$('#lastRuns').innerHTML=RUNS.filter(r=>r.s!=='Executando').slice(0,4).map(runRow).join('');if(v==='pipelines')renderPipes();if(v==='analises'&&aTab!=='audit'&&aTab!=='geral')renderAnalises()}
   const n=LIVE.filter(r=>r.s==='Executando').length,lc=$('#liveCount');lc.hidden=!n;lc.textContent=n;
 }
 function fillLivePipe(){const el=$('#lvPipe'),v=el.value;el.innerHTML=PIPES.map(p=>`<option>${esc(p.name)}</option>`).join('');if(PIPES.some(p=>p.name===v))el.value=v}
