@@ -52,6 +52,11 @@ O projeto tem duas partes:
 - **Visão por pasta** (padrão). Cada pasta (Cliente, E-commerce, Catálogo, Plataforma…) mostra a contagem de componentes por tecnologia, como *“3 componentes de API, 1 de Mobile e 1 de Web”*, com badges, uma barra de composição, o tempo médio e quantos estão com falha. A pasta abre e fecha e lista seus componentes.
 - Resumo geral no topo (*“13 componentes em 4 pastas”*), com contadores por tecnologia que também funcionam como filtro.
 - **Visão em lista**, com filtros por texto, pasta, status e tecnologia (**API**, **Mobile**, **Web**).
+- **Menu ⋮ de cada pasta:**
+  - **Executar todos os componentes** da pasta;
+  - **Ver na Auditoria de tempo**, já filtrada pelo projeto;
+  - **Renomear pasta**;
+  - **Excluir pasta**. A exclusão remove a pasta e todos os componentes dela. A janela de confirmação lista os componentes e avisa se há execuções em andamento, que são interrompidas. Ela oferece duas opções: excluir também os cenários vinculados (marcada por padrão) e apagar o histórico de execuções (desmarcada por padrão, para manter a auditoria). Para confirmar, é preciso **digitar o nome da pasta**. Depois de excluir, o aviso traz **Desfazer** por alguns segundos.
 - Menu ⋮ de cada pipeline: **executar agora**, **ver execuções**, **analisar com IA** e **excluir**. O botão **+ Nova Pipeline** pede nome, pasta, número de cenários e tecnologia.
 
 ![Pipelines por pasta](docs/img/pipelines.png)
