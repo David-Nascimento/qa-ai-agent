@@ -66,7 +66,7 @@ a{color:var(--primary);font-weight:600;text-decoration:none}a:hover{text-decorat
 
 /* Dashboard */
 .dash{display:grid;grid-template-columns:minmax(0,1fr) 440px;gap:22px;align-items:stretch}
-.kpis{display:grid;grid-template-columns:1fr .9fr .8fr .88fr;gap:18px}
+.kpis{display:grid;grid-template-columns:1fr .9fr .8fr 1.12fr;gap:18px}
 .kpis.k4{grid-template-columns:repeat(4,1fr)}
 .kpi{padding:22px 22px 20px}
 .kpi-h{display:flex;align-items:center;gap:12px;font-size:16px;font-weight:500;color:var(--fg-2)}
@@ -97,17 +97,25 @@ a{color:var(--primary);font-weight:600;text-decoration:none}a:hover{text-decorat
 .fp-foot b{color:var(--fg)}
 .fp-foot .btn-out{padding:7px 12px;font-size:13.5px}
 @container (max-width:360px){.fp{grid-template-columns:1fr;justify-items:center}.fp .legend{width:100%}}
-.kpi:has(.kpi-tech){container-type:inline-size}
-@container (max-width:210px){.kt-bar{display:none}.kt-r{grid-template-columns:1fr auto}}
-.kpi-tech{display:flex;flex-direction:column;gap:7px;margin-top:14px;padding-top:12px;border-top:1px solid var(--line)}
-.kt-r{display:grid;grid-template-columns:72px minmax(0,1fr) auto;gap:8px;align-items:center;font-size:13px}
-.kt-note{font-size:11.5px;color:var(--muted)}
-.kt-r b{font-variant-numeric:tabular-nums;font-weight:600;font-size:13px}
-.kt-l{display:inline-flex;align-items:center;gap:5px;font-weight:600}
+.kpi-tag{margin-left:auto;font-size:11.5px;font-weight:600;color:var(--muted);background:var(--head);padding:2px 8px;border-radius:999px;white-space:nowrap}
+.kpi:has(.kpi-tech){display:flex;flex-direction:column;container-type:inline-size;min-width:0}
+@container (max-width:250px){.kpi-tag{display:none}.kt-v{font-size:17px}.kt-n{font-size:11px}}
+@container (max-width:190px){.kt-bar,.kt-n{display:none}.kt-v{font-size:15px}}
+@media (max-width:520px){.kpis .kpi:has(.kpi-tech),#kpis>.kpi:nth-child(3){grid-column:1/-1}}
+.kt-l svg{flex:none}
+.kt-l{min-width:0;white-space:nowrap}
+.kpi-tech{display:flex;flex-direction:column;gap:10px;margin-top:14px}
+.kt-r{display:grid;grid-template-columns:minmax(0,1fr) auto;column-gap:10px;row-gap:4px;align-items:center}
+.kt-l{display:inline-flex;align-items:center;gap:6px;font-weight:600;font-size:14px}
 .kt-l.t-api{color:#1d5fc2}.kt-l.t-mob{color:#b4540a}.kt-l.t-web{color:#0f7a5a}
+.kt-v{font-size:20px;font-weight:700;letter-spacing:-.01em;font-variant-numeric:tabular-nums;color:var(--fg)}
 .kt-bar{height:5px;background:#eef0f5;border-radius:999px;overflow:hidden}
 .kt-bar i{display:block;height:100%;border-radius:999px}
 .kt-bar i.t-api{background:#3b82f6}.kt-bar i.t-mob{background:#f59e0b}.kt-bar i.t-web{background:#10b981}
+.kt-n{font-size:12px;color:var(--muted);text-align:right;font-variant-numeric:tabular-nums;margin:0}
+.kt-foot{margin-top:auto;padding-top:12px;border-top:1px solid var(--line);display:flex;flex-wrap:wrap;gap:4px 8px;align-items:baseline;font-size:12.5px;color:var(--muted)}
+.kpi-tech+.kt-foot{margin-top:14px}
+.kt-foot b{color:var(--fg-2)}
 .chart{width:100%;height:auto;display:block}
 .donut-wrap{display:flex;align-items:center;gap:22px;padding-top:12px;flex-wrap:wrap}
 .donut-wrap svg{flex:none}
@@ -727,7 +735,7 @@ function renderDashboard(){
   <div class="card kpi"><div class="kpi-h">${svg('<circle cx="12" cy="12" r="9.5"/><path d="M10 8.3v7.4l5.8-3.7z"/>',28,'#2a2b3f',1.6)}Execuções</div><div class="kpi-v">${P.exec}</div><div class="kpi-s"><span class="ok">↑ ${P.execD}</span> vs. período anterior</div></div>
   <div class="card kpi"><div class="kpi-h">${svg('<circle cx="12" cy="12" r="9.5"/><path d="m7.5 12.3 3 3 6-6.3"/>',28,'#16a34a')}Sucessos</div><div class="kpi-v">${P.succ}</div><div class="kpi-s ok">${P.rate}% de sucesso</div></div>
   <div class="card kpi"><div class="kpi-h">${svg('<circle cx="12" cy="12" r="9.5"/><path d="m8.5 8.5 7 7m0-7-7 7"/>',28,'#dc2626')}Falhas</div><div class="kpi-v">${P.fail}</div><div class="kpi-s bad">${P.failR}% de falhas</div></div>
-  <div class="card kpi"><div class="kpi-h">${svg('<circle cx="12" cy="13.5" r="8"/><path d="M12 9.5v4.2l2.6 1.6M9.5 2.5h5M12 2.5v3M19 6l1.3-1.3"/>',28,'#2a2b3f',1.7)}Duração média</div><div class="kpi-v">${P.dur}</div><div class="kpi-s"><span class="ok">↓ ${P.durD}</span> vs. período anterior</div>${durByTech()}</div>`;
+  <div class="card kpi"><div class="kpi-h">${svg('<circle cx="12" cy="13.5" r="8"/><path d="M12 9.5v4.2l2.6 1.6M9.5 2.5h5M12 2.5v3M19 6l1.3-1.3"/>',28,'#2a2b3f',1.7)}Duração média<span class="kpi-tag">por plataforma</span></div>${durByTech()}<div class="kt-foot" title="Média de todas as execuções do período, sem separar plataforma">Geral do período <b>${P.dur}</b><span class="ok">↓ ${P.durD}</span></div></div>`;
   drawLine('#lineChart',P.labels,P.vals);
   const cols=['#6d5ef0','#3b82f6','#f59e0b','#22c55e'],names=['Checkout','Pagamento','Cadastro','Outros'];
   const total=parseInt(String(P.fail).replace(/\./g,''),10)||0,counts=P.split.map(v=>Math.round(v/100*total));
@@ -748,7 +756,7 @@ function durByTech(){
     const runs=RUNS.filter(r=>names.includes(r.p)&&(r.s==='Sucesso'||r.s==='Falha')&&r.at>=lim);
     const sum=runs.reduce((a,r)=>a+r.d,0);return {t,n:runs.length,sum,v:runs.length?Math.round(sum/runs.length):0}}).filter(r=>r.n);
   const mx=Math.max(1,...rows.map(r=>r.v));
-  return `<div class="kpi-tech" aria-label="Duração média por plataforma">${rows.map(r=>`<div class="kt-r" title="${r.t}: ${Math.round(r.sum).toLocaleString('pt-BR')}s ÷ ${r.n} execuções = ${fmtDur(r.v)}"><span class="kt-l t-${techCls(r.t)}">${svg(TECH_IC[r.t],13,'currentColor',2.2)}${r.t}</span><span class="kt-bar"><i class="t-${techCls(r.t)}" style="width:${r.v/mx*100}%"></i></span><b>${fmtDur(r.v)}</b></div>`).join('')}<span class="kt-note">Média própria de cada plataforma</span></div>`;
+  return `<div class="kpi-tech" aria-label="Duração média por plataforma">${rows.map(r=>`<div class="kt-r" title="${r.t}: ${Math.round(r.sum).toLocaleString('pt-BR')}s ÷ ${r.n} execuções = ${fmtDur(r.v)}"><span class="kt-l t-${techCls(r.t)}">${svg(TECH_IC[r.t],14,'currentColor',2.2)}${r.t}</span><b class="kt-v">${fmtDur(r.v)}</b><span class="kt-bar"><i class="t-${techCls(r.t)}" style="width:${r.v/mx*100}%"></i></span><span class="kt-n">${r.n} exec.</span></div>`).join('')||'<p class="kt-n">Sem execuções no período.</p>'}</div>`;
 }
 function drawLine(sel,labels,vals){
   const l=46,r=460,t=16,b=190,min=80,max=100,x=i=>l+20+i*((r-l-30)/(vals.length-1)),y=v=>b-(v-min)/(max-min)*(b-t);
