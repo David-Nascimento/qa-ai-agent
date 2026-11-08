@@ -37,6 +37,8 @@ server/server.js              Jenkins + Jira via API REST, SSE, rotas /api
 server/test/*.test.js         testes com Jenkins e Jira falsos
 docs/MIGRACAO.md              guia para trazer o projeto antigo para cá
 docs/CONTRATOS.md             formatos de dados e eventos (o "contrato")
+docs/MAPA.md                  guia do Mapa de funcionalidades e do Canvas de ligações
+docs/mapa/                    mapa-funcionalidades.html (regras RN-*) · canvas-ligacoes.html (gerado) · gerador/
 docs/SSO.md                   proposta de login com SSO e permissões (ainda não implementada)
 docs/prototipos/sso/          protótipos HTML estáticos das telas de login e permissões
 ```
@@ -50,7 +52,8 @@ docs/prototipos/sso/          protótipos HTML estáticos das telas de login e p
 5. **Não renomeie** IDs de elementos, nomes de funções nem chaves do `localStorage` (`qa:pipes2`, `qa:scens`, `qa:ints`, `qa:cfg`, `qa:jiraSync`) sem atualizar todos os usos.
 6. **IA atrás do interruptor.** Qualquer elemento de IA leva a classe `ai-only` (ou `data-ask`/`data-ask-run`) e só funciona com `CFG.ai === true`.
 7. **Estilo:** use os tokens de cor do `:root`, sem cores soltas. Siga o `.prettierrc.json` (`npx prettier --write`) só nos arquivos que você alterou. Não reformate arquivos que você não tocou.
-8. **Mudanças pequenas:** um commit por funcionalidade, numa branch própria (por exemplo `migracao/cenarios-jira`).
+8. **Mapa e Canvas em dia.** Ao criar ou mudar uma regra de negócio, atualize `docs/mapa/mapa-funcionalidades.html`. Ao renomear ou mudar uma função citada no Canvas, gere-o de novo (comando em `docs/MAPA.md`). O gerador falha se algo citado não existir mais.
+9. **Mudanças pequenas:** um commit por funcionalidade, numa branch própria (por exemplo `migracao/cenarios-jira`).
 
 ## Como verificar
 

@@ -24,6 +24,7 @@ O projeto tem duas partes:
 - [Funcionalidades](#funcionalidades)
 - [Como executar](#como-executar)
 - [Estrutura do projeto](#estrutura-do-projeto)
+- [Mapa de funcionalidades e Canvas de ligações](#mapa-de-funcionalidades-e-canvas-de-ligações)
 - [Login com SSO e permissões (proposta)](#login-com-sso-e-permissões-proposta)
 - [Migração e agentes de código](#migração-e-agentes-de-código)
 - [Tempo real: arquitetura](#tempo-real-arquitetura)
@@ -282,11 +283,13 @@ qa-ai-agent/
 │   └── test/                  testes com Jenkins e Jira falsos
 ├── docs/
 │   ├── CONTRATOS.md           formatos de dados, eventos e rotas
+│   ├── MAPA.md                guia do Mapa de funcionalidades e do Canvas de ligações
+│   ├── mapa/                  mapa-funcionalidades.html · canvas-ligacoes.html · gerador/
 │   ├── SSO.md                 proposta de login com SSO e permissões
 │   ├── prototipos/sso/        protótipos HTML das telas de login e permissões
 │   ├── MIGRACAO.md            guia para trazer o projeto antigo
 │   ├── migracao/inventario.md tabela origem → destino (preenchida na migração)
-│   └── img/                   capturas do README (img/sso: esboços do login)
+│   └── img/                   capturas do README (img/sso: esboços do login; mapa e canvas)
 ├── AGENTS.md                  regras para agentes de código (Antigravity e outros)
 ├── .agents/rules/migracao.md  regras de migração carregadas pelo Antigravity
 ├── .prettierrc.json · .editorconfig · .gitattributes   formatação e finais de linha padronizados
@@ -294,6 +297,44 @@ qa-ai-agent/
 ```
 
 Não há build. Os módulos são scripts clássicos que **compartilham o escopo global**, por isso a ordem no `index.html` importa: um arquivo só pode executar na carga o que foi definido em arquivos de número menor.
+
+## Mapa de funcionalidades e Canvas de ligações
+
+Dois documentos mostram **como a plataforma funciona por dentro**. Abra direto no navegador; o guia completo está em [`docs/MAPA.md`](docs/MAPA.md).
+
+| Documento | Responde | Abrir |
+|---|---|---|
+| **Mapa de funcionalidades** | *Qual é a regra?* Funcionalidades separadas por categoria, um diagrama da lógica de cada uma e **75 regras de negócio numeradas** (RN-DASH-01, RN-ANA-06…), com catálogo e filtro. | [`docs/mapa/mapa-funcionalidades.html`](docs/mapa/mapa-funcionalidades.html) |
+| **Canvas de ligações** | *De onde vem esse número?* Canvas de nós ligando fontes → servidor → dados → funções de cálculo → métricas → telas, com **fórmula, regras e código real** de cada função. | [`docs/mapa/canvas-ligacoes.html`](docs/mapa/canvas-ligacoes.html) |
+
+| Mapa de funcionalidades | Canvas de ligações |
+|---|---|
+| ![Mapa de funcionalidades](docs/img/mapa-categoria.png) | ![Canvas de ligações](docs/img/canvas.png) |
+
+No Canvas, clicar num nó abre o painel com a fórmula, o passo a passo, as entradas e saídas, as regras e o código. Ao mesmo tempo, **acende o caminho completo** daquele número:
+
+![Detalhe de um nó do Canvas](docs/img/canvas-detalhe.png)
+
+Principais fórmulas, como aparecem nos dois documentos:
+
+| Métrica | Fórmula |
+|---|---|
+| Taxa de sucesso | `ok ÷ n × 100`, contando só execuções Sucesso e Falha do período |
+| Comparação | mesmo período imediatamente anterior, de mesmo tamanho |
+| MTTR | média de (próximo Sucesso − 1ª Falha), por componente |
+| Média por plataforma | `Σ duração ÷ nº de execuções` **da própria plataforma**, nunca derivada do total |
+| Tempo total atual | soma da execução mais recente de cada componente; Δ = total ÷ Σ médias − 1 |
+| Projeção ao vivo | `decorrido ÷ cenários concluídos × total de cenários` |
+| Flaky | cenário que falhou **e** passou no período |
+| Abaixo da meta | componentes com taxa < `CFG.goal` (95% por padrão) |
+
+O Canvas é **gerado a partir do código**, que é lido de `assets/js` e `server/server.js`. Depois de mudar uma função citada, gere de novo:
+
+```bash
+python3 docs/mapa/gerador/gen.py . docs/mapa/mapa-funcionalidades.html docs/mapa/canvas-ligacoes.html docs/mapa/gerador/template.html --completo
+```
+
+O gerador para com erro se uma função citada for renomeada ou se uma regra citada não existir no Mapa.
 
 ## Login com SSO e permissões (proposta)
 
