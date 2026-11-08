@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=1440">
+<title>Permissões — papéis e seções · esboço</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<style>
+body{margin:0}
+a{color:#5b4bdb}a:hover{color:#4335b8}
+input[type=checkbox]{width:18px;height:18px;accent-color:#5b4bdb;margin:0}
+</style>
+</head>
+<body>
+<div style="width: 1440px; height: 1000px; display: flex; font-family: Inter, system-ui, sans-serif; color: #14142b; background: #f4f5f9;">
+  <nav aria-label="Menu principal" style="width: 285px; box-sizing: border-box; background: #1d1a40; color: #e9e8f7; padding: 28px 22px; display: flex; flex-direction: column; gap: 4px;">
+    <div style="display: flex; align-items: center; gap: 12px; padding: 0 6px 26px;">
+      <svg width="42" height="38" viewBox="0 0 42 38" aria-hidden="true"><rect x="19.5" y="1" width="3" height="6" rx="1.5" fill="#8f86ff"></rect><circle cx="21" cy="2.5" r="2.5" fill="#8f86ff"></circle><rect x="0" y="16" width="5" height="11" rx="2.5" fill="#8f86ff"></rect><rect x="37" y="16" width="5" height="11" rx="2.5" fill="#8f86ff"></rect><rect x="4" y="7" width="34" height="28" rx="10" fill="#7b6ff5"></rect><rect x="9" y="13" width="24" height="16" rx="7" fill="#e9e6ff"></rect><circle cx="16" cy="21" r="3" fill="#3d32b8"></circle><circle cx="26" cy="21" r="3" fill="#3d32b8"></circle></svg>
+      <span style="font-weight: 700; font-size: 20px;">QA AI Agent</span>
+    </div>
+    <a href="#d" style="padding: 13px 18px; border-radius: 10px; color: #e9e8f7; text-decoration: none; font-size: 17px; font-weight: 500;">Dashboard</a>
+    <a href="#p" style="padding: 13px 18px; border-radius: 10px; color: #e9e8f7; text-decoration: none; font-size: 17px; font-weight: 500;">Pipelines</a>
+    <a href="#e" style="padding: 13px 18px; border-radius: 10px; color: #e9e8f7; text-decoration: none; font-size: 17px; font-weight: 500;">Execuções</a>
+    <a href="#c" style="padding: 13px 18px; border-radius: 10px; color: #e9e8f7; text-decoration: none; font-size: 17px; font-weight: 500;">Cenários</a>
+    <a href="#a" style="padding: 13px 18px; border-radius: 10px; color: #e9e8f7; text-decoration: none; font-size: 17px; font-weight: 500;">Análises</a>
+    <div style="height: 1px; background: #3a3766; margin: 14px 6px;"></div>
+    <a href="#i" style="padding: 13px 18px; border-radius: 10px; color: #e9e8f7; text-decoration: none; font-size: 17px; font-weight: 500;">Integrações</a>
+    <a href="#cfg" aria-current="page" style="padding: 13px 18px; border-radius: 10px; background: #5b4bdb; color: #ffffff; text-decoration: none; font-size: 17px; font-weight: 500;">Configurações</a>
+    <div style="margin-top: auto; padding: 14px 12px; border-radius: 10px; background: #26234f; display: flex; flex-direction: column; gap: 2px; font-size: 13px;">
+      <b style="color: #ffffff; font-size: 14px;">[Nome do usuário]</b>
+      <span style="color: #a9a6d0;">Gestor · via SSO</span>
+    </div>
+  </nav>
+
+  <main style="flex-grow: 1; padding: 28px 36px; display: flex; flex-direction: column; gap: 22px; min-width: 0;">
+    <div>
+      <h1 style="margin: 0 0 6px; font-size: 30px; font-weight: 700; letter-spacing: -0.02em;">Configurações</h1>
+      <p style="margin: 0; color: #55576b; font-size: 17px;">Ajuste as preferências da aplicação e quem vê cada parte do portal.</p>
+    </div>
+    <div style="display: flex; gap: 22px; align-items: flex-start;">
+      <div style="width: 220px; flex: none; background: #ffffff; border: 1px solid #eef0f5; border-radius: 14px; padding: 10px; display: flex; flex-direction: column; gap: 4px; font-size: 15px; font-weight: 500;">
+        <a href="#g" style="padding: 11px 14px; border-radius: 9px; color: #2a2b3f; text-decoration: none;">Geral</a>
+        <a href="#dados" style="padding: 11px 14px; border-radius: 9px; color: #2a2b3f; text-decoration: none;">Dados</a>
+        <a href="#perm" aria-current="page" style="padding: 11px 14px; border-radius: 9px; background: #ebe8fd; color: #5b4bdb; text-decoration: none;">Permissões</a>
+      </div>
+
+      <section style="flex-grow: 1; min-width: 0; background: #ffffff; border: 1px solid #eef0f5; border-radius: 14px; padding: 24px 26px; display: flex; flex-direction: column; gap: 20px;">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 16px;">
+          <div>
+            <h2 style="margin: 0 0 6px; font-size: 20px; font-weight: 700;">Permissões</h2>
+            <p style="margin: 0; color: #55576b; font-size: 14.5px;">Marque o que cada papel pode ver e fazer. O servidor aplica as mesmas regras às rotas da API.</p>
+          </div>
+          <a href="#novo" style="flex: none; height: 40px; padding: 0 14px; border: 1px solid #cfc9f7; border-radius: 9px; display: flex; align-items: center; color: #5b4bdb; font-weight: 600; font-size: 14px; text-decoration: none;">+ Novo papel</a>
+        </div>
+
+        <div role="tablist" style="display: flex; gap: 28px; border-bottom: 1px solid #e7e8ef; font-size: 15px; font-weight: 600;">
+          <a href="#papeis" role="tab" aria-selected="true" style="padding: 10px 2px; color: #5b4bdb; border-bottom: 2px solid #5b4bdb; text-decoration: none;">Papéis e seções</a>
+          <a href="permissoes-grupos.html" role="tab" style="padding: 10px 2px; color: #55576b; text-decoration: none;">Grupos e pessoas</a>
+        </div>
+
+        <table style="width: 100%; border-collapse: collapse; font-size: 14.5px;">
+          <thead>
+            <tr style="background: #f6f7fa; text-align: left;">
+              <th style="padding: 11px 12px; border-radius: 8px 0 0 8px;">Seção (menu)</th>
+              <th style="padding: 11px 12px; width: 150px; text-align: center;">Gestor</th>
+              <th style="padding: 11px 12px; width: 150px; text-align: center;">Analista</th>
+              <th style="padding: 11px 12px; width: 150px; text-align: center; border-radius: 0 8px 8px 0;">Leitor</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td style="padding: 11px 12px; border-bottom: 1px solid #eef0f5;">Dashboard</td><td style="text-align: center; border-bottom: 1px solid #eef0f5;"><input type="checkbox" checked disabled aria-label="Gestor vê Dashboard"></td><td style="text-align: center; border-bottom: 1px solid #eef0f5;"><input type="checkbox" checked aria-label="Analista vê Dashboard"></td><td style="text-align: center; border-bottom: 1px solid #eef0f5;"><input type="checkbox" checked aria-label="Leitor vê Dashboard"></td></tr>
+            <tr><td style="padding: 11px 12px; border-bottom: 1px solid #eef0f5;">Pipelines</td><td style="text-align: center; border-bottom: 1px solid #eef0f5;"><input type="checkbox" checked disabled aria-label="Gestor vê Pipelines"></td><td style="text-align: center; border-bottom: 1px solid #eef0f5;"><input type="checkbox" checked aria-label="Analista vê Pipelines"></td><td style="text-align: center; border-bottom: 1px solid #eef0f5;"><input type="checkbox" aria-label="Leitor vê Pipelines"></td></tr>
+            <tr><td style="padding: 11px 12px; border-bottom: 1px solid #eef0f5;">Execuções</td><td style="text-align: center; border-bottom: 1px solid #eef0f5;"><input type="checkbox" checked disabled aria-label="Gestor vê Execuções"></td><td style="text-align: center; border-bottom: 1px solid #eef0f5;"><input type="checkbox" checked aria-label="Analista vê Execuções"></td><td style="text-align: center; border-bottom: 1px solid #eef0f5;"><input type="checkbox" checked aria-label="Leitor vê Execuções"></td></tr>
+            <tr><td style="padding: 11px 12px; border-bottom: 1px solid #eef0f5;">Cenários</td><td style="text-align: center; border-bottom: 1px solid #eef0f5;"><input type="checkbox" checked disabled aria-label="Gestor vê Cenários"></td><td style="text-align: center; border-bottom: 1px solid #eef0f5;"><input type="checkbox" checked aria-label="Analista vê Cenários"></td><td style="text-align: center; border-bottom: 1px solid #eef0f5;"><input type="checkbox" aria-label="Leitor vê Cenários"></td></tr>
+            <tr><td style="padding: 11px 12px; border-bottom: 1px solid #eef0f5;">Análises</td><td style="text-align: center; border-bottom: 1px solid #eef0f5;"><input type="checkbox" checked disabled aria-label="Gestor vê Análises"></td><td style="text-align: center; border-bottom: 1px solid #eef0f5;"><input type="checkbox" checked aria-label="Analista vê Análises"></td><td style="text-align: center; border-bottom: 1px solid #eef0f5;"><input type="checkbox" checked aria-label="Leitor vê Análises"></td></tr>
+            <tr><td style="padding: 11px 12px; border-bottom: 1px solid #eef0f5;">Gestão <span style="color: #6b6d80; font-size: 13px;">· menu restrito</span></td><td style="text-align: center; border-bottom: 1px solid #eef0f5;"><input type="checkbox" checked disabled aria-label="Gestor vê Gestão"></td><td style="text-align: center; border-bottom: 1px solid #eef0f5;"><input type="checkbox" aria-label="Analista vê Gestão"></td><td style="text-align: center; border-bottom: 1px solid #eef0f5;"><input type="checkbox" aria-label="Leitor vê Gestão"></td></tr>
+            <tr><td style="padding: 11px 12px; border-bottom: 1px solid #eef0f5;">Integrações</td><td style="text-align: center; border-bottom: 1px solid #eef0f5;"><input type="checkbox" checked disabled aria-label="Gestor vê Integrações"></td><td style="text-align: center; border-bottom: 1px solid #eef0f5;"><input type="checkbox" aria-label="Analista vê Integrações"></td><td style="text-align: center; border-bottom: 1px solid #eef0f5;"><input type="checkbox" aria-label="Leitor vê Integrações"></td></tr>
+            <tr><td style="padding: 11px 12px;">Configurações</td><td style="text-align: center;"><input type="checkbox" checked disabled aria-label="Gestor vê Configurações"></td><td style="text-align: center;"><input type="checkbox" aria-label="Analista vê Configurações"></td><td style="text-align: center;"><input type="checkbox" aria-label="Leitor vê Configurações"></td></tr>
+          </tbody>
+        </table>
+
+        <table style="width: 100%; border-collapse: collapse; font-size: 14.5px;">
+          <thead>
+            <tr style="background: #f6f7fa; text-align: left;">
+              <th style="padding: 11px 12px; border-radius: 8px 0 0 8px;">Ação</th>
+              <th style="padding: 11px 12px; width: 150px; text-align: center;">Gestor</th>
+              <th style="padding: 11px 12px; width: 150px; text-align: center;">Analista</th>
+              <th style="padding: 11px 12px; width: 150px; text-align: center; border-radius: 0 8px 8px 0;">Leitor</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td style="padding: 11px 12px; border-bottom: 1px solid #eef0f5;">Executar e parar pipelines no Jenkins</td><td style="text-align: center; border-bottom: 1px solid #eef0f5;"><input type="checkbox" checked disabled aria-label="Gestor executa"></td><td style="text-align: center; border-bottom: 1px solid #eef0f5;"><input type="checkbox" checked aria-label="Analista executa"></td><td style="text-align: center; border-bottom: 1px solid #eef0f5;"><input type="checkbox" aria-label="Leitor executa"></td></tr>
+            <tr><td style="padding: 11px 12px; border-bottom: 1px solid #eef0f5;">Criar, renomear e excluir pastas e componentes</td><td style="text-align: center; border-bottom: 1px solid #eef0f5;"><input type="checkbox" checked disabled aria-label="Gestor edita pastas"></td><td style="text-align: center; border-bottom: 1px solid #eef0f5;"><input type="checkbox" aria-label="Analista edita pastas"></td><td style="text-align: center; border-bottom: 1px solid #eef0f5;"><input type="checkbox" aria-label="Leitor edita pastas"></td></tr>
+            <tr><td style="padding: 11px 12px; border-bottom: 1px solid #eef0f5;">Editar a consulta de cenários do Jira</td><td style="text-align: center; border-bottom: 1px solid #eef0f5;"><input type="checkbox" checked disabled aria-label="Gestor edita consulta"></td><td style="text-align: center; border-bottom: 1px solid #eef0f5;"><input type="checkbox" checked aria-label="Analista edita consulta"></td><td style="text-align: center; border-bottom: 1px solid #eef0f5;"><input type="checkbox" aria-label="Leitor edita consulta"></td></tr>
+            <tr><td style="padding: 11px 12px; border-bottom: 1px solid #eef0f5;">Exportar relatório de tempo (CSV)</td><td style="text-align: center; border-bottom: 1px solid #eef0f5;"><input type="checkbox" checked disabled aria-label="Gestor exporta"></td><td style="text-align: center; border-bottom: 1px solid #eef0f5;"><input type="checkbox" checked aria-label="Analista exporta"></td><td style="text-align: center; border-bottom: 1px solid #eef0f5;"><input type="checkbox" checked aria-label="Leitor exporta"></td></tr>
+            <tr><td style="padding: 11px 12px;">Alterar permissões</td><td style="text-align: center;"><input type="checkbox" checked disabled aria-label="Gestor altera permissões"></td><td style="text-align: center;"><input type="checkbox" aria-label="Analista altera permissões"></td><td style="text-align: center;"><input type="checkbox" aria-label="Leitor altera permissões"></td></tr>
+          </tbody>
+        </table>
+
+        <div style="display: flex; justify-content: space-between; align-items: center; gap: 16px; padding-top: 4px;">
+          <span style="font-size: 13.5px; color: #6b6d80;">O papel Gestor tem acesso total e não pode ser alterado, para ninguém ficar sem acesso às permissões.</span>
+          <button type="button" style="flex: none; height: 44px; padding: 0 18px; border: 0; border-radius: 9px; background: #5b4bdb; color: #ffffff; font-family: inherit; font-size: 14.5px; font-weight: 600;">Salvar alterações</button>
+        </div>
+      </section>
+    </div>
+  </main>
+</div>
+</body>
+</html>

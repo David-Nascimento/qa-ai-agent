@@ -24,6 +24,7 @@ O projeto tem duas partes:
 - [Funcionalidades](#funcionalidades)
 - [Como executar](#como-executar)
 - [Estrutura do projeto](#estrutura-do-projeto)
+- [Login com SSO e permissões (proposta)](#login-com-sso-e-permissões-proposta)
 - [Migração e agentes de código](#migração-e-agentes-de-código)
 - [Tempo real: arquitetura](#tempo-real-arquitetura)
 - [Servidor de tempo real](#servidor-de-tempo-real)
@@ -281,9 +282,11 @@ qa-ai-agent/
 │   └── test/                  testes com Jenkins e Jira falsos
 ├── docs/
 │   ├── CONTRATOS.md           formatos de dados, eventos e rotas
+│   ├── SSO.md                 proposta de login com SSO e permissões
+│   ├── prototipos/sso/        protótipos HTML das telas de login e permissões
 │   ├── MIGRACAO.md            guia para trazer o projeto antigo
 │   ├── migracao/inventario.md tabela origem → destino (preenchida na migração)
-│   └── img/                   capturas do README
+│   └── img/                   capturas do README (img/sso: esboços do login)
 ├── AGENTS.md                  regras para agentes de código (Antigravity e outros)
 ├── .agents/rules/migracao.md  regras de migração carregadas pelo Antigravity
 ├── .prettierrc.json · .editorconfig · .gitattributes   formatação e finais de linha padronizados
@@ -291,6 +294,19 @@ qa-ai-agent/
 ```
 
 Não há build. Os módulos são scripts clássicos que **compartilham o escopo global**, por isso a ordem no `index.html` importa: um arquivo só pode executar na carga o que foi definido em arquivos de número menor.
+
+## Login com SSO e permissões (proposta)
+
+> **Esboço, ainda não implementado.** Os detalhes, o fluxo e as decisões em aberto estão em [`docs/SSO.md`](docs/SSO.md). Os protótipos navegáveis ficam em [`docs/prototipos/sso/`](docs/prototipos/sso).
+
+- **Login pelo SSO da empresa** (OpenID Connect ou SAML 2.0), com telas de redirecionamento e de acesso negado.
+- **Permissões por papel** (Gestor, Analista, Leitor): cada papel define as **seções do menu** que vê e as **ações** que pode fazer. Os papéis são ligados a **grupos do SSO** ou a **e-mails**.
+- **O servidor aplica as mesmas regras às rotas da API.** Esconder menus na tela não basta.
+
+| Login | Permissões |
+|---|---|
+| ![Login com SSO](docs/img/sso/login-desktop.png) | ![Permissões por papel](docs/img/sso/permissoes-papeis.png) |
+| ![Acesso negado](docs/img/sso/acesso-negado.png) | ![Grupos e pessoas](docs/img/sso/permissoes-grupos.png) |
 
 ## Migração e agentes de código
 
@@ -657,7 +673,7 @@ Também é aceito um objeto `{ "executions": [...] }`.
 - [ ] Leitores para GitLab CI e Azure DevOps, publicando o mesmo contrato de eventos.
 - [ ] Subpastas (por exemplo Cliente › Cadastro › API), com contagens somadas por nível.
 - [ ] Botão “Abrir bug no Jira” no detalhe da execução, usando `/api/jira/bug`.
-- [ ] Autenticação de usuários (SSO) e papéis.
+- [ ] Login com SSO e permissões por papel ([proposta](docs/SSO.md)).
 - [ ] Alertas por e-mail, Slack ou Teams quando uma esteira falhar.
 
 ---

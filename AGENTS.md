@@ -37,6 +37,8 @@ server/server.js              Jenkins + Jira via API REST, SSE, rotas /api
 server/test/*.test.js         testes com Jenkins e Jira falsos
 docs/MIGRACAO.md              guia para trazer o projeto antigo para cá
 docs/CONTRATOS.md             formatos de dados e eventos (o "contrato")
+docs/SSO.md                   proposta de login com SSO e permissões (ainda não implementada)
+docs/prototipos/sso/          protótipos HTML estáticos das telas de login e permissões
 ```
 
 ## Regras
