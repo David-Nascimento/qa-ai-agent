@@ -284,12 +284,13 @@ qa-ai-agent/
 ├── docs/
 │   ├── CONTRATOS.md           formatos de dados, eventos e rotas
 │   ├── MAPA.md                guia do Mapa de funcionalidades e do Canvas de ligações
-│   ├── mapa/                  mapa-funcionalidades.html · canvas-ligacoes.html · gerador/
+│   ├── mapa/                  gerar_docs.py · PROMPT.md · mapa-funcionalidades.html · canvas-ligacoes.html
 │   ├── SSO.md                 proposta de login com SSO e permissões
 │   ├── prototipos/sso/        protótipos HTML das telas de login e permissões
 │   ├── MIGRACAO.md            guia para trazer o projeto antigo
 │   ├── migracao/inventario.md tabela origem → destino (preenchida na migração)
 │   └── img/                   capturas do README (img/sso: esboços do login; mapa e canvas)
+├── mapa.config.json           conteúdo do Mapa e do Canvas (regras, fórmulas, diagramas, nós)
 ├── AGENTS.md                  regras para agentes de código (Antigravity e outros)
 ├── .agents/rules/migracao.md  regras de migração carregadas pelo Antigravity
 ├── .prettierrc.json · .editorconfig · .gitattributes   formatação e finais de linha padronizados
@@ -328,13 +329,13 @@ Principais fórmulas, como aparecem nos dois documentos:
 | Flaky | cenário que falhou **e** passou no período |
 | Abaixo da meta | componentes com taxa < `CFG.goal` (95% por padrão) |
 
-O Canvas é **gerado a partir do código**, que é lido de `assets/js` e `server/server.js`. Depois de mudar uma função citada, gere de novo:
+Os dois são **gerados a partir do código** com um comando, sem instalar nada (Python 3.8+):
 
 ```bash
-python3 docs/mapa/gerador/gen.py . docs/mapa/mapa-funcionalidades.html docs/mapa/canvas-ligacoes.html docs/mapa/gerador/template.html --completo
+python3 docs/mapa/gerar_docs.py
 ```
 
-O gerador para com erro se uma função citada for renomeada ou se uma regra citada não existir no Mapa.
+O script lê o projeto inteiro (funções, quem chama quem, rotas, eventos, variáveis de ambiente, chaves do navegador) e junta o que só uma pessoa sabe, que fica em [`mapa.config.json`](mapa.config.json): categorias, regras, fórmulas e diagramas. Ele **para com erro** se algo citado deixou de existir (função renomeada, regra inexistente), então a documentação não desatualiza sem ninguém perceber. Para **usar em outro projeto**, copie só o `gerar_docs.py`; o passo a passo e o prompt para uma IA preencher o config estão em [`docs/MAPA.md`](docs/MAPA.md).
 
 ## Login com SSO e permissões (proposta)
 

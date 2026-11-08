@@ -1,0 +1,2373 @@
+{
+ "_ajuda": "Fonte do Mapa e do Canvas. Gere os dois com: python3 docs/mapa/gerar_docs.py   (guia completo em docs/MAPA.md)",
+ "nome": "QA AI Agent",
+ "subtitulo": "Mapa de funcionalidades e regras",
+ "lead": "Todas as funcionalidades da plataforma separadas por categoria. Em cada uma: como a lógica funciona, o que cada parte faz e as regras de negócio numeradas. O catálogo no fim reúne as regras para consulta e auditoria.",
+ "legenda": [
+  {
+   "tipo": "real",
+   "rotulo": "Implementado",
+   "texto": "funciona com dados reais quando o servidor está conectado"
+  },
+  {
+   "tipo": "sim",
+   "rotulo": "Simulado",
+   "texto": "usa dados de exemplo sem servidor"
+  },
+  {
+   "tipo": "opt",
+   "rotulo": "Opcional",
+   "texto": "desligado por padrão"
+  },
+  {
+   "tipo": "prop",
+   "rotulo": "Proposta",
+   "texto": "desenhado, ainda não implementado"
+  }
+ ],
+ "logo_svg": "<svg width=\"30\" height=\"27\" viewBox=\"0 0 42 38\" aria-hidden=\"true\"><rect x=\"19.5\" y=\"1\" width=\"3\" height=\"6\" rx=\"1.5\" fill=\"#8f86ff\"/><circle cx=\"21\" cy=\"2.5\" r=\"2.5\" fill=\"#8f86ff\"/><rect x=\"0\" y=\"16\" width=\"5\" height=\"11\" rx=\"2.5\" fill=\"#8f86ff\"/><rect x=\"37\" y=\"16\" width=\"5\" height=\"11\" rx=\"2.5\" fill=\"#8f86ff\"/><rect x=\"4\" y=\"7\" width=\"34\" height=\"28\" rx=\"10\" fill=\"#7b6ff5\"/><rect x=\"9\" y=\"13\" width=\"24\" height=\"16\" rx=\"7\" fill=\"#e9e6ff\"/><circle cx=\"16\" cy=\"21\" r=\"3\" fill=\"#3d32b8\"/><circle cx=\"26\" cy=\"21\" r=\"3\" fill=\"#3d32b8\"/></svg>",
+ "visao_geral": {
+  "titulo": "Visão geral da arquitetura",
+  "descricao": "O navegador nunca fala direto com o Jenkins ou o Jira. O servidor consulta as duas APIs, converte tudo para os formatos da plataforma e entrega por rotas `/api` e por eventos em tempo real (SSE). Sem servidor, o portal roda com dados de exemplo e simulação.",
+  "diagrama": "flowchart LR\n  subgraph EXT[\"Fontes externas\"]\n    JK[\"Jenkins<br/>API REST\"]\n    JR[\"Jira<br/>API REST\"]\n    IDP[\"Provedor SSO<br/>(proposta)\"]\n  end\n  subgraph SRV[\"Servidor Node · server.js\"]\n    POLL[\"Leitura do Jenkins<br/>descoberta + log progressivo\"]\n    JQ[\"Leitura e escrita no Jira<br/>cenários e bugs\"]\n    BUS[(\"Eventos<br/>últimos 300\")]\n    API[\"Rotas /api\"]\n    SSE[\"/events · SSE\"]\n  end\n  subgraph WEB[\"Portal · navegador\"]\n    NAV[\"Navegação e acesso\"]\n    DASH[\"Dashboard\"]\n    PIP[\"Pipelines\"]\n    EXE[\"Execuções<br/>Histórico · Ao vivo\"]\n    CEN[\"Cenários\"]\n    ANA[\"Análises<br/>Qualidade · Tempo · Estabilidade\"]\n    CFG[\"Configurações\"]\n    AG[\"Agente de QA<br/>(opcional)\"]\n  end\n  JK --> POLL --> BUS --> SSE --> EXE\n  POLL -- \"falhas\" --> JQ\n  JR <--> JQ --> API --> CEN\n  API -- \"executar · parar\" --> JK\n  IDP -.-> NAV\n  EXE --> DASH\n  EXE --> ANA\n  PIP --> ANA\n  CFG --> NAV\n  CFG --> ANA\n  EXE -.-> AG",
+  "nota": "Modos de uso: **sem servidor** (dados de exemplo e simulação 10× acelerada) e **conectado** (`index.html?api=https://servidor&key=CHAVE`), em que Execuções, Detalhe, Dashboard, Análises e Cenários passam a usar o Jenkins e o Jira."
+ },
+ "categorias": [
+  {
+   "id": "navegacao",
+   "titulo": "Navegação e acesso",
+   "status": "Implementado",
+   "status_tipo": "real",
+   "descricao": "Como o portal decide qual tela mostrar e o que fica visível.",
+   "codigo": "`80-navegacao.js` · `70-configuracoes.js` · `99-inicio.js` (inicialização)",
+   "diagrama": "flowchart LR\n  A[\"Endereço com #tela\"] --> B{\"Tela existe?\"}\n  B -- \"não\" --> D[\"Dashboard\"]\n  B -- \"sim\" --> C{\"É Agente de QA<br/>e a IA está desligada?\"}\n  C -- \"sim\" --> D\n  C -- \"não\" --> E{\"#exec-N?\"}\n  E -- \"sim\" --> F[\"Detalhe da execução N<br/>menu marca Execuções\"]\n  E -- \"não\" --> G[\"Mostra a tela<br/>e marca o menu\"]",
+   "funcionalidades": [
+    [
+     "Rotas por endereço",
+     "Cada tela tem um endereço próprio (`#pipelines`, `#analises`, `#exec-10432`), que pode ser salvo e compartilhado."
+    ],
+    [
+     "Menu lateral",
+     "Mostra as telas e um contador vermelho de esteiras rodando em Execuções."
+    ],
+    [
+     "Recursos de IA",
+     "Um interruptor esconde ou mostra tudo o que é de IA."
+    ]
+   ],
+   "regras": [
+    [
+     "RN-NAV-01",
+     "Endereço desconhecido abre o Dashboard."
+    ],
+    [
+     "RN-NAV-02",
+     "“Ao vivo” e “Detalhe da execução” pertencem a Execuções: o menu marca Execuções nessas telas."
+    ],
+    [
+     "RN-NAV-03",
+     "Com Recursos de IA desligado (padrão), o menu Agente de QA some e o endereço `#agente` volta para o Dashboard."
+    ],
+    [
+     "RN-NAV-04",
+     "Sem login, todas as pessoas veem as mesmas telas. A restrição por pessoa depende da proposta de SSO (categoria 11)."
+    ]
+   ]
+  },
+  {
+   "id": "dashboard",
+   "titulo": "Dashboard",
+   "status": "Implementado",
+   "status_tipo": "real",
+   "descricao": "Resumo fixo dos últimos 7 dias, calculado a partir das execuções concluídas.",
+   "codigo": "`10-dashboard.js` (função `dashData`)",
+   "diagrama": "flowchart LR\n  R[\"Execuções concluídas<br/>Sucesso ou Falha\"] --> W[\"Últimos 7 dias\"]\n  R --> P[\"7 dias anteriores\"]\n  W --> K1[\"Execuções · Sucessos · Falhas\"]\n  P --> K1\n  W --> K2[\"Duração média<br/>por plataforma\"]\n  W --> K3[\"Falhas por pipeline<br/>top 3 + Outros\"]\n  W --> K4[\"Taxa de sucesso<br/>por dia\"]\n  R --> K5[\"Últimas 4 execuções\"]",
+   "funcionalidades": [
+    [
+     "Indicadores",
+     "Execuções (com variação), sucessos com taxa, falhas com percentual."
+    ],
+    [
+     "Duração média por plataforma",
+     "API, Mobile e Web em destaque; a média geral fica pequena no rodapé."
+    ],
+    [
+     "Evolução da taxa de sucesso",
+     "Linha com um ponto por dia."
+    ],
+    [
+     "Falhas por pipeline",
+     "Rosca com o total no centro e legenda com quantidade e percentual."
+    ],
+    [
+     "Últimas execuções",
+     "As 4 mais recentes já concluídas, com acesso ao detalhe."
+    ]
+   ],
+   "regras": [
+    [
+     "RN-DASH-01",
+     "O período é sempre os últimos 7 dias. Outros períodos ficam em Análises."
+    ],
+    [
+     "RN-DASH-02",
+     "Só contam execuções com status Sucesso ou Falha. Executando e Cancelada ficam de fora."
+    ],
+    [
+     "RN-DASH-03",
+     "Taxa de sucesso = sucessos ÷ execuções concluídas × 100."
+    ],
+    [
+     "RN-DASH-04",
+     "A variação de execuções compara com os 7 dias anteriores."
+    ],
+    [
+     "RN-DASH-05",
+     "Cada plataforma tem média própria: Σ durações das execuções dela ÷ nº de execuções dela. Não é derivada do total."
+    ],
+    [
+     "RN-DASH-06",
+     "Falhas por pipeline mostra os 3 componentes com mais falhas; o restante soma em “Outros”. Percentual = falhas do componente ÷ total de falhas."
+    ],
+    [
+     "RN-DASH-07",
+     "Os números se recalculam quando uma execução termina."
+    ]
+   ]
+  },
+  {
+   "id": "pipelines",
+   "titulo": "Pipelines (pastas e componentes)",
+   "status": "Implementado",
+   "status_tipo": "real",
+   "descricao": "Organiza os componentes de teste em pastas (projetos), cada um com sua plataforma.",
+   "codigo": "`20-pipelines.js` · `81-acoes.js` (excluir, renomear, executar pasta)",
+   "diagrama": "flowchart TB\n  subgraph EXC[\"Excluir pasta\"]\n    direction LR\n    X1[\"Menu ⋮ da pasta<br/>Excluir\"] --> X2[\"Lista componentes<br/>e execuções em andamento\"]\n    X2 --> X3{\"Nome digitado<br/>confere?\"}\n    X3 -- \"não\" --> X4[\"Não exclui<br/>e avisa\"]\n    X3 -- \"sim\" --> X5[\"Interrompe execuções<br/>remove componentes\"]\n    X5 --> X6{\"Cenários vinculados?<br/>padrão: excluir\"}\n    X5 --> X7{\"Histórico?<br/>padrão: manter\"}\n    X5 --> X8[\"Desfazer por 8 s\"]\n  end\n  subgraph LIST[\"Visão por pasta\"]\n    direction LR\n    P1[\"Componentes\"] --> P2[\"Agrupa por pasta\"] --> P3[\"Conta por plataforma<br/>API · Mobile · Web\"] --> P4[\"Estado da pasta<br/>pela última execução\"]\n  end",
+   "funcionalidades": [
+    [
+     "Visão por pasta e em lista",
+     "Cada pasta mostra a composição (“3 componentes de API, 1 de Mobile e 1 de Web”), o tempo médio e se há falhas."
+    ],
+    [
+     "Filtros",
+     "Texto, pasta, status e plataforma; os contadores do topo também filtram."
+    ],
+    [
+     "Menu da pasta",
+     "Executar todos, ver tempo de execução, renomear e excluir."
+    ],
+    [
+     "Menu do componente",
+     "Executar, ativar/desativar, ver execuções, analisar com IA (opcional) e excluir."
+    ],
+    [
+     "Nova pipeline",
+     "Nome, pasta, nº de cenários e plataforma."
+    ]
+   ],
+   "regras": [
+    [
+     "RN-PIP-01",
+     "Todo componente pertence a uma pasta e tem uma plataforma: API, Mobile ou Web."
+    ],
+    [
+     "RN-PIP-02",
+     "O nome do componente é único (sem diferenciar maiúsculas)."
+    ],
+    [
+     "RN-PIP-03",
+     "Renomear pasta não aceita nome que já existe."
+    ],
+    [
+     "RN-PIP-04",
+     "Uma pasta está “com falha” quando algum componente teve a última execução com status Falha."
+    ],
+    [
+     "RN-PIP-05",
+     "Excluir pasta exige digitar o nome exato da pasta."
+    ],
+    [
+     "RN-PIP-06",
+     "Ao excluir, execuções em andamento da pasta são interrompidas (Cancelada)."
+    ],
+    [
+     "RN-PIP-07",
+     "Por padrão, excluir pasta remove os cenários vinculados e mantém o histórico de execuções, para preservar a auditoria."
+    ],
+    [
+     "RN-PIP-08",
+     "A exclusão pode ser desfeita por 8 segundos."
+    ],
+    [
+     "RN-PIP-09",
+     "“Executar todos” dispara só os componentes ativos da pasta."
+    ],
+    [
+     "RN-PIP-10",
+     "Componente desativado sai das métricas de tempo quando o filtro “Somente ativos” está ligado."
+    ]
+   ]
+  },
+  {
+   "id": "execucoes",
+   "titulo": "Execuções: Histórico, Ao vivo e Detalhe",
+   "status": "Implementado",
+   "status_tipo": "real",
+   "descricao": "Lista todas as execuções e acompanha as esteiras rodando agora, cenário a cenário.",
+   "codigo": "`30-execucoes.js` · `31-detalhe.js` · `90-tempo-real.js` · `91-conexao-servidor.js`",
+   "diagrama": "stateDiagram-v2\n  direction LR\n  [*] --> Executando: build_start\n  Executando --> Executando: cenário passou / falhou\n  Executando --> Sucesso: todos passaram\n  Executando --> Falha: algum falhou\n  Executando --> Cancelada: Parar ou pasta excluída\n  Sucesso --> [*]\n  Falha --> [*]\n  Cancelada --> [*]",
+   "funcionalidades": [
+    [
+     "Histórico",
+     "Lista paginada com busca por número ou componente e filtros de componente, status e período."
+    ],
+    [
+     "Importar JSON",
+     "Carrega execuções de um arquivo (`pipeline`, `total`, `passed`, `duration`, `inicio`, `grupo`, `tecnologia`)."
+    ],
+    [
+     "Ao vivo",
+     "Um card por esteira: tempo decorrido × média, projeção, barra por cenário, tempo de resposta e duração de cada cenário. Feed de eventos."
+    ],
+    [
+     "Detalhe da execução",
+     "Cenários, logs e evidências das falhas; reexecutar."
+    ],
+    [
+     "Executar e Parar",
+     "No modo conectado, disparam e param o build no Jenkins."
+    ]
+   ],
+   "regras": [
+    [
+     "RN-EXE-01",
+     "Um componente só pode ter uma execução rodando por vez."
+    ],
+    [
+     "RN-EXE-02",
+     "Status final: Sucesso se todos os cenários passaram; Falha se algum falhou; Cancelada se foi interrompida."
+    ],
+    [
+     "RN-EXE-03",
+     "Ao parar, cenários pendentes ou em andamento ficam como “não executados”."
+    ],
+    [
+     "RN-EXE-04",
+     "Projeção do tempo = (tempo decorrido ÷ cenários concluídos) × total de cenários; Δ compara a projeção com a média do componente."
+    ],
+    [
+     "RN-EXE-05",
+     "Tempo de resposta acima de 1.000 ms aparece em vermelho; 30.000 ms conta como timeout."
+    ],
+    [
+     "RN-EXE-06",
+     "O histórico mostra 10 execuções por página."
+    ],
+    [
+     "RN-EXE-07",
+     "“Concluídas recentemente” mostra as 6 últimas; o feed guarda os 60 eventos mais recentes."
+    ],
+    [
+     "RN-EXE-08",
+     "Sem servidor, a simulação roda 10× mais rápida e inicia uma esteira nova a cada 6 s enquanto houver menos de 3 rodando (pode ser desligada)."
+    ],
+    [
+     "RN-EXE-09",
+     "Importar JSON cria o componente se ele não existir (na pasta informada ou “Importado”)."
+    ],
+    [
+     "RN-EXE-10",
+     "Jobs em pastas do Jenkins (`Pasta/Job`) casam com o componente pela última parte do caminho."
+    ]
+   ]
+  },
+  {
+   "id": "cenarios",
+   "titulo": "Cenários de teste (lidos do Jira)",
+   "status": "Implementado",
+   "status_tipo": "real",
+   "descricao": "Os cenários não são cadastrados no portal: vêm do Jira pela API, e o portal cruza cada um com o último resultado no Jenkins.",
+   "codigo": "`40-cenarios.js` · `server.js` (`jiraScenarios`, rota `/api/jira/scenarios`)",
+   "diagrama": "flowchart LR\n  A[\"Atualizar do Jira\"] --> B[\"Servidor busca issues<br/>com a consulta JQL\"]\n  B --> C[\"Campo do componente<br/>components · labels · customfield\"]\n  C --> D[\"Lista de cenários<br/>chave · nome · status · componente\"]\n  D --> E{\"Achou o cenário na<br/>última execução do componente?<br/>por ID CT-xxx ou nome\"}\n  E -- \"sim\" --> F[\"Último resultado<br/>Sucesso · Falha · Executando\"]\n  E -- \"não\" --> G[\"Sem execução\"]",
+   "funcionalidades": [
+    [
+     "Origem: Jira",
+     "Mostra a consulta usada, quantos cenários vieram e quando foi a última atualização."
+    ],
+    [
+     "Editar consulta",
+     "Troca a consulta e o campo do Jira que indica o componente."
+    ],
+    [
+     "Lista",
+     "Chave Jira com link, cenário, componente, status no Jira e último resultado."
+    ],
+    [
+     "Filtros",
+     "Texto, componente, status no Jira e último resultado."
+    ]
+   ],
+   "regras": [
+    [
+     "RN-CEN-01",
+     "O portal só lê cenários; criar e editar cenários continua no Jira."
+    ],
+    [
+     "RN-CEN-02",
+     "O componente do cenário vem do campo configurado (padrão: `components`)."
+    ],
+    [
+     "RN-CEN-03",
+     "O ID `CT-xxx` no título da issue liga o cenário às linhas do log do Jenkins."
+    ],
+    [
+     "RN-CEN-04",
+     "Último resultado = situação do cenário na execução mais recente (não cancelada) do componente."
+    ],
+    [
+     "RN-CEN-05",
+     "A busca no Jira traz no máximo 1.000 cenários, em páginas de 100."
+    ]
+   ]
+  },
+  {
+   "id": "analises",
+   "titulo": "Análises",
+   "status": "Implementado",
+   "status_tipo": "real",
+   "descricao": "Métricas por período, em três abas que não se repetem: Qualidade, Tempo de execução e Estabilidade.",
+   "codigo": "`50-analises.js` · `51-analises-tempo.js`",
+   "diagrama": "flowchart TB\n  F[\"Filtro de período<br/>7 · 15 · 30 · 90 dias\"] --> R[\"Execuções concluídas no período<br/>janela termina no fim do dia atual\"]\n  F --> RP[\"Mesmo nº de dias imediatamente antes\"]\n  R --> Q[\"Qualidade<br/>execuções · taxa · falhas · MTTR<br/>por dia ou semana · causa raiz · horário\"]\n  RP --> Q\n  R --> T[\"Tempo de execução<br/>média por plataforma · total atual · Δ<br/>por projeto e componente · CSV\"]\n  R --> S[\"Estabilidade<br/>falhas por componente · abaixo da meta · flaky\"]",
+   "funcionalidades": [
+    [
+     "Qualidade",
+     "Indicadores com comparação ao período anterior, sucessos e falhas por dia ou semana, evolução da taxa, falhas por causa raiz e mapa de calor por dia da semana e horário."
+    ],
+    [
+     "Tempo de execução",
+     "Filtros por projeto, plataforma e componente; cards por plataforma; tabela com execução mais recente, média e Δ; subtotais por projeto; relatório CSV para auditoria; atualiza ao vivo."
+    ],
+    [
+     "Estabilidade",
+     "Falhas por componente, componentes abaixo da meta e testes instáveis."
+    ]
+   ],
+   "regras": [
+    [
+     "RN-ANA-01",
+     "O período escolhido vale para as três abas; só contam execuções Sucesso ou Falha."
+    ],
+    [
+     "RN-ANA-02",
+     "Cada indicador é comparado com o período anterior de mesmo tamanho."
+    ],
+    [
+     "RN-ANA-03",
+     "Até 30 dias, os gráficos são por dia; em 90 dias, por semana."
+    ],
+    [
+     "RN-ANA-04",
+     "MTTR = tempo médio entre a primeira falha de um componente e a próxima execução com sucesso dele."
+    ],
+    [
+     "RN-ANA-05",
+     "Causa raiz pela mensagem de erro: timeout → “Timeout de API”; HTTP 500 → “HTTP 500”; demais → “Validação / dados”."
+    ],
+    [
+     "RN-ANA-06",
+     "Média da plataforma = Σ durações das execuções dela no período ÷ nº de execuções dela."
+    ],
+    [
+     "RN-ANA-07",
+     "Tempo total atual = soma da execução mais recente de cada componente filtrado; Δ compara com a soma das médias dos mesmos componentes."
+    ],
+    [
+     "RN-ANA-08",
+     "Componentes rodando agora aparecem como “ao vivo” e só entram no total quando terminam."
+    ],
+    [
+     "RN-ANA-09",
+     "Teste instável (flaky) = cenário que falhou e também passou no mesmo período. Taxa = falhas ÷ execuções do cenário."
+    ],
+    [
+     "RN-ANA-10",
+     "“Abaixo da meta” lista componentes com taxa menor que a meta de Configurações (padrão 95%), considerando só os que rodaram no período."
+    ],
+    [
+     "RN-ANA-11",
+     "O CSV leva no cabeçalho o período, os filtros e a data de geração, e inclui a média de cada plataforma."
+    ]
+   ],
+   "nota": "Com dados de exemplo, a causa raiz de alguns cenários é atribuída de forma simulada. Conectado ao Jenkins, ela sai da mensagem de erro do log."
+  },
+  {
+   "id": "jenkins",
+   "titulo": "Servidor: integração com o Jenkins",
+   "status": "Implementado",
+   "status_tipo": "real",
+   "descricao": "O servidor acompanha os builds pela API REST do Jenkins e transforma o log em eventos por cenário.",
+   "codigo": "`server/server.js` (`discover`, `track`, `parseLines`, `finish`)",
+   "diagrama": "sequenceDiagram\n  participant S as Servidor\n  participant J as Jenkins\n  participant P as Portal\n  loop a cada 30 s\n    S->>J: builds em andamento dos jobs configurados\n  end\n  S-->>P: build_start\n  loop a cada 3 s enquanto houver log novo\n    S->>J: trecho novo do log\n    S-->>P: scenario (uma por linha de resultado)\n    S->>J: estágios da pipeline\n    S-->>P: stage (quando muda)\n  end\n  S->>J: resultado e relatório de testes\n  S-->>P: build_end",
+   "funcionalidades": [
+    [
+     "Descoberta de builds",
+     "Consulta os jobs de `JENKINS_JOBS`, inclusive em pastas."
+    ],
+    [
+     "Leitura progressiva do log",
+     "Lê só o trecho novo, junta linhas cortadas e remove cores."
+    ],
+    [
+     "Tempo de resposta",
+     "Linhas `[resp] CT-xxx 412ms` no log viram o tempo de resposta do cenário."
+    ],
+    [
+     "Executar e parar",
+     "Rotas `/api/build` e `/api/stop`."
+    ]
+   ],
+   "regras": [
+    [
+     "RN-JEN-01",
+     "Builds novos são procurados a cada 30 s; o log de um build em andamento é lido a cada 3 s (ambos configuráveis)."
+    ],
+    [
+     "RN-JEN-02",
+     "Linhas de resultado reconhecidas: Playwright, Cypress/Mocha, Jest; outros formatos por regex configurável."
+    ],
+    [
+     "RN-JEN-03",
+     "Status do build: ABORTED → Cancelada; SUCCESS sem falhas → Sucesso; qualquer outro → Falha."
+    ],
+    [
+     "RN-JEN-04",
+     "Totais finais vêm do relatório de testes (JUnit); sem relatório, das linhas do log."
+    ],
+    [
+     "RN-JEN-05",
+     "Sem o plugin de estágios, o servidor segue sem eventos de estágio."
+    ],
+    [
+     "RN-JEN-06",
+     "Quem conecta recebe os últimos 300 eventos para montar o estado atual."
+    ],
+    [
+     "RN-JEN-07",
+     "Credenciais do Jenkins ficam só no servidor (`.env`)."
+    ]
+   ]
+  },
+  {
+   "id": "jira",
+   "titulo": "Servidor: integração com o Jira",
+   "status": "Implementado",
+   "status_tipo": "real",
+   "descricao": "Lê os cenários de teste e, se ligado, abre bugs para cenários que falharam sem duplicar.",
+   "codigo": "`server/server.js` (`jiraScenarios`, `reportBug`, `findOpenBug`)",
+   "diagrama": "flowchart LR\n  A[\"Build terminou<br/>com falhas\"] --> B{\"Abertura automática<br/>de bugs ligada?\"}\n  B -- \"não\" --> Z[\"Nada a fazer\"]\n  B -- \"sim\" --> C[\"Para cada cenário que falhou\"]\n  C --> D{\"Existe bug aberto<br/>com o mesmo CT-xxx?\"}\n  D -- \"sim\" --> E[\"Comenta no bug existente\"]\n  D -- \"não\" --> F[\"Cria bug<br/>[QA] componente – cenário\"]\n  E --> G[\"Evento jira no feed\"]\n  F --> G",
+   "funcionalidades": [
+    [
+     "Cenários por consulta",
+     "Busca issues com a consulta configurada e devolve chave, nome, status, componente e link."
+    ],
+    [
+     "Bugs automáticos",
+     "Cria ou comenta bugs para cenários que falharam."
+    ],
+    [
+     "Bug manual",
+     "Rota `/api/jira/bug`."
+    ]
+   ],
+   "regras": [
+    [
+     "RN-JIR-01",
+     "Abertura automática de bugs é desligada por padrão."
+    ],
+    [
+     "RN-JIR-02",
+     "Não cria bug duplicado: se há bug aberto (status diferente de concluído) com o mesmo ID de cenário, comenta nele."
+    ],
+    [
+     "RN-JIR-03",
+     "Bug criado leva título `[QA] componente – cenário`, link do build e as labels configuradas."
+    ],
+    [
+     "RN-JIR-04",
+     "Funciona com Jira Cloud (API v3) e Server/Data Center (API v2)."
+    ],
+    [
+     "RN-JIR-05",
+     "Credenciais do Jira ficam só no servidor (`.env`)."
+    ]
+   ]
+  },
+  {
+   "id": "config",
+   "titulo": "Configurações, integrações e dados",
+   "status": "Implementado",
+   "status_tipo": "real",
+   "descricao": "Preferências da plataforma e onde cada dado fica guardado.",
+   "codigo": "`70-configuracoes.js` · `60-integracoes.js` · `server/.env`",
+   "diagrama": "flowchart LR\n  subgraph NAV2[\"Navegador · localStorage\"]\n    C1[\"Configurações<br/>meta · IA · consulta Jira\"]\n    C2[\"Componentes e cenários<br/>criados na tela\"]\n    C3[\"Estado das integrações\"]\n  end\n  subgraph SRV2[\"Servidor · .env\"]\n    E1[\"Tokens do Jenkins e do Jira\"]\n    E2[\"Jobs · intervalos · regex\"]\n    E3[\"Chave da API · CORS\"]\n  end\n  C1 --> T[\"Telas\"]\n  C2 --> T\n  E1 --> API2[\"Rotas /api e SSE\"] --> T",
+   "funcionalidades": [
+    [
+     "Geral",
+     "Nome do workspace, idioma, fuso, alertas, resumo semanal e Recursos de IA."
+    ],
+    [
+     "Dados",
+     "Retenção do histórico, meta de taxa de sucesso e restauração dos dados de exemplo."
+    ],
+    [
+     "Integrações",
+     "Azure DevOps, GitLab CI, Jenkins, Jira e Importação de JSON."
+    ]
+   ],
+   "regras": [
+    [
+     "RN-CFG-01",
+     "Meta de taxa de sucesso padrão: 95% (aceita de 50% a 100%)."
+    ],
+    [
+     "RN-CFG-02",
+     "Recursos de IA começam desligados."
+    ],
+    [
+     "RN-CFG-03",
+     "O que é criado na tela fica no navegador da pessoa e não é compartilhado com outras pessoas."
+    ],
+    [
+     "RN-CFG-04",
+     "Tokens nunca ficam no navegador; a conexão real com Jenkins e Jira é feita só pelo servidor."
+    ],
+    [
+     "RN-CFG-05",
+     "Com chave de API definida, o servidor exige a chave em `/events` e nas rotas que alteram algo."
+    ],
+    [
+     "RN-CFG-06",
+     "As telas de Integrações guardam só o estado visual; configurar ali não conecta o serviço."
+    ]
+   ]
+  },
+  {
+   "id": "agente",
+   "titulo": "Agente de QA",
+   "status": "Opcional",
+   "status_tipo": "opt",
+   "descricao": "Chat que explica falhas e recomenda próximos passos. Fica escondido enquanto as integrações forem só Jenkins e Jira.",
+   "codigo": "`95-agente-ia.js`",
+   "diagrama": "flowchart LR\n  A[\"Pergunta\"] --> B{\"Tipo de pergunta\"}\n  B -- \"nº de execução\" --> C[\"Cenários que falharam<br/>nessa execução\"]\n  B -- \"nome de componente\" --> D[\"Padrões de falha<br/>do componente\"]\n  B -- \"agora · ao vivo\" --> E[\"Esteiras rodando\"]\n  B -- \"lento · duração\" --> F[\"Componentes mais lentos\"]\n  B -- \"flaky · instável\" --> G[\"Testes instáveis\"]\n  B -- \"resumo · release\" --> H[\"Resumo do período\"]\n  C --> R[\"Resposta + recomendação\"]\n  D --> R\n  E --> R\n  F --> R\n  G --> R\n  H --> R",
+   "funcionalidades": [
+    [
+     "Chat",
+     "Painel no Dashboard e tela cheia, com sugestões de perguntas."
+    ],
+    [
+     "Analisar com IA",
+     "Botões em várias telas que enviam a pergunta pronta."
+    ]
+   ],
+   "regras": [
+    [
+     "RN-IA-01",
+     "Só aparece com Recursos de IA ligado; desligado, nenhum botão de IA é exibido."
+    ],
+    [
+     "RN-IA-02",
+     "Nesta versão responde por regras sobre os dados carregados, sem chamar modelo de IA."
+    ],
+    [
+     "RN-IA-03",
+     "Nenhuma integração com modelo de IA deve ser adicionada nesta fase."
+    ]
+   ]
+  },
+  {
+   "id": "sso",
+   "titulo": "Login com SSO e permissões",
+   "status": "Proposta",
+   "status_tipo": "prop",
+   "descricao": "Desenhado e documentado em `docs/SSO.md`; ainda não implementado. Depende da escolha do provedor de SSO.",
+   "diagrama": "flowchart LR\n  A[\"Entrar com SSO\"] --> B[\"Provedor da empresa<br/>login + MFA\"]\n  B --> C[\"Servidor recebe<br/>identidade e grupos\"]\n  C --> D{\"Grupo ou e-mail<br/>mapeado a um papel?\"}\n  D -- \"não\" --> E[\"Acesso negado<br/>ou Leitor, conforme configuração\"]\n  D -- \"sim\" --> F[\"Papel com mais acesso<br/>Gestor · Analista · Leitor\"]\n  F --> G[\"Seções e ações permitidas\"]\n  G --> H[\"Tela esconde o resto\"]\n  G --> I[\"Servidor bloqueia rotas<br/>não permitidas\"]",
+   "funcionalidades": [
+    [
+     "Login",
+     "Entrar com SSO corporativo ou pelo e-mail (descobre o provedor pelo domínio); telas de redirecionamento e acesso negado."
+    ],
+    [
+     "Permissões",
+     "Papéis × seções do menu e × ações; grupos do SSO e e-mails ligados a papéis; histórico de alterações."
+    ]
+   ],
+   "regras": [
+    [
+     "RN-SSO-01",
+     "Não existe usuário e senha padrão; quem confere a senha é o provedor da empresa."
+    ],
+    [
+     "RN-SSO-02",
+     "O primeiro Gestor é definido no servidor (e-mail no arquivo de permissões ou no `.env`)."
+    ],
+    [
+     "RN-SSO-03",
+     "Quem está em mais de um grupo recebe o papel com mais acesso."
+    ],
+    [
+     "RN-SSO-04",
+     "Quem não está em nenhum grupo tem o acesso negado (padrão) ou entra como Leitor."
+    ],
+    [
+     "RN-SSO-05",
+     "O papel Gestor tem acesso total e não pode ser alterado."
+    ],
+    [
+     "RN-SSO-06",
+     "A permissão vale na tela e no servidor: rotas de seções ou ações não permitidas são bloqueadas."
+    ],
+    [
+     "RN-SSO-07",
+     "Toda alteração de permissão fica registrada com quem fez e quando."
+    ]
+   ]
+  }
+ ],
+ "canvas": {
+  "titulo": "Ligações do QA AI Agent",
+  "categorias": {
+   "fonte": {
+    "nome": "Fonte",
+    "cor": "#f2a93b",
+    "detalhe": "Formato"
+   },
+   "servidor": {
+    "nome": "Servidor",
+    "cor": "#5b9cff",
+    "detalhe": "Formato"
+   },
+   "portal": {
+    "nome": "Portal",
+    "cor": "#36c2b4",
+    "detalhe": "Formato"
+   },
+   "dados": {
+    "nome": "Dados",
+    "cor": "#a78bfa",
+    "detalhe": "Formato"
+   },
+   "calculo": {
+    "nome": "Cálculo",
+    "cor": "#4fd17a",
+    "detalhe": "Fórmula"
+   },
+   "metrica": {
+    "nome": "Métrica",
+    "cor": "#ff7a93",
+    "detalhe": "Fórmula"
+   },
+   "tela": {
+    "nome": "Tela",
+    "cor": "#c9ced8",
+    "detalhe": "Formato"
+   }
+  },
+  "colunas": [
+   [
+    "Fontes e gatilhos",
+    "De onde os dados e as ações nascem"
+   ],
+   [
+    "Servidor · entrada",
+    "Segurança, descoberta e comandos"
+   ],
+   [
+    "Servidor · acompanhamento",
+    "Um laço por build em andamento"
+   ],
+   [
+    "Servidor · leitura do build",
+    "Log, estágios e resultado"
+   ],
+   [
+    "Servidor · saída",
+    "Eventos em tempo real e Jira"
+   ],
+   [
+    "Portal · entrada",
+    "Como os dados entram na tela"
+   ],
+   [
+    "Dados em memória",
+    "O que o portal guarda"
+   ],
+   [
+    "Funções de cálculo",
+    "Onde as métricas são calculadas"
+   ],
+   [
+    "Métricas",
+    "Cada número e sua fórmula"
+   ],
+   [
+    "Telas",
+    "Onde cada métrica aparece"
+   ]
+  ],
+  "nos": [
+   {
+    "id": "src_jenkins",
+    "col": 0,
+    "cat": "fonte",
+    "titulo": "Jenkins",
+    "onde": "API REST · Basic Auth (usuário + API token)",
+    "descricao": "Builds, log do console, estágios e relatório de testes de cada job configurado.",
+    "passos": [
+     "Lido pelo servidor, nunca pelo navegador.",
+     "Endpoints: /job/…/api/json (builds), /…/logText/progressiveText (log), /…/wfapi/describe (estágios), /…/testReport/api/json (totais), /…/build e /…/stop (comandos).",
+     "Jobs em pastas viram /job/Pasta/job/Job."
+    ],
+    "regras": [
+     "RN-JEN-07"
+    ]
+   },
+   {
+    "id": "src_jira",
+    "col": 0,
+    "cat": "fonte",
+    "titulo": "Jira",
+    "onde": "API REST v3 (Cloud) ou v2 (Server/DC)",
+    "descricao": "Cenários de teste por consulta (JQL) e bugs abertos para falhas.",
+    "passos": [
+     "Busca: /rest/api/3/search/jql (Cloud) ou /rest/api/2/search (Server).",
+     "Criação: POST /issue · comentário: POST /issue/{chave}/comment.",
+     "Autenticação: e-mail + API token (Cloud) ou token pessoal (Server)."
+    ],
+    "regras": [
+     "RN-JIR-04",
+     "RN-JIR-05"
+    ]
+   },
+   {
+    "id": "f_actions",
+    "col": 0,
+    "cat": "fonte",
+    "titulo": "Ações da pessoa no portal",
+    "onde": "81-acoes.js · 20-pipelines.js · 70-configuracoes.js",
+    "descricao": "Executar, parar, criar/renomear/excluir pasta e componente, ativar/desativar, editar configurações e filtros.",
+    "passos": [
+     "Sem servidor: Executar inicia a simulação (startLive).",
+     "Conectado (?api=): Executar e Parar chamam POST /api/build e /api/stop.",
+     "Excluir pasta: confirmação com o nome digitado, interrompe execuções, desfazer por 8 s.",
+     "Configurações gravam em CFG (meta, IA, consulta do Jira)."
+    ],
+    "regras": [
+     "RN-PIP-02",
+     "RN-PIP-03",
+     "RN-PIP-05",
+     "RN-PIP-06",
+     "RN-PIP-07",
+     "RN-PIP-08",
+     "RN-PIP-09",
+     "RN-EXE-01"
+    ],
+    "codigo": [
+     {
+      "arquivo": "assets/js/90-tempo-real.js",
+      "funcao": "startRun"
+     },
+     {
+      "arquivo": "assets/js/90-tempo-real.js",
+      "funcao": "triggerJenkins"
+     },
+     {
+      "arquivo": "assets/js/81-acoes.js",
+      "funcao": "deleteFolder"
+     },
+     {
+      "arquivo": "assets/js/81-acoes.js",
+      "funcao": "renameFolder"
+     }
+    ]
+   },
+   {
+    "id": "src_json",
+    "col": 0,
+    "cat": "fonte",
+    "titulo": "Arquivo JSON importado",
+    "onde": "Execuções › Importar JSON",
+    "descricao": "Lista de execuções vinda de outra ferramenta.",
+    "formula": "{ pipeline, total, passed, duration, inicio, grupo, tecnologia }",
+    "passos": [
+     "Aceita uma lista ou { \"executions\": [...] }.",
+     "Campos alternativos: p, t/cenarios, ok/sucessos, duracao, start, group, tech."
+    ],
+    "regras": [
+     "RN-EXE-09"
+    ]
+   },
+   {
+    "id": "src_sample",
+    "col": 0,
+    "cat": "fonte",
+    "titulo": "Dados de exemplo",
+    "onde": "01-dados.js · gen()",
+    "descricao": "13 componentes em 4 pastas e cerca de 7.600 execuções espalhadas em 6 meses, para testar sem servidor.",
+    "formula": "falha ⇔ sorteio × 100 > taxa − viés",
+    "passos": [
+     "Gera execuções a cada 6–36 min, das 7h às 21h.",
+     "Falha quando um sorteio passa da taxa de referência do componente menos um viés.",
+     "Viés maior no Checkout, em execuções antigas e no horário de pico (10h–12h em dias úteis)."
+    ],
+    "codigo": [
+     {
+      "arquivo": "assets/js/01-dados.js",
+      "inicio": "(function gen()",
+      "fim": "})();"
+     }
+    ]
+   },
+   {
+    "id": "src_clock",
+    "col": 0,
+    "cat": "fonte",
+    "titulo": "Relógio do portal",
+    "onde": "91-conexao-servidor.js · setInterval 1 s",
+    "descricao": "Bate a cada segundo: avança a simulação, atualiza o tempo decorrido das esteiras reais e redesenha as telas abertas.",
+    "passos": [
+     "Simulação: avança 10 s de cenário por segundo real (SPEED = 10).",
+     "A cada 6 batidas, inicia uma esteira nova se houver menos de 3 rodando (simulação automática).",
+     "Esteiras do Jenkins: tempo decorrido = agora − início."
+    ],
+    "regras": [
+     "RN-EXE-08"
+    ],
+    "codigo": [
+     {
+      "arquivo": "assets/js/91-conexao-servidor.js",
+      "inicio": "setInterval(() => {",
+      "fim": "}, 1000);"
+     }
+    ]
+   },
+   {
+    "id": "s_auth",
+    "col": 1,
+    "cat": "servidor",
+    "titulo": "Chave da API e CORS",
+    "onde": "server.js · authorized()",
+    "descricao": "Protege as rotas: /events, /api/state e as que alteram algo exigem a chave quando API_KEY está definida.",
+    "formula": "x-api-key = API_KEY  ou  ?key = API_KEY",
+    "passos": [
+     "/api/health é livre.",
+     "CORS_ORIGIN define qual site pode chamar o servidor."
+    ],
+    "regras": [
+     "RN-CFG-05"
+    ],
+    "codigo": [
+     {
+      "arquivo": "server/server.js",
+      "funcao": "authorized"
+     }
+    ]
+   },
+   {
+    "id": "s_discover",
+    "col": 1,
+    "cat": "servidor",
+    "titulo": "Descoberta de builds",
+    "onde": "server.js · discover()",
+    "descricao": "A cada 30 s consulta os jobs configurados e começa a acompanhar cada build em andamento ainda não acompanhado.",
+    "formula": "GET /job/{job}/api/json?tree=builds[number,building,timestamp,estimatedDuration]{0,5}",
+    "regras": [
+     "RN-JEN-01"
+    ],
+    "codigo": [
+     {
+      "arquivo": "server/server.js",
+      "funcao": "discover"
+     }
+    ]
+   },
+   {
+    "id": "s_cmd",
+    "col": 1,
+    "cat": "servidor",
+    "titulo": "Executar e parar build",
+    "onde": "server.js · triggerBuild() · stopBuild()",
+    "descricao": "Recebe os comandos do portal e repassa ao Jenkins.",
+    "formula": "POST /api/build {job, params?} → /job/{job}/build(WithParameters)\nPOST /api/stop {job, build} → /job/{job}/{build}/stop",
+    "passos": [
+     "Depois de disparar, procura builds de novo em 4 s (o build entra na fila antes de começar)."
+    ],
+    "codigo": [
+     {
+      "arquivo": "server/server.js",
+      "funcao": "triggerBuild"
+     },
+     {
+      "arquivo": "server/server.js",
+      "funcao": "stopBuild"
+     }
+    ]
+   },
+   {
+    "id": "s_jirasc",
+    "col": 1,
+    "cat": "servidor",
+    "titulo": "Cenários do Jira",
+    "onde": "server.js · jiraScenarios() · GET /api/jira/scenarios",
+    "descricao": "Busca as issues de teste pela consulta e devolve chave, nome, status, componente e link.",
+    "formula": "componente = campo JIRA_PIPELINE_FIELD (components · labels · customfield)",
+    "passos": [
+     "Páginas de 100 issues, até 1.000.",
+     "Cloud pagina por nextPageToken; Server por startAt.",
+     "Sem Jira configurado e em modo demonstração, devolve 6 cenários de exemplo."
+    ],
+    "regras": [
+     "RN-CEN-02",
+     "RN-CEN-05"
+    ],
+    "codigo": [
+     {
+      "arquivo": "server/server.js",
+      "funcao": "jiraScenarios"
+     }
+    ]
+   },
+   {
+    "id": "s_track",
+    "col": 2,
+    "cat": "servidor",
+    "titulo": "Acompanhamento do build",
+    "onde": "server.js · track()",
+    "descricao": "Para cada build em andamento: emite o início e lê o log em laço até o Jenkins dizer que acabou.",
+    "formula": "repetir a cada 3 s enquanto X-More-Data = true",
+    "passos": [
+     "Emite build_start com número, início, duração estimada e pasta.",
+     "Lê só o trecho novo do log a partir do deslocamento (X-Text-Size).",
+     "Lê os estágios a cada volta.",
+     "No fim, chama finish()."
+    ],
+    "regras": [
+     "RN-JEN-01"
+    ],
+    "codigo": [
+     {
+      "arquivo": "server/server.js",
+      "funcao": "track"
+     }
+    ]
+   },
+   {
+    "id": "s_parse",
+    "col": 3,
+    "cat": "servidor",
+    "titulo": "Leitura do log",
+    "onde": "server.js · parseLines()",
+    "descricao": "Transforma cada linha de resultado do log num evento de cenário, com status, duração e tempo de resposta.",
+    "formula": "linha ✓/✘ nome (1.2s) → {name, status, duration}\n[resp] CT-001 412ms → resp = 412",
+    "passos": [
+     "Junta a linha que veio cortada entre duas leituras.",
+     "Remove cores ANSI.",
+     "Formatos: Playwright, Cypress/Mocha, Jest; outros por LOG_REGEX.",
+     "Duração convertida para segundos (ms ÷ 1000, m × 60).",
+     "Liga o tempo de resposta ao cenário pelo nome ou pelo ID CT-xxx."
+    ],
+    "regras": [
+     "RN-JEN-02",
+     "RN-CEN-03"
+    ],
+    "codigo": [
+     {
+      "arquivo": "server/server.js",
+      "funcao": "parseLines"
+     },
+     {
+      "arquivo": "server/server.js",
+      "funcao": "toSeconds"
+     },
+     {
+      "arquivo": "server/server.js",
+      "funcao": "cleanName"
+     },
+     {
+      "arquivo": "server/server.js",
+      "funcao": "respFor"
+     }
+    ]
+   },
+   {
+    "id": "s_stages",
+    "col": 3,
+    "cat": "servidor",
+    "titulo": "Estágios da pipeline",
+    "onde": "server.js · pollStages()",
+    "descricao": "Emite um evento sempre que um estágio do Jenkins muda de status.",
+    "formula": "GET /job/{job}/{n}/wfapi/describe",
+    "regras": [
+     "RN-JEN-05"
+    ],
+    "codigo": [
+     {
+      "arquivo": "server/server.js",
+      "funcao": "pollStages"
+     }
+    ]
+   },
+   {
+    "id": "s_finish",
+    "col": 3,
+    "cat": "servidor",
+    "titulo": "Resultado final",
+    "onde": "server.js · finish()",
+    "descricao": "Fecha o build: status, duração e totais. Dispara os bugs no Jira se estiver ligado.",
+    "formula": "ABORTED → Cancelada\nSUCCESS e falhas = 0 → Sucesso\nsenão → Falha\ntotal = aprovados + falhas + ignorados",
+    "passos": [
+     "Totais vêm do relatório JUnit; sem relatório, das linhas do log."
+    ],
+    "regras": [
+     "RN-JEN-03",
+     "RN-JEN-04"
+    ],
+    "codigo": [
+     {
+      "arquivo": "server/server.js",
+      "funcao": "finish"
+     }
+    ]
+   },
+   {
+    "id": "s_bug",
+    "col": 4,
+    "cat": "servidor",
+    "titulo": "Bugs no Jira",
+    "onde": "server.js · reportBug() · findOpenBug()",
+    "descricao": "Para cada cenário que falhou: comenta no bug aberto do mesmo cenário ou cria um novo.",
+    "formula": "JQL: project = X AND summary ~ \"CT-xxx\" AND statusCategory != Done",
+    "passos": [
+     "Só roda com JIRA_AUTO_BUG=true.",
+     "Título: [QA] componente – cenário; descrição com o link do build.",
+     "Cloud recebe a descrição em formato ADF; Server em texto."
+    ],
+    "regras": [
+     "RN-JIR-01",
+     "RN-JIR-02",
+     "RN-JIR-03"
+    ],
+    "codigo": [
+     {
+      "arquivo": "server/server.js",
+      "funcao": "findOpenBug"
+     },
+     {
+      "arquivo": "server/server.js",
+      "funcao": "reportBug"
+     }
+    ]
+   },
+   {
+    "id": "s_emit",
+    "col": 4,
+    "cat": "servidor",
+    "titulo": "Eventos em tempo real (SSE)",
+    "onde": "server.js · emit() · GET /events",
+    "descricao": "Envia cada evento a todos os portais conectados e guarda os últimos 300 para quem chega depois.",
+    "formula": "eventos: build_start · scenario · stage · build_end · jira",
+    "passos": [
+     "Reconexão automática do navegador em 3 s (retry: 3000).",
+     "Ping a cada 25 s para manter a conexão aberta."
+    ],
+    "regras": [
+     "RN-JEN-06"
+    ],
+    "codigo": [
+     {
+      "arquivo": "server/server.js",
+      "funcao": "emit"
+     }
+    ]
+   },
+   {
+    "id": "f_sse",
+    "col": 5,
+    "cat": "portal",
+    "titulo": "Conexão com o servidor",
+    "onde": "91-conexao-servidor.js · extStart() · extScenario() · extEnd()",
+    "descricao": "Ativa com ?api=. Converte os eventos do servidor em execuções e cenários na tela.",
+    "passos": [
+     "build_start: cria a execução (e o componente, se não existir).",
+     "scenario: marca o cenário como rodando, aprovado ou falho e soma os aprovados.",
+     "build_end: fecha a execução; cenários que não rodaram ficam “não executados”.",
+     "Desliga a simulação e muda a aba para “Ao vivo · Jenkins”."
+    ],
+    "regras": [
+     "RN-EXE-02",
+     "RN-EXE-03",
+     "RN-EXE-10"
+    ],
+    "codigo": [
+     {
+      "arquivo": "assets/js/91-conexao-servidor.js",
+      "funcao": "extStart"
+     },
+     {
+      "arquivo": "assets/js/91-conexao-servidor.js",
+      "funcao": "extScenario"
+     },
+     {
+      "arquivo": "assets/js/91-conexao-servidor.js",
+      "funcao": "extEnd"
+     }
+    ]
+   },
+   {
+    "id": "f_sim",
+    "col": 5,
+    "cat": "portal",
+    "titulo": "Simulação ao vivo",
+    "onde": "90-tempo-real.js · startLive() · advance()",
+    "descricao": "Sem servidor, executa a suíte de um componente cenário a cenário.",
+    "formula": "duração planejada do cenário ∝ duração média do componente (± 20%)\nfalha ⇔ sorteio < (100 − taxa)/100 × 0,6\ncenários “propensos” (Timeout, Confirmar…): 55%",
+    "passos": [
+     "Bloqueia uma segunda execução do mesmo componente.",
+     "Timeout de API registra 30.000 ms.",
+     "Tempo de resposta: API ≈ 180 ms, Web ≈ 410 ms, Mobile ≈ 620 ms (× 0,6–1,5; × 2,5 se falhou)."
+    ],
+    "regras": [
+     "RN-EXE-01",
+     "RN-EXE-05",
+     "RN-EXE-08"
+    ],
+    "codigo": [
+     {
+      "arquivo": "assets/js/90-tempo-real.js",
+      "funcao": "startLive"
+     },
+     {
+      "arquivo": "assets/js/90-tempo-real.js",
+      "funcao": "advance"
+     },
+     {
+      "arquivo": "assets/js/90-tempo-real.js",
+      "funcao": "respFor"
+     }
+    ]
+   },
+   {
+    "id": "f_import",
+    "col": 5,
+    "cat": "portal",
+    "titulo": "Importação de JSON",
+    "onde": "30-execucoes.js",
+    "descricao": "Lê o arquivo, cria componentes que faltam e adiciona as execuções no topo do histórico.",
+    "formula": "status = passed = total ? Sucesso : Falha",
+    "regras": [
+     "RN-EXE-09"
+    ],
+    "codigo": [
+     {
+      "arquivo": "assets/js/30-execucoes.js",
+      "bloco": "$('#importJson').addEventListener"
+     }
+    ]
+   },
+   {
+    "id": "f_sync",
+    "col": 5,
+    "cat": "portal",
+    "titulo": "Atualizar do Jira",
+    "onde": "40-cenarios.js · syncJira()",
+    "descricao": "Chama /api/jira/scenarios com a consulta e o campo das Configurações e substitui a lista de cenários.",
+    "formula": "CT-xxx no título → ID do cenário\nresto do título → nome",
+    "regras": [
+     "RN-CEN-01"
+    ],
+    "codigo": [
+     {
+      "arquivo": "assets/js/40-cenarios.js",
+      "funcao": "syncJira"
+     }
+    ]
+   },
+   {
+    "id": "f_store",
+    "col": 5,
+    "cat": "portal",
+    "titulo": "Armazenamento do navegador",
+    "onde": "00-base.js · store",
+    "descricao": "Guarda o que a pessoa cria ou muda, só naquele navegador.",
+    "formula": "qa:pipes2 · qa:scens · qa:ints · qa:cfg · qa:jiraSync",
+    "regras": [
+     "RN-CFG-03"
+    ],
+    "codigo": [
+     {
+      "arquivo": "assets/js/00-base.js",
+      "inicio": "const store",
+      "fim": "};"
+     }
+    ]
+   },
+   {
+    "id": "d_runs",
+    "col": 6,
+    "cat": "dados",
+    "titulo": "RUNS · execuções",
+    "onde": "01-dados.js",
+    "descricao": "Todas as execuções, da mais recente para a mais antiga.",
+    "formula": "{ id, p, s, ok, t, d, at, live? }",
+    "passos": [
+     "p = componente · s = Sucesso | Falha | Executando | Cancelada",
+     "ok / t = cenários aprovados / total · d = duração (s) · at = início"
+    ]
+   },
+   {
+    "id": "d_live",
+    "col": 6,
+    "cat": "dados",
+    "titulo": "LIVE · esteiras acompanhadas",
+    "onde": "90-tempo-real.js",
+    "descricao": "Execuções rodando agora e as concluídas nesta sessão, com cada cenário.",
+    "formula": "live.sc[] = { n, st, dur, resp }\nst = pend | run | pass | fail | skip"
+   },
+   {
+    "id": "d_pipes",
+    "col": 6,
+    "cat": "dados",
+    "titulo": "PIPES · componentes",
+    "onde": "01-dados.js",
+    "descricao": "Componentes com pasta, plataforma e valores de referência.",
+    "formula": "{ name, group, tech, rate, dur, scen, active? }",
+    "passos": [
+     "rate e dur são referências usadas só quando não há histórico."
+    ],
+    "regras": [
+     "RN-PIP-01"
+    ]
+   },
+   {
+    "id": "d_scens",
+    "col": 6,
+    "cat": "dados",
+    "titulo": "SCENS · cenários",
+    "onde": "40-cenarios.js",
+    "descricao": "Cenários vindos do Jira (ou de exemplo).",
+    "formula": "{ key, id, name, p, js, url }"
+   },
+   {
+    "id": "d_cfg",
+    "col": 6,
+    "cat": "dados",
+    "titulo": "CFG · configurações",
+    "onde": "70-configuracoes.js",
+    "descricao": "Preferências que mudam cálculos e telas.",
+    "formula": "goal = 95 · ai = false · jql · jiraField = components",
+    "regras": [
+     "RN-CFG-01",
+     "RN-CFG-02"
+    ]
+   },
+   {
+    "id": "d_events",
+    "col": 6,
+    "cat": "dados",
+    "titulo": "EVENTS · feed",
+    "onde": "90-tempo-real.js · logEvent()",
+    "descricao": "Linha do tempo do que aconteceu ao vivo.",
+    "formula": "até 60 eventos, mais recente primeiro",
+    "regras": [
+     "RN-EXE-07"
+    ]
+   },
+   {
+    "id": "c_period",
+    "col": 7,
+    "cat": "calculo",
+    "titulo": "Recorte do período",
+    "onde": "50-analises.js · periodRange() · runsIn()",
+    "descricao": "Separa as execuções concluídas da janela escolhida e da janela anterior de mesmo tamanho.",
+    "formula": "fim = meia-noite do dia seguinte\ninício = fim − dias\nanterior = [início − dias, início)\nentram só Sucesso e Falha",
+    "regras": [
+     "RN-ANA-01",
+     "RN-ANA-02",
+     "RN-DASH-02"
+    ],
+    "codigo": [
+     {
+      "arquivo": "assets/js/50-analises.js",
+      "funcao": "periodRange"
+     },
+     {
+      "arquivo": "assets/js/50-analises.js",
+      "funcao": "runsIn"
+     }
+    ]
+   },
+   {
+    "id": "c_metrics",
+    "col": 7,
+    "cat": "calculo",
+    "titulo": "Indicadores do período",
+    "onde": "50-analises.js · metrics()",
+    "descricao": "Calcula de uma vez execuções, aprovadas, falhas, taxa, cenários, flaky e MTTR.",
+    "formula": "n = execuções · ok = Sucesso · falhas = n − ok\ntaxa = ok ÷ n × 100",
+    "codigo": [
+     {
+      "arquivo": "assets/js/50-analises.js",
+      "funcao": "metrics"
+     }
+    ]
+   },
+   {
+    "id": "c_scen",
+    "col": 7,
+    "cat": "calculo",
+    "titulo": "Resultado por cenário",
+    "onde": "50-analises.js · scenarioStats() · 01-dados.js · suiteFor()",
+    "descricao": "Abre cada execução em cenários e conta, por cenário, quantas vezes rodou e falhou.",
+    "formula": "chave = componente | cenário\nruns += 1 · fails += 1 se falhou",
+    "passos": [
+     "suiteFor distribui as falhas da execução: primeiro nos cenários marcados como propensos, depois do fim para o início."
+    ],
+    "codigo": [
+     {
+      "arquivo": "assets/js/50-analises.js",
+      "funcao": "scenarioStats"
+     },
+     {
+      "arquivo": "assets/js/01-dados.js",
+      "funcao": "suiteFor"
+     }
+    ]
+   },
+   {
+    "id": "c_mttr",
+    "col": 7,
+    "cat": "calculo",
+    "titulo": "Tempo até corrigir",
+    "onde": "50-analises.js · mttr()",
+    "descricao": "Percorre as execuções em ordem de data, componente a componente.",
+    "formula": "para cada componente:\n  1ª Falha abre o relógio\n  próximo Sucesso fecha → intervalo\nMTTR = média dos intervalos",
+    "regras": [
+     "RN-ANA-04"
+    ],
+    "codigo": [
+     {
+      "arquivo": "assets/js/50-analises.js",
+      "funcao": "mttr"
+     }
+    ]
+   },
+   {
+    "id": "c_cause",
+    "col": 7,
+    "cat": "calculo",
+    "titulo": "Classificação da causa",
+    "onde": "50-analises.js · failCause()",
+    "descricao": "Agrupa as falhas pela mensagem de erro.",
+    "formula": "“Timeout” → Timeout de API\n“500” / Confirmar → HTTP 500\nresto → Validação / dados",
+    "regras": [
+     "RN-ANA-05"
+    ],
+    "nota": "Com dados de exemplo, parte dos cenários recebe a causa de forma simulada.",
+    "codigo": [
+     {
+      "arquivo": "assets/js/50-analises.js",
+      "funcao": "failCause"
+     }
+    ]
+   },
+   {
+    "id": "c_buckets",
+    "col": 7,
+    "cat": "calculo",
+    "titulo": "Série no tempo",
+    "onde": "50-analises.js · buckets()",
+    "descricao": "Divide o período em fatias e conta aprovadas e falhas em cada uma.",
+    "formula": "fatia = 1 dia (até 30 dias) · 7 dias (90 dias)\nalinhada pelo fim do período\ntaxa da fatia = ok ÷ (ok + falhas)",
+    "regras": [
+     "RN-ANA-03"
+    ],
+    "codigo": [
+     {
+      "arquivo": "assets/js/50-analises.js",
+      "funcao": "buckets"
+     }
+    ]
+   },
+   {
+    "id": "c_dash",
+    "col": 7,
+    "cat": "calculo",
+    "titulo": "Números do Dashboard",
+    "onde": "10-dashboard.js · dashData()",
+    "descricao": "Mesmo recorte de 7 dias para todos os cards do Dashboard.",
+    "formula": "Δ execuções = (n − n_anterior) ÷ n_anterior\nmédia geral = Σd ÷ n\nfalhas por pipeline = top 3 + Outros",
+    "regras": [
+     "RN-DASH-01",
+     "RN-DASH-04",
+     "RN-DASH-06",
+     "RN-DASH-07"
+    ],
+    "codigo": [
+     {
+      "arquivo": "assets/js/10-dashboard.js",
+      "funcao": "dashData"
+     }
+    ]
+   },
+   {
+    "id": "c_bytech",
+    "col": 7,
+    "cat": "calculo",
+    "titulo": "Média por plataforma (Dashboard)",
+    "onde": "10-dashboard.js · durByTech()",
+    "descricao": "Uma média independente para API, Mobile e Web.",
+    "formula": "média(API) = Σ d das execuções de API ÷ nº de execuções de API",
+    "regras": [
+     "RN-DASH-05"
+    ],
+    "codigo": [
+     {
+      "arquivo": "assets/js/10-dashboard.js",
+      "funcao": "durByTech"
+     }
+    ]
+   },
+   {
+    "id": "c_audit",
+    "col": 7,
+    "cat": "calculo",
+    "titulo": "Base do tempo de execução",
+    "onde": "51-analises-tempo.js · auditData()",
+    "descricao": "Uma linha por componente filtrado: execuções do período, soma, média, execução mais recente e se está rodando.",
+    "formula": "média = Σ d ÷ n  (sem execuções: referência do componente)\nΔ = mais recente ÷ média − 1",
+    "passos": [
+     "Filtros: projeto, plataforma, componentes escolhidos e somente ativos."
+    ],
+    "regras": [
+     "RN-PIP-10",
+     "RN-ANA-06"
+    ],
+    "codigo": [
+     {
+      "arquivo": "assets/js/51-analises-tempo.js",
+      "funcao": "auditData"
+     }
+    ]
+   },
+   {
+    "id": "c_tcard",
+    "col": 7,
+    "cat": "calculo",
+    "titulo": "Cards por plataforma (Tempo)",
+    "onde": "51-analises-tempo.js · tempoCard()",
+    "descricao": "Soma as linhas de uma plataforma.",
+    "formula": "média = Σ somas ÷ Σ execuções\ntotal atual = Σ mais recentes\nΔ = total atual ÷ Σ médias − 1",
+    "regras": [
+     "RN-ANA-06",
+     "RN-ANA-07",
+     "RN-ANA-08"
+    ],
+    "codigo": [
+     {
+      "arquivo": "assets/js/51-analises-tempo.js",
+      "funcao": "tempoCard"
+     }
+    ]
+   },
+   {
+    "id": "c_card",
+    "col": 7,
+    "cat": "calculo",
+    "titulo": "Card da esteira ao vivo",
+    "onde": "90-tempo-real.js · updateCard()",
+    "descricao": "Calcula tempo, projeção e resposta média de uma esteira rodando.",
+    "formula": "projeção = decorrido ÷ concluídos × total\nΔ = projeção ÷ média − 1\nrestante ≈ média − decorrido",
+    "regras": [
+     "RN-EXE-04",
+     "RN-EXE-05"
+    ],
+    "codigo": [
+     {
+      "arquivo": "assets/js/90-tempo-real.js",
+      "funcao": "updateCard"
+     }
+    ]
+   },
+   {
+    "id": "c_livekpi",
+    "col": 7,
+    "cat": "calculo",
+    "titulo": "Indicadores ao vivo",
+    "onde": "90-tempo-real.js · renderLive()",
+    "descricao": "Junta todos os cenários das esteiras acompanhadas.",
+    "formula": "resposta média = Σ resp ÷ nº (sem timeouts de 30.000 ms)\ntimeouts = cenários com resp ≥ 30.000",
+    "codigo": [
+     {
+      "arquivo": "assets/js/90-tempo-real.js",
+      "funcao": "renderLive"
+     }
+    ]
+   },
+   {
+    "id": "c_last",
+    "col": 7,
+    "cat": "calculo",
+    "titulo": "Último resultado do cenário",
+    "onde": "40-cenarios.js · lastResult()",
+    "descricao": "Procura o cenário na execução mais recente (não cancelada) do componente.",
+    "formula": "encontra por ID CT-xxx ou pelo nome\nsenão → Sem execução",
+    "regras": [
+     "RN-CEN-03",
+     "RN-CEN-04"
+    ],
+    "codigo": [
+     {
+      "arquivo": "assets/js/40-cenarios.js",
+      "funcao": "lastResult"
+     }
+    ]
+   },
+   {
+    "id": "c_folder",
+    "col": 7,
+    "cat": "calculo",
+    "titulo": "Resumo da pasta",
+    "onde": "20-pipelines.js · renderPipes()",
+    "descricao": "Agrupa os componentes por pasta e resume cada uma.",
+    "formula": "composição = contagem por plataforma\ncom falha = componentes cuja última execução falhou\nmédia da pasta = Σ d ÷ n das execuções dos componentes\n(todas, menos as em andamento)",
+    "regras": [
+     "RN-PIP-04"
+    ],
+    "codigo": [
+     {
+      "arquivo": "assets/js/20-pipelines.js",
+      "inicio": "const items = rows.filter(x => x.p.group === gn)",
+      "antes_de": "const phrase"
+     }
+    ]
+   },
+   {
+    "id": "m_exec",
+    "col": 8,
+    "cat": "metrica",
+    "titulo": "Execuções",
+    "descricao": "Volume de execuções concluídas.",
+    "formula": "n = nº de execuções Sucesso + Falha no período\nΔ% = (n − n_ant) ÷ n_ant × 100",
+    "regras": [
+     "RN-DASH-02",
+     "RN-DASH-04",
+     "RN-ANA-02"
+    ]
+   },
+   {
+    "id": "m_rate",
+    "col": 8,
+    "cat": "metrica",
+    "titulo": "Taxa de sucesso",
+    "descricao": "Percentual de execuções sem nenhum cenário falho.",
+    "formula": "taxa = ok ÷ n × 100\nΔ = taxa − taxa_ant (em pontos percentuais)\nsérie: uma taxa por dia ou semana",
+    "regras": [
+     "RN-DASH-03",
+     "RN-ANA-02",
+     "RN-ANA-03"
+    ]
+   },
+   {
+    "id": "m_fail",
+    "col": 8,
+    "cat": "metrica",
+    "titulo": "Execuções com falha",
+    "descricao": "Execuções com pelo menos um cenário falho.",
+    "formula": "falhas = n − ok\n% de falhas = falhas ÷ n × 100\nΔ% em relação ao período anterior"
+   },
+   {
+    "id": "m_mttr",
+    "col": 8,
+    "cat": "metrica",
+    "titulo": "MTTR",
+    "descricao": "Tempo médio para um componente voltar a passar.",
+    "formula": "média de (próximo Sucesso − 1ª Falha)\npor componente, no período",
+    "regras": [
+     "RN-ANA-04"
+    ]
+   },
+   {
+    "id": "m_avgtech",
+    "col": 8,
+    "cat": "metrica",
+    "titulo": "Duração média por plataforma",
+    "descricao": "Média própria de cada plataforma; não é derivada do total.",
+    "formula": "média(P) = Σ d(P) ÷ n(P)\nP = API · Mobile · Web",
+    "regras": [
+     "RN-DASH-05",
+     "RN-ANA-06"
+    ]
+   },
+   {
+    "id": "m_avggeral",
+    "col": 8,
+    "cat": "metrica",
+    "titulo": "Duração média geral",
+    "descricao": "Referência pequena no rodapé do card do Dashboard.",
+    "formula": "Σ d ÷ n de todas as execuções\nΔ% vs 7 dias anteriores"
+   },
+   {
+    "id": "m_fpp",
+    "col": 8,
+    "cat": "metrica",
+    "titulo": "Falhas por pipeline",
+    "descricao": "Onde as falhas se concentram nos últimos 7 dias.",
+    "formula": "% = falhas do componente ÷ total de falhas\ntop 3 + “Outros”",
+    "regras": [
+     "RN-DASH-06"
+    ]
+   },
+   {
+    "id": "m_cause",
+    "col": 8,
+    "cat": "metrica",
+    "titulo": "Falhas por causa raiz",
+    "descricao": "Timeout de API, HTTP 500 e Validação / dados.",
+    "formula": "% = cenários com falha da causa ÷ cenários com falha",
+    "regras": [
+     "RN-ANA-05"
+    ]
+   },
+   {
+    "id": "m_heat",
+    "col": 8,
+    "cat": "metrica",
+    "titulo": "Mapa de calor de falhas",
+    "descricao": "Dia e horário com mais falhas; o pico é destacado.",
+    "formula": "célula = nº de execuções com falha\nno dia da semana × hora (7h–21h)\ncor ∝ célula ÷ maior célula",
+    "codigo": [
+     {
+      "arquivo": "assets/js/50-analises.js",
+      "inicio": "const dnames",
+      "antes_de": "let peak"
+     }
+    ]
+   },
+   {
+    "id": "m_failcomp",
+    "col": 8,
+    "cat": "metrica",
+    "titulo": "Falhas por componente",
+    "descricao": "Ranking de componentes que mais falharam.",
+    "formula": "falhas(C) = execuções Falha de C no período\nmostra só C com falhas > 0"
+   },
+   {
+    "id": "m_goal",
+    "col": 8,
+    "cat": "metrica",
+    "titulo": "Abaixo da meta",
+    "descricao": "Componentes que não atingiram a meta de sucesso.",
+    "formula": "taxa(C) = ok(C) ÷ n(C) × 100\nlista C com taxa(C) < meta (CFG.goal, padrão 95%)\nsó componentes que rodaram no período",
+    "regras": [
+     "RN-ANA-10",
+     "RN-CFG-01"
+    ]
+   },
+   {
+    "id": "m_flaky",
+    "col": 8,
+    "cat": "metrica",
+    "titulo": "Testes instáveis (flaky)",
+    "descricao": "Cenários que falharam e também passaram no período.",
+    "formula": "flaky ⇔ 0 < falhas(cenário) < execuções(cenário)\ntaxa = falhas ÷ execuções × 100\nmostra os 8 maiores",
+    "regras": [
+     "RN-ANA-09"
+    ]
+   },
+   {
+    "id": "m_tot",
+    "col": 8,
+    "cat": "metrica",
+    "titulo": "Tempo total atual e Δ",
+    "descricao": "Quanto leva um ciclo completo hoje, comparado ao normal.",
+    "formula": "total = Σ execução mais recente de cada componente\nΔ = total ÷ Σ médias − 1\nsubtotal por projeto e total geral",
+    "regras": [
+     "RN-ANA-07",
+     "RN-ANA-08",
+     "RN-ANA-11"
+    ],
+    "codigo": [
+     {
+      "arquivo": "assets/js/51-analises-tempo.js",
+      "funcao": "auditCsv"
+     }
+    ]
+   },
+   {
+    "id": "m_proj",
+    "col": 8,
+    "cat": "metrica",
+    "titulo": "Projeção da esteira",
+    "descricao": "Estimativa, durante a execução, de quanto ela vai levar.",
+    "formula": "projeção = decorrido ÷ concluídos × total\nΔ = projeção ÷ média − 1",
+    "regras": [
+     "RN-EXE-04"
+    ]
+   },
+   {
+    "id": "m_resp",
+    "col": 8,
+    "cat": "metrica",
+    "titulo": "Tempo de resposta",
+    "descricao": "Quanto o sistema testado demorou para responder.",
+    "formula": "por cenário: ms medido (linha [resp] ou simulação)\nvermelho ≥ 1.000 ms · timeout = 30.000 ms\nmédia ignora timeouts",
+    "regras": [
+     "RN-EXE-05"
+    ]
+   },
+   {
+    "id": "m_last",
+    "col": 8,
+    "cat": "metrica",
+    "titulo": "Último resultado do cenário",
+    "descricao": "Se o cenário do Jira passou, falhou ou ainda não rodou.",
+    "formula": "situação do cenário na execução mais recente\nnão cancelada do componente",
+    "regras": [
+     "RN-CEN-04"
+    ]
+   },
+   {
+    "id": "m_folder",
+    "col": 8,
+    "cat": "metrica",
+    "titulo": "Composição e estado da pasta",
+    "descricao": "Resumo de cada projeto em Pipelines.",
+    "formula": "“3 de API, 1 de Mobile e 1 de Web”\ncom falha = última execução Falha",
+    "regras": [
+     "RN-PIP-04"
+    ]
+   },
+   {
+    "id": "t_dash",
+    "col": 9,
+    "cat": "tela",
+    "titulo": "Dashboard",
+    "onde": "#dashboard · 10-dashboard.js",
+    "descricao": "Últimos 7 dias: execuções, sucessos, falhas, duração por plataforma, evolução, falhas por pipeline e últimas execuções.",
+    "regras": [
+     "RN-DASH-01"
+    ]
+   },
+   {
+    "id": "t_pip",
+    "col": 9,
+    "cat": "tela",
+    "titulo": "Pipelines",
+    "onde": "#pipelines · 20-pipelines.js",
+    "descricao": "Pastas e componentes, filtros, criar, renomear, excluir e executar."
+   },
+   {
+    "id": "t_hist",
+    "col": 9,
+    "cat": "tela",
+    "titulo": "Execuções › Histórico",
+    "onde": "#execucoes · 30-execucoes.js",
+    "descricao": "Lista paginada (10 por página) com filtros e Importar JSON.",
+    "regras": [
+     "RN-EXE-06"
+    ]
+   },
+   {
+    "id": "t_live",
+    "col": 9,
+    "cat": "tela",
+    "titulo": "Execuções › Ao vivo",
+    "onde": "#aovivo · 90-tempo-real.js",
+    "descricao": "Cards por esteira, concluídas recentemente e feed de eventos.",
+    "regras": [
+     "RN-EXE-07"
+    ]
+   },
+   {
+    "id": "t_det",
+    "col": 9,
+    "cat": "tela",
+    "titulo": "Detalhe da execução",
+    "onde": "#exec-N · 31-detalhe.js",
+    "descricao": "Cenários, logs e evidências de uma execução; reexecutar."
+   },
+   {
+    "id": "t_cen",
+    "col": 9,
+    "cat": "tela",
+    "titulo": "Cenários",
+    "onde": "#cenarios · 40-cenarios.js",
+    "descricao": "Cenários do Jira com chave, status e último resultado."
+   },
+   {
+    "id": "t_q",
+    "col": 9,
+    "cat": "tela",
+    "titulo": "Análises › Qualidade",
+    "onde": "#analises · 50-analises.js",
+    "descricao": "Indicadores com comparação, série, causa raiz e mapa de calor."
+   },
+   {
+    "id": "t_tempo",
+    "col": 9,
+    "cat": "tela",
+    "titulo": "Análises › Tempo de execução",
+    "onde": "#analises · 51-analises-tempo.js",
+    "descricao": "Cards por plataforma, tabela por componente, subtotais e CSV para auditoria."
+   },
+   {
+    "id": "t_est",
+    "col": 9,
+    "cat": "tela",
+    "titulo": "Análises › Estabilidade",
+    "onde": "#analises · 50-analises.js",
+    "descricao": "Falhas por componente, abaixo da meta e testes instáveis."
+   },
+   {
+    "id": "t_ag",
+    "col": 9,
+    "cat": "tela",
+    "titulo": "Agente de QA (opcional)",
+    "onde": "#agente · 95-agente-ia.js",
+    "descricao": "Responde por regras sobre os mesmos dados. Escondido por padrão.",
+    "regras": [
+     "RN-NAV-03",
+     "RN-IA-01",
+     "RN-IA-02"
+    ]
+   }
+  ],
+  "ligacoes": [
+   [
+    "src_jenkins",
+    "s_discover",
+    "builds em andamento"
+   ],
+   [
+    "src_jenkins",
+    "s_track",
+    "log · estágios · resultado"
+   ],
+   [
+    "f_actions",
+    "s_cmd",
+    "Executar / Parar (conectado)"
+   ],
+   [
+    "src_jira",
+    "s_jirasc",
+    "busca por JQL"
+   ],
+   [
+    "src_jira",
+    "s_bug",
+    "busca bug aberto"
+   ],
+   [
+    "s_discover",
+    "s_track",
+    "build novo"
+   ],
+   [
+    "s_auth",
+    "s_emit",
+    "protege /events"
+   ],
+   [
+    "s_auth",
+    "f_sync",
+    "protege /api"
+   ],
+   [
+    "s_track",
+    "s_parse",
+    "trecho do log"
+   ],
+   [
+    "s_track",
+    "s_stages"
+   ],
+   [
+    "s_track",
+    "s_finish",
+    "log acabou"
+   ],
+   [
+    "s_track",
+    "s_emit",
+    "build_start"
+   ],
+   [
+    "s_parse",
+    "s_emit",
+    "scenario"
+   ],
+   [
+    "s_stages",
+    "s_emit",
+    "stage"
+   ],
+   [
+    "s_finish",
+    "s_emit",
+    "build_end"
+   ],
+   [
+    "s_finish",
+    "s_bug",
+    "cenários que falharam"
+   ],
+   [
+    "s_bug",
+    "s_emit",
+    "jira"
+   ],
+   [
+    "s_emit",
+    "f_sse",
+    "SSE"
+   ],
+   [
+    "s_jirasc",
+    "f_sync",
+    "cenários"
+   ],
+   [
+    "f_actions",
+    "f_sim",
+    "Executar (sem servidor)"
+   ],
+   [
+    "src_clock",
+    "f_sim",
+    "a cada 1 s"
+   ],
+   [
+    "src_clock",
+    "f_sse",
+    "tempo decorrido"
+   ],
+   [
+    "src_json",
+    "f_import"
+   ],
+   [
+    "f_sse",
+    "d_runs"
+   ],
+   [
+    "f_sse",
+    "d_live"
+   ],
+   [
+    "f_sse",
+    "d_events"
+   ],
+   [
+    "f_sse",
+    "d_pipes",
+    "componente novo"
+   ],
+   [
+    "f_sim",
+    "d_runs"
+   ],
+   [
+    "f_sim",
+    "d_live"
+   ],
+   [
+    "f_sim",
+    "d_events"
+   ],
+   [
+    "f_import",
+    "d_runs"
+   ],
+   [
+    "f_import",
+    "d_pipes"
+   ],
+   [
+    "f_sync",
+    "d_scens"
+   ],
+   [
+    "f_store",
+    "d_pipes"
+   ],
+   [
+    "f_store",
+    "d_scens"
+   ],
+   [
+    "f_store",
+    "d_cfg"
+   ],
+   [
+    "src_sample",
+    "d_runs"
+   ],
+   [
+    "src_sample",
+    "d_pipes"
+   ],
+   [
+    "src_sample",
+    "d_scens"
+   ],
+   [
+    "f_actions",
+    "d_pipes",
+    "criar · renomear · excluir"
+   ],
+   [
+    "f_actions",
+    "d_live",
+    "Parar"
+   ],
+   [
+    "f_actions",
+    "d_cfg",
+    "meta · IA · consulta"
+   ],
+   [
+    "d_runs",
+    "c_period"
+   ],
+   [
+    "d_runs",
+    "c_dash"
+   ],
+   [
+    "d_runs",
+    "c_last"
+   ],
+   [
+    "d_runs",
+    "c_folder",
+    "última execução"
+   ],
+   [
+    "d_live",
+    "c_card"
+   ],
+   [
+    "d_live",
+    "c_livekpi"
+   ],
+   [
+    "d_live",
+    "c_audit",
+    "rodando agora"
+   ],
+   [
+    "d_live",
+    "c_last"
+   ],
+   [
+    "d_pipes",
+    "c_bytech",
+    "plataforma"
+   ],
+   [
+    "d_pipes",
+    "c_audit",
+    "filtros · ativos"
+   ],
+   [
+    "d_pipes",
+    "c_folder"
+   ],
+   [
+    "d_pipes",
+    "c_card",
+    "média de referência"
+   ],
+   [
+    "d_scens",
+    "c_last"
+   ],
+   [
+    "d_cfg",
+    "m_goal",
+    "meta"
+   ],
+   [
+    "c_period",
+    "c_metrics"
+   ],
+   [
+    "c_period",
+    "c_scen"
+   ],
+   [
+    "c_period",
+    "c_mttr"
+   ],
+   [
+    "c_period",
+    "c_buckets"
+   ],
+   [
+    "c_period",
+    "c_audit"
+   ],
+   [
+    "c_period",
+    "c_bytech",
+    "7 dias"
+   ],
+   [
+    "c_period",
+    "m_heat"
+   ],
+   [
+    "c_period",
+    "m_failcomp"
+   ],
+   [
+    "c_period",
+    "m_goal"
+   ],
+   [
+    "c_scen",
+    "c_cause"
+   ],
+   [
+    "c_scen",
+    "m_flaky"
+   ],
+   [
+    "c_mttr",
+    "c_metrics"
+   ],
+   [
+    "c_metrics",
+    "m_exec"
+   ],
+   [
+    "c_metrics",
+    "m_rate"
+   ],
+   [
+    "c_metrics",
+    "m_fail"
+   ],
+   [
+    "c_metrics",
+    "m_mttr"
+   ],
+   [
+    "c_buckets",
+    "m_rate",
+    "série"
+   ],
+   [
+    "c_cause",
+    "m_cause"
+   ],
+   [
+    "c_dash",
+    "m_exec",
+    "7 dias"
+   ],
+   [
+    "c_dash",
+    "m_rate",
+    "7 dias"
+   ],
+   [
+    "c_dash",
+    "m_fail",
+    "7 dias"
+   ],
+   [
+    "c_dash",
+    "m_avggeral"
+   ],
+   [
+    "c_dash",
+    "m_fpp"
+   ],
+   [
+    "c_bytech",
+    "m_avgtech",
+    "Dashboard"
+   ],
+   [
+    "c_audit",
+    "c_tcard"
+   ],
+   [
+    "c_audit",
+    "m_tot"
+   ],
+   [
+    "c_tcard",
+    "m_avgtech",
+    "aba Tempo"
+   ],
+   [
+    "c_tcard",
+    "m_tot"
+   ],
+   [
+    "c_card",
+    "m_proj"
+   ],
+   [
+    "c_card",
+    "m_resp"
+   ],
+   [
+    "c_livekpi",
+    "m_resp"
+   ],
+   [
+    "c_last",
+    "m_last"
+   ],
+   [
+    "c_folder",
+    "m_folder"
+   ],
+   [
+    "m_exec",
+    "t_dash"
+   ],
+   [
+    "m_exec",
+    "t_q"
+   ],
+   [
+    "m_rate",
+    "t_dash"
+   ],
+   [
+    "m_rate",
+    "t_q"
+   ],
+   [
+    "m_fail",
+    "t_dash"
+   ],
+   [
+    "m_fail",
+    "t_q"
+   ],
+   [
+    "m_mttr",
+    "t_q"
+   ],
+   [
+    "m_avgtech",
+    "t_dash"
+   ],
+   [
+    "m_avgtech",
+    "t_tempo"
+   ],
+   [
+    "m_avggeral",
+    "t_dash"
+   ],
+   [
+    "m_fpp",
+    "t_dash"
+   ],
+   [
+    "m_cause",
+    "t_q"
+   ],
+   [
+    "m_heat",
+    "t_q"
+   ],
+   [
+    "m_failcomp",
+    "t_est"
+   ],
+   [
+    "m_goal",
+    "t_est"
+   ],
+   [
+    "m_flaky",
+    "t_est"
+   ],
+   [
+    "m_flaky",
+    "t_ag"
+   ],
+   [
+    "m_tot",
+    "t_tempo"
+   ],
+   [
+    "m_proj",
+    "t_live"
+   ],
+   [
+    "m_resp",
+    "t_live"
+   ],
+   [
+    "m_last",
+    "t_cen"
+   ],
+   [
+    "m_folder",
+    "t_pip"
+   ],
+   [
+    "d_runs",
+    "t_hist"
+   ],
+   [
+    "d_runs",
+    "t_det"
+   ],
+   [
+    "d_events",
+    "t_live"
+   ],
+   [
+    "d_live",
+    "t_det",
+    "cenários ao vivo"
+   ],
+   [
+    "m_fail",
+    "t_ag"
+   ],
+   [
+    "m_proj",
+    "t_ag"
+   ]
+  ],
+  "notas": [
+   {
+    "col": 0,
+    "texto": "COMO LER\n1) Os dados correm da esquerda para a direita: fontes → servidor → portal → cálculo → métrica → tela.\n2) Clique num nó para ver fórmula, passo a passo, regras e o código real.\n3) “Caminho” acende tudo de onde o número vem e para onde vai."
+   },
+   {
+    "col": 0,
+    "texto": "DOIS MODOS\nSem servidor: dados de exemplo + simulação 10× acelerada.\nConectado (?api=): Jenkins e Jira reais pelo servidor; a simulação desliga."
+   },
+   {
+    "col": 6,
+    "texto": "REGRA DE OURO\nO navegador nunca chama Jenkins ou Jira. Tokens só no servidor (.env)."
+   },
+   {
+    "col": 8,
+    "texto": "TODA MÉTRICA DE PERÍODO\nusa só execuções Sucesso e Falha. Executando e Cancelada ficam de fora."
+   }
+  ]
+ },
+ "ignorar": []
+}

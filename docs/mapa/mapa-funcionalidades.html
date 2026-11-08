@@ -3,12 +3,10 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<style>body{margin:0;font:14px/1.45 system-ui,-apple-system,'Segoe UI',sans-serif}img{max-width:100%}[hidden]{display:none!important}</style>
 <title>Mapa do QA AI Agent</title>
-<meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap">
-<style>
+<style>body{margin:0}[hidden]{display:none!important}
 /* Layout: documento técnico com navegação lateral fixa por categoria (empilha no celular); cada categoria = diagrama da lógica + funcionalidades + regras de negócio numeradas; no fim, catálogo único de regras com filtro */
 :root{
   --bg:#f4f5f9; --surface:#ffffff; --line:#e4e6ee; --head:#f6f7fa;
@@ -99,47 +97,34 @@ td.catc{white-space:nowrap;color:var(--muted);font-size:13px}
   ol.rules li{grid-template-columns:1fr;gap:2px}
 }
 @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
-html{scroll-behavior:smooth}
-</style>
+html{scroll-behavior:smooth}</style>
 </head>
 <body>
-
 <div class="wrap">
   <aside class="side">
-    <div class="brand">
-      <svg width="30" height="27" viewBox="0 0 42 38" aria-hidden="true"><rect x="19.5" y="1" width="3" height="6" rx="1.5" fill="#8f86ff"/><circle cx="21" cy="2.5" r="2.5" fill="#8f86ff"/><rect x="0" y="16" width="5" height="11" rx="2.5" fill="#8f86ff"/><rect x="37" y="16" width="5" height="11" rx="2.5" fill="#8f86ff"/><rect x="4" y="7" width="34" height="28" rx="10" fill="#7b6ff5"/><rect x="9" y="13" width="24" height="16" rx="7" fill="#e9e6ff"/><circle cx="16" cy="21" r="3" fill="#3d32b8"/><circle cx="26" cy="21" r="3" fill="#3d32b8"/></svg>
-      QA AI Agent
-    </div>
+    <div class="brand"><svg width="30" height="27" viewBox="0 0 42 38" aria-hidden="true"><rect x="19.5" y="1" width="3" height="6" rx="1.5" fill="#8f86ff"/><circle cx="21" cy="2.5" r="2.5" fill="#8f86ff"/><rect x="0" y="16" width="5" height="11" rx="2.5" fill="#8f86ff"/><rect x="37" y="16" width="5" height="11" rx="2.5" fill="#8f86ff"/><rect x="4" y="7" width="34" height="28" rx="10" fill="#7b6ff5"/><rect x="9" y="13" width="24" height="16" rx="7" fill="#e9e6ff"/><circle cx="16" cy="21" r="3" fill="#3d32b8"/><circle cx="26" cy="21" r="3" fill="#3d32b8"/></svg> QA AI Agent</div>
     <p class="brand-sub">Mapa de funcionalidades e regras</p>
     <nav aria-label="Categorias">
-      <a href="#visao-geral"><span class="n">00</span>Visão geral</a>
-      <div class="sep"></div>
+      <a href="#visao-geral"><span class="n">00</span>Visão geral</a><div class="sep"></div>
       <a href="#navegacao"><span class="n">01</span>Navegação e acesso</a>
       <a href="#dashboard"><span class="n">02</span>Dashboard</a>
-      <a href="#pipelines"><span class="n">03</span>Pipelines</a>
-      <a href="#execucoes"><span class="n">04</span>Execuções e Ao vivo</a>
-      <a href="#cenarios"><span class="n">05</span>Cenários (Jira)</a>
+      <a href="#pipelines"><span class="n">03</span>Pipelines (pastas e componentes)</a>
+      <a href="#execucoes"><span class="n">04</span>Execuções: Histórico, Ao vivo e Detalhe</a>
+      <a href="#cenarios"><span class="n">05</span>Cenários de teste (lidos do Jira)</a>
       <a href="#analises"><span class="n">06</span>Análises</a>
-      <a href="#jenkins"><span class="n">07</span>Servidor: Jenkins</a>
-      <a href="#jira"><span class="n">08</span>Servidor: Jira</a>
-      <a href="#config"><span class="n">09</span>Configurações e dados</a>
+      <a href="#jenkins"><span class="n">07</span>Servidor: integração com o Jenkins</a>
+      <a href="#jira"><span class="n">08</span>Servidor: integração com o Jira</a>
+      <a href="#config"><span class="n">09</span>Configurações, integrações e dados</a>
       <a href="#agente"><span class="n">10</span>Agente de QA</a>
-      <a href="#sso"><span class="n">11</span>Login e permissões</a>
-      <div class="sep"></div>
-      <a href="#regras"><span class="n">RN</span>Todas as regras</a>
+      <a href="#sso"><span class="n">11</span>Login com SSO e permissões</a>
+      <a href="#descoberto"><span class="n">12</span>Descoberto no código</a>
+      <div class="sep"></div><a href="#regras"><span class="n">RN</span>Todas as regras</a>
     </nav>
   </aside>
-
   <main>
     <h1 id="visao-geral">Mapa do QA AI Agent</h1>
     <p class="lead">Todas as funcionalidades da plataforma separadas por categoria. Em cada uma: como a lógica funciona, o que cada parte faz e as regras de negócio numeradas. O catálogo no fim reúne as regras para consulta e auditoria.</p>
-    <div class="legend">
-      <span><i class="tag real">Implementado</i> funciona com dados reais quando o servidor está conectado</span>
-      <span><i class="tag sim">Simulado</i> usa dados de exemplo sem servidor</span>
-      <span><i class="tag opt">Opcional</i> desligado por padrão</span>
-      <span><i class="tag prop">Proposta</i> desenhado, ainda não implementado</span>
-    </div>
-
+    <div class="legend"><span><i class="tag real">Implementado</i> funciona com dados reais quando o servidor está conectado</span><span><i class="tag sim">Simulado</i> usa dados de exemplo sem servidor</span><span><i class="tag opt">Opcional</i> desligado por padrão</span><span><i class="tag prop">Proposta</i> desenhado, ainda não implementado</span></div>
     <section class="cat overview" aria-labelledby="t00">
       <div class="cat-h"><span class="n">00</span><h2 id="t00">Visão geral da arquitetura</h2></div>
       <p class="cat-desc">O navegador nunca fala direto com o Jenkins ou o Jira. O servidor consulta as duas APIs, converte tudo para os formatos da plataforma e entrega por rotas <code>/api</code> e por eventos em tempo real (SSE). Sem servidor, o portal roda com dados de exemplo e simulação.</p>
@@ -185,7 +170,7 @@ flowchart LR
     <section class="cat" id="navegacao" aria-labelledby="t01">
       <div class="cat-h"><span class="n">01</span><h2 id="t01">Navegação e acesso</h2><span class="tag real">Implementado</span></div>
       <p class="cat-desc">Como o portal decide qual tela mostrar e o que fica visível.</p>
-      <p class="where">Código: <code>80-navegacao.js</code> · <code>70-configuracoes.js</code></p>
+      <p class="where">Código: <code>80-navegacao.js</code> · <code>70-configuracoes.js</code> · <code>99-inicio.js</code> (inicialização)</p>
       <div class="diagram"><pre class="mermaid">
 flowchart LR
   A["Endereço com #tela"] --> B{"Tela existe?"}
@@ -196,19 +181,8 @@ flowchart LR
   E -- "sim" --> F["Detalhe da execução N<br/>menu marca Execuções"]
   E -- "não" --> G["Mostra a tela<br/>e marca o menu"]
 </pre></div>
-      <div class="cols">
-        <div><h3>Funcionalidades</h3><dl class="feat">
-          <dt>Rotas por endereço</dt><dd>Cada tela tem um endereço próprio (<code>#pipelines</code>, <code>#analises</code>, <code>#exec-10432</code>), que pode ser salvo e compartilhado.</dd>
-          <dt>Menu lateral</dt><dd>Mostra as telas e um contador vermelho de esteiras rodando em Execuções.</dd>
-          <dt>Recursos de IA</dt><dd>Um interruptor esconde ou mostra tudo o que é de IA.</dd>
-        </dl></div>
-        <div><h3>Regras de negócio</h3><ol class="rules">
-          <li><span class="id">RN-NAV-01</span><span>Endereço desconhecido abre o Dashboard.</span></li>
-          <li><span class="id">RN-NAV-02</span><span>“Ao vivo” e “Detalhe da execução” pertencem a Execuções: o menu marca Execuções nessas telas.</span></li>
-          <li><span class="id">RN-NAV-03</span><span>Com Recursos de IA desligado (padrão), o menu Agente de QA some e o endereço <code>#agente</code> volta para o Dashboard.</span></li>
-          <li><span class="id">RN-NAV-04</span><span>Sem login, todas as pessoas veem as mesmas telas. A restrição por pessoa depende da proposta de SSO (categoria 11).</span></li>
-        </ol></div>
-      </div>
+      
+      <div class="cols"><div><h3>Funcionalidades</h3><dl class="feat"><dt>Rotas por endereço</dt><dd>Cada tela tem um endereço próprio (<code>#pipelines</code>, <code>#analises</code>, <code>#exec-10432</code>), que pode ser salvo e compartilhado.</dd><dt>Menu lateral</dt><dd>Mostra as telas e um contador vermelho de esteiras rodando em Execuções.</dd><dt>Recursos de IA</dt><dd>Um interruptor esconde ou mostra tudo o que é de IA.</dd></dl></div><div><h3>Regras de negócio</h3><ol class="rules"><li><span class="id">RN-NAV-01</span><span>Endereço desconhecido abre o Dashboard.</span></li><li><span class="id">RN-NAV-02</span><span>“Ao vivo” e “Detalhe da execução” pertencem a Execuções: o menu marca Execuções nessas telas.</span></li><li><span class="id">RN-NAV-03</span><span>Com Recursos de IA desligado (padrão), o menu Agente de QA some e o endereço <code>#agente</code> volta para o Dashboard.</span></li><li><span class="id">RN-NAV-04</span><span>Sem login, todas as pessoas veem as mesmas telas. A restrição por pessoa depende da proposta de SSO (categoria 11).</span></li></ol></div></div>
     </section>
 
     <section class="cat" id="dashboard" aria-labelledby="t02">
@@ -226,24 +200,8 @@ flowchart LR
   W --> K4["Taxa de sucesso<br/>por dia"]
   R --> K5["Últimas 4 execuções"]
 </pre></div>
-      <div class="cols">
-        <div><h3>Funcionalidades</h3><dl class="feat">
-          <dt>Indicadores</dt><dd>Execuções (com variação), sucessos com taxa, falhas com percentual.</dd>
-          <dt>Duração média por plataforma</dt><dd>API, Mobile e Web em destaque; a média geral fica pequena no rodapé.</dd>
-          <dt>Evolução da taxa de sucesso</dt><dd>Linha com um ponto por dia.</dd>
-          <dt>Falhas por pipeline</dt><dd>Rosca com o total no centro e legenda com quantidade e percentual.</dd>
-          <dt>Últimas execuções</dt><dd>As 4 mais recentes já concluídas, com acesso ao detalhe.</dd>
-        </dl></div>
-        <div><h3>Regras de negócio</h3><ol class="rules">
-          <li><span class="id">RN-DASH-01</span><span>O período é sempre os últimos 7 dias. Outros períodos ficam em Análises.</span></li>
-          <li><span class="id">RN-DASH-02</span><span>Só contam execuções com status Sucesso ou Falha. Executando e Cancelada ficam de fora.</span></li>
-          <li><span class="id">RN-DASH-03</span><span>Taxa de sucesso = sucessos ÷ execuções concluídas × 100.</span></li>
-          <li><span class="id">RN-DASH-04</span><span>A variação de execuções compara com os 7 dias anteriores.</span></li>
-          <li><span class="id">RN-DASH-05</span><span>Cada plataforma tem média própria: Σ durações das execuções dela ÷ nº de execuções dela. Não é derivada do total.</span></li>
-          <li><span class="id">RN-DASH-06</span><span>Falhas por pipeline mostra os 3 componentes com mais falhas; o restante soma em “Outros”. Percentual = falhas do componente ÷ total de falhas.</span></li>
-          <li><span class="id">RN-DASH-07</span><span>Os números se recalculam quando uma execução termina.</span></li>
-        </ol></div>
-      </div>
+      
+      <div class="cols"><div><h3>Funcionalidades</h3><dl class="feat"><dt>Indicadores</dt><dd>Execuções (com variação), sucessos com taxa, falhas com percentual.</dd><dt>Duração média por plataforma</dt><dd>API, Mobile e Web em destaque; a média geral fica pequena no rodapé.</dd><dt>Evolução da taxa de sucesso</dt><dd>Linha com um ponto por dia.</dd><dt>Falhas por pipeline</dt><dd>Rosca com o total no centro e legenda com quantidade e percentual.</dd><dt>Últimas execuções</dt><dd>As 4 mais recentes já concluídas, com acesso ao detalhe.</dd></dl></div><div><h3>Regras de negócio</h3><ol class="rules"><li><span class="id">RN-DASH-01</span><span>O período é sempre os últimos 7 dias. Outros períodos ficam em Análises.</span></li><li><span class="id">RN-DASH-02</span><span>Só contam execuções com status Sucesso ou Falha. Executando e Cancelada ficam de fora.</span></li><li><span class="id">RN-DASH-03</span><span>Taxa de sucesso = sucessos ÷ execuções concluídas × 100.</span></li><li><span class="id">RN-DASH-04</span><span>A variação de execuções compara com os 7 dias anteriores.</span></li><li><span class="id">RN-DASH-05</span><span>Cada plataforma tem média própria: Σ durações das execuções dela ÷ nº de execuções dela. Não é derivada do total.</span></li><li><span class="id">RN-DASH-06</span><span>Falhas por pipeline mostra os 3 componentes com mais falhas; o restante soma em “Outros”. Percentual = falhas do componente ÷ total de falhas.</span></li><li><span class="id">RN-DASH-07</span><span>Os números se recalculam quando uma execução termina.</span></li></ol></div></div>
     </section>
 
     <section class="cat" id="pipelines" aria-labelledby="t03">
@@ -267,31 +225,12 @@ flowchart TB
     P1["Componentes"] --> P2["Agrupa por pasta"] --> P3["Conta por plataforma<br/>API · Mobile · Web"] --> P4["Estado da pasta<br/>pela última execução"]
   end
 </pre></div>
-      <div class="cols">
-        <div><h3>Funcionalidades</h3><dl class="feat">
-          <dt>Visão por pasta e em lista</dt><dd>Cada pasta mostra a composição (“3 componentes de API, 1 de Mobile e 1 de Web”), o tempo médio e se há falhas.</dd>
-          <dt>Filtros</dt><dd>Texto, pasta, status e plataforma; os contadores do topo também filtram.</dd>
-          <dt>Menu da pasta</dt><dd>Executar todos, ver tempo de execução, renomear e excluir.</dd>
-          <dt>Menu do componente</dt><dd>Executar, ativar/desativar, ver execuções, analisar com IA (opcional) e excluir.</dd>
-          <dt>Nova pipeline</dt><dd>Nome, pasta, nº de cenários e plataforma.</dd>
-        </dl></div>
-        <div><h3>Regras de negócio</h3><ol class="rules">
-          <li><span class="id">RN-PIP-01</span><span>Todo componente pertence a uma pasta e tem uma plataforma: API, Mobile ou Web.</span></li>
-          <li><span class="id">RN-PIP-02</span><span>O nome do componente é único (sem diferenciar maiúsculas).</span></li>
-          <li><span class="id">RN-PIP-03</span><span>Renomear pasta não aceita nome que já existe.</span></li>
-          <li><span class="id">RN-PIP-04</span><span>Uma pasta está “com falha” quando algum componente teve a última execução com status Falha.</span></li>
-          <li><span class="id">RN-PIP-05</span><span>Excluir pasta exige digitar o nome exato da pasta.</span></li>
-          <li><span class="id">RN-PIP-06</span><span>Ao excluir, execuções em andamento da pasta são interrompidas (Cancelada).</span></li>
-          <li><span class="id">RN-PIP-07</span><span>Por padrão, excluir pasta remove os cenários vinculados e mantém o histórico de execuções, para preservar a auditoria.</span></li>
-          <li><span class="id">RN-PIP-08</span><span>A exclusão pode ser desfeita por 8 segundos.</span></li>
-          <li><span class="id">RN-PIP-09</span><span>“Executar todos” dispara só os componentes ativos da pasta.</span></li>
-          <li><span class="id">RN-PIP-10</span><span>Componente desativado sai das métricas de tempo quando o filtro “Somente ativos” está ligado.</span></li>
-        </ol></div>
-      </div>
+      
+      <div class="cols"><div><h3>Funcionalidades</h3><dl class="feat"><dt>Visão por pasta e em lista</dt><dd>Cada pasta mostra a composição (“3 componentes de API, 1 de Mobile e 1 de Web”), o tempo médio e se há falhas.</dd><dt>Filtros</dt><dd>Texto, pasta, status e plataforma; os contadores do topo também filtram.</dd><dt>Menu da pasta</dt><dd>Executar todos, ver tempo de execução, renomear e excluir.</dd><dt>Menu do componente</dt><dd>Executar, ativar/desativar, ver execuções, analisar com IA (opcional) e excluir.</dd><dt>Nova pipeline</dt><dd>Nome, pasta, nº de cenários e plataforma.</dd></dl></div><div><h3>Regras de negócio</h3><ol class="rules"><li><span class="id">RN-PIP-01</span><span>Todo componente pertence a uma pasta e tem uma plataforma: API, Mobile ou Web.</span></li><li><span class="id">RN-PIP-02</span><span>O nome do componente é único (sem diferenciar maiúsculas).</span></li><li><span class="id">RN-PIP-03</span><span>Renomear pasta não aceita nome que já existe.</span></li><li><span class="id">RN-PIP-04</span><span>Uma pasta está “com falha” quando algum componente teve a última execução com status Falha.</span></li><li><span class="id">RN-PIP-05</span><span>Excluir pasta exige digitar o nome exato da pasta.</span></li><li><span class="id">RN-PIP-06</span><span>Ao excluir, execuções em andamento da pasta são interrompidas (Cancelada).</span></li><li><span class="id">RN-PIP-07</span><span>Por padrão, excluir pasta remove os cenários vinculados e mantém o histórico de execuções, para preservar a auditoria.</span></li><li><span class="id">RN-PIP-08</span><span>A exclusão pode ser desfeita por 8 segundos.</span></li><li><span class="id">RN-PIP-09</span><span>“Executar todos” dispara só os componentes ativos da pasta.</span></li><li><span class="id">RN-PIP-10</span><span>Componente desativado sai das métricas de tempo quando o filtro “Somente ativos” está ligado.</span></li></ol></div></div>
     </section>
 
     <section class="cat" id="execucoes" aria-labelledby="t04">
-      <div class="cat-h"><span class="n">04</span><h2 id="t04">Execuções: Histórico, Ao vivo e Detalhe</h2><span class="tag real">Implementado</span> <span class="tag sim">Simulado sem servidor</span></div>
+      <div class="cat-h"><span class="n">04</span><h2 id="t04">Execuções: Histórico, Ao vivo e Detalhe</h2><span class="tag real">Implementado</span></div>
       <p class="cat-desc">Lista todas as execuções e acompanha as esteiras rodando agora, cenário a cenário.</p>
       <p class="where">Código: <code>30-execucoes.js</code> · <code>31-detalhe.js</code> · <code>90-tempo-real.js</code> · <code>91-conexao-servidor.js</code></p>
       <div class="diagram"><pre class="mermaid">
@@ -306,31 +245,12 @@ stateDiagram-v2
   Falha --> [*]
   Cancelada --> [*]
 </pre></div>
-      <div class="cols">
-        <div><h3>Funcionalidades</h3><dl class="feat">
-          <dt>Histórico</dt><dd>Lista paginada com busca por número ou componente e filtros de componente, status e período.</dd>
-          <dt>Importar JSON</dt><dd>Carrega execuções de um arquivo (<code>pipeline</code>, <code>total</code>, <code>passed</code>, <code>duration</code>, <code>inicio</code>, <code>grupo</code>, <code>tecnologia</code>).</dd>
-          <dt>Ao vivo</dt><dd>Um card por esteira: tempo decorrido × média, projeção, barra por cenário, tempo de resposta e duração de cada cenário. Feed de eventos.</dd>
-          <dt>Detalhe da execução</dt><dd>Cenários, logs e evidências das falhas; reexecutar.</dd>
-          <dt>Executar e Parar</dt><dd>No modo conectado, disparam e param o build no Jenkins.</dd>
-        </dl></div>
-        <div><h3>Regras de negócio</h3><ol class="rules">
-          <li><span class="id">RN-EXE-01</span><span>Um componente só pode ter uma execução rodando por vez.</span></li>
-          <li><span class="id">RN-EXE-02</span><span>Status final: Sucesso se todos os cenários passaram; Falha se algum falhou; Cancelada se foi interrompida.</span></li>
-          <li><span class="id">RN-EXE-03</span><span>Ao parar, cenários pendentes ou em andamento ficam como “não executados”.</span></li>
-          <li><span class="id">RN-EXE-04</span><span>Projeção do tempo = (tempo decorrido ÷ cenários concluídos) × total de cenários; Δ compara a projeção com a média do componente.</span></li>
-          <li><span class="id">RN-EXE-05</span><span>Tempo de resposta acima de 1.000 ms aparece em vermelho; 30.000 ms conta como timeout.</span></li>
-          <li><span class="id">RN-EXE-06</span><span>O histórico mostra 10 execuções por página.</span></li>
-          <li><span class="id">RN-EXE-07</span><span>“Concluídas recentemente” mostra as 6 últimas; o feed guarda os 60 eventos mais recentes.</span></li>
-          <li><span class="id">RN-EXE-08</span><span>Sem servidor, a simulação roda 10× mais rápida e inicia uma esteira nova a cada 6 s enquanto houver menos de 3 rodando (pode ser desligada).</span></li>
-          <li><span class="id">RN-EXE-09</span><span>Importar JSON cria o componente se ele não existir (na pasta informada ou “Importado”).</span></li>
-          <li><span class="id">RN-EXE-10</span><span>Jobs em pastas do Jenkins (<code>Pasta/Job</code>) casam com o componente pela última parte do caminho.</span></li>
-        </ol></div>
-      </div>
+      
+      <div class="cols"><div><h3>Funcionalidades</h3><dl class="feat"><dt>Histórico</dt><dd>Lista paginada com busca por número ou componente e filtros de componente, status e período.</dd><dt>Importar JSON</dt><dd>Carrega execuções de um arquivo (<code>pipeline</code>, <code>total</code>, <code>passed</code>, <code>duration</code>, <code>inicio</code>, <code>grupo</code>, <code>tecnologia</code>).</dd><dt>Ao vivo</dt><dd>Um card por esteira: tempo decorrido × média, projeção, barra por cenário, tempo de resposta e duração de cada cenário. Feed de eventos.</dd><dt>Detalhe da execução</dt><dd>Cenários, logs e evidências das falhas; reexecutar.</dd><dt>Executar e Parar</dt><dd>No modo conectado, disparam e param o build no Jenkins.</dd></dl></div><div><h3>Regras de negócio</h3><ol class="rules"><li><span class="id">RN-EXE-01</span><span>Um componente só pode ter uma execução rodando por vez.</span></li><li><span class="id">RN-EXE-02</span><span>Status final: Sucesso se todos os cenários passaram; Falha se algum falhou; Cancelada se foi interrompida.</span></li><li><span class="id">RN-EXE-03</span><span>Ao parar, cenários pendentes ou em andamento ficam como “não executados”.</span></li><li><span class="id">RN-EXE-04</span><span>Projeção do tempo = (tempo decorrido ÷ cenários concluídos) × total de cenários; Δ compara a projeção com a média do componente.</span></li><li><span class="id">RN-EXE-05</span><span>Tempo de resposta acima de 1.000 ms aparece em vermelho; 30.000 ms conta como timeout.</span></li><li><span class="id">RN-EXE-06</span><span>O histórico mostra 10 execuções por página.</span></li><li><span class="id">RN-EXE-07</span><span>“Concluídas recentemente” mostra as 6 últimas; o feed guarda os 60 eventos mais recentes.</span></li><li><span class="id">RN-EXE-08</span><span>Sem servidor, a simulação roda 10× mais rápida e inicia uma esteira nova a cada 6 s enquanto houver menos de 3 rodando (pode ser desligada).</span></li><li><span class="id">RN-EXE-09</span><span>Importar JSON cria o componente se ele não existir (na pasta informada ou “Importado”).</span></li><li><span class="id">RN-EXE-10</span><span>Jobs em pastas do Jenkins (<code>Pasta/Job</code>) casam com o componente pela última parte do caminho.</span></li></ol></div></div>
     </section>
 
     <section class="cat" id="cenarios" aria-labelledby="t05">
-      <div class="cat-h"><span class="n">05</span><h2 id="t05">Cenários de teste (lidos do Jira)</h2><span class="tag real">Implementado</span> <span class="tag sim">Exemplos sem servidor</span></div>
+      <div class="cat-h"><span class="n">05</span><h2 id="t05">Cenários de teste (lidos do Jira)</h2><span class="tag real">Implementado</span></div>
       <p class="cat-desc">Os cenários não são cadastrados no portal: vêm do Jira pela API, e o portal cruza cada um com o último resultado no Jenkins.</p>
       <p class="where">Código: <code>40-cenarios.js</code> · <code>server.js</code> (<code>jiraScenarios</code>, rota <code>/api/jira/scenarios</code>)</p>
       <div class="diagram"><pre class="mermaid">
@@ -342,21 +262,8 @@ flowchart LR
   E -- "sim" --> F["Último resultado<br/>Sucesso · Falha · Executando"]
   E -- "não" --> G["Sem execução"]
 </pre></div>
-      <div class="cols">
-        <div><h3>Funcionalidades</h3><dl class="feat">
-          <dt>Origem: Jira</dt><dd>Mostra a consulta usada, quantos cenários vieram e quando foi a última atualização.</dd>
-          <dt>Editar consulta</dt><dd>Troca a consulta e o campo do Jira que indica o componente.</dd>
-          <dt>Lista</dt><dd>Chave Jira com link, cenário, componente, status no Jira e último resultado.</dd>
-          <dt>Filtros</dt><dd>Texto, componente, status no Jira e último resultado.</dd>
-        </dl></div>
-        <div><h3>Regras de negócio</h3><ol class="rules">
-          <li><span class="id">RN-CEN-01</span><span>O portal só lê cenários; criar e editar cenários continua no Jira.</span></li>
-          <li><span class="id">RN-CEN-02</span><span>O componente do cenário vem do campo configurado (padrão: <code>components</code>).</span></li>
-          <li><span class="id">RN-CEN-03</span><span>O ID <code>CT-xxx</code> no título da issue liga o cenário às linhas do log do Jenkins.</span></li>
-          <li><span class="id">RN-CEN-04</span><span>Último resultado = situação do cenário na execução mais recente (não cancelada) do componente.</span></li>
-          <li><span class="id">RN-CEN-05</span><span>A busca no Jira traz no máximo 1.000 cenários, em páginas de 100.</span></li>
-        </ol></div>
-      </div>
+      
+      <div class="cols"><div><h3>Funcionalidades</h3><dl class="feat"><dt>Origem: Jira</dt><dd>Mostra a consulta usada, quantos cenários vieram e quando foi a última atualização.</dd><dt>Editar consulta</dt><dd>Troca a consulta e o campo do Jira que indica o componente.</dd><dt>Lista</dt><dd>Chave Jira com link, cenário, componente, status no Jira e último resultado.</dd><dt>Filtros</dt><dd>Texto, componente, status no Jira e último resultado.</dd></dl></div><div><h3>Regras de negócio</h3><ol class="rules"><li><span class="id">RN-CEN-01</span><span>O portal só lê cenários; criar e editar cenários continua no Jira.</span></li><li><span class="id">RN-CEN-02</span><span>O componente do cenário vem do campo configurado (padrão: <code>components</code>).</span></li><li><span class="id">RN-CEN-03</span><span>O ID <code>CT-xxx</code> no título da issue liga o cenário às linhas do log do Jenkins.</span></li><li><span class="id">RN-CEN-04</span><span>Último resultado = situação do cenário na execução mais recente (não cancelada) do componente.</span></li><li><span class="id">RN-CEN-05</span><span>A busca no Jira traz no máximo 1.000 cenários, em páginas de 100.</span></li></ol></div></div>
     </section>
 
     <section class="cat" id="analises" aria-labelledby="t06">
@@ -372,27 +279,8 @@ flowchart TB
   R --> T["Tempo de execução<br/>média por plataforma · total atual · Δ<br/>por projeto e componente · CSV"]
   R --> S["Estabilidade<br/>falhas por componente · abaixo da meta · flaky"]
 </pre></div>
-      <div class="cols">
-        <div><h3>Funcionalidades</h3><dl class="feat">
-          <dt>Qualidade</dt><dd>Indicadores com comparação ao período anterior, sucessos e falhas por dia ou semana, evolução da taxa, falhas por causa raiz e mapa de calor por dia da semana e horário.</dd>
-          <dt>Tempo de execução</dt><dd>Filtros por projeto, plataforma e componente; cards por plataforma; tabela com execução mais recente, média e Δ; subtotais por projeto; relatório CSV para auditoria; atualiza ao vivo.</dd>
-          <dt>Estabilidade</dt><dd>Falhas por componente, componentes abaixo da meta e testes instáveis.</dd>
-        </dl></div>
-        <div><h3>Regras de negócio</h3><ol class="rules">
-          <li><span class="id">RN-ANA-01</span><span>O período escolhido vale para as três abas; só contam execuções Sucesso ou Falha.</span></li>
-          <li><span class="id">RN-ANA-02</span><span>Cada indicador é comparado com o período anterior de mesmo tamanho.</span></li>
-          <li><span class="id">RN-ANA-03</span><span>Até 30 dias, os gráficos são por dia; em 90 dias, por semana.</span></li>
-          <li><span class="id">RN-ANA-04</span><span>MTTR = tempo médio entre a primeira falha de um componente e a próxima execução com sucesso dele.</span></li>
-          <li><span class="id">RN-ANA-05</span><span>Causa raiz pela mensagem de erro: timeout → “Timeout de API”; HTTP 500 → “HTTP 500”; demais → “Validação / dados”.</span></li>
-          <li><span class="id">RN-ANA-06</span><span>Média da plataforma = Σ durações das execuções dela no período ÷ nº de execuções dela.</span></li>
-          <li><span class="id">RN-ANA-07</span><span>Tempo total atual = soma da execução mais recente de cada componente filtrado; Δ compara com a soma das médias dos mesmos componentes.</span></li>
-          <li><span class="id">RN-ANA-08</span><span>Componentes rodando agora aparecem como “ao vivo” e só entram no total quando terminam.</span></li>
-          <li><span class="id">RN-ANA-09</span><span>Teste instável (flaky) = cenário que falhou e também passou no mesmo período. Taxa = falhas ÷ execuções do cenário.</span></li>
-          <li><span class="id">RN-ANA-10</span><span>“Abaixo da meta” lista componentes com taxa menor que a meta de Configurações (padrão 95%), considerando só os que rodaram no período.</span></li>
-          <li><span class="id">RN-ANA-11</span><span>O CSV leva no cabeçalho o período, os filtros e a data de geração, e inclui a média de cada plataforma.</span></li>
-        </ol></div>
-      </div>
       <p class="note">Com dados de exemplo, a causa raiz de alguns cenários é atribuída de forma simulada. Conectado ao Jenkins, ela sai da mensagem de erro do log.</p>
+      <div class="cols"><div><h3>Funcionalidades</h3><dl class="feat"><dt>Qualidade</dt><dd>Indicadores com comparação ao período anterior, sucessos e falhas por dia ou semana, evolução da taxa, falhas por causa raiz e mapa de calor por dia da semana e horário.</dd><dt>Tempo de execução</dt><dd>Filtros por projeto, plataforma e componente; cards por plataforma; tabela com execução mais recente, média e Δ; subtotais por projeto; relatório CSV para auditoria; atualiza ao vivo.</dd><dt>Estabilidade</dt><dd>Falhas por componente, componentes abaixo da meta e testes instáveis.</dd></dl></div><div><h3>Regras de negócio</h3><ol class="rules"><li><span class="id">RN-ANA-01</span><span>O período escolhido vale para as três abas; só contam execuções Sucesso ou Falha.</span></li><li><span class="id">RN-ANA-02</span><span>Cada indicador é comparado com o período anterior de mesmo tamanho.</span></li><li><span class="id">RN-ANA-03</span><span>Até 30 dias, os gráficos são por dia; em 90 dias, por semana.</span></li><li><span class="id">RN-ANA-04</span><span>MTTR = tempo médio entre a primeira falha de um componente e a próxima execução com sucesso dele.</span></li><li><span class="id">RN-ANA-05</span><span>Causa raiz pela mensagem de erro: timeout → “Timeout de API”; HTTP 500 → “HTTP 500”; demais → “Validação / dados”.</span></li><li><span class="id">RN-ANA-06</span><span>Média da plataforma = Σ durações das execuções dela no período ÷ nº de execuções dela.</span></li><li><span class="id">RN-ANA-07</span><span>Tempo total atual = soma da execução mais recente de cada componente filtrado; Δ compara com a soma das médias dos mesmos componentes.</span></li><li><span class="id">RN-ANA-08</span><span>Componentes rodando agora aparecem como “ao vivo” e só entram no total quando terminam.</span></li><li><span class="id">RN-ANA-09</span><span>Teste instável (flaky) = cenário que falhou e também passou no mesmo período. Taxa = falhas ÷ execuções do cenário.</span></li><li><span class="id">RN-ANA-10</span><span>“Abaixo da meta” lista componentes com taxa menor que a meta de Configurações (padrão 95%), considerando só os que rodaram no período.</span></li><li><span class="id">RN-ANA-11</span><span>O CSV leva no cabeçalho o período, os filtros e a data de geração, e inclui a média de cada plataforma.</span></li></ol></div></div>
     </section>
 
     <section class="cat" id="jenkins" aria-labelledby="t07">
@@ -417,23 +305,8 @@ sequenceDiagram
   S->>J: resultado e relatório de testes
   S-->>P: build_end
 </pre></div>
-      <div class="cols">
-        <div><h3>Funcionalidades</h3><dl class="feat">
-          <dt>Descoberta de builds</dt><dd>Consulta os jobs de <code>JENKINS_JOBS</code>, inclusive em pastas.</dd>
-          <dt>Leitura progressiva do log</dt><dd>Lê só o trecho novo, junta linhas cortadas e remove cores.</dd>
-          <dt>Tempo de resposta</dt><dd>Linhas <code>[resp] CT-xxx 412ms</code> no log viram o tempo de resposta do cenário.</dd>
-          <dt>Executar e parar</dt><dd>Rotas <code>/api/build</code> e <code>/api/stop</code>.</dd>
-        </dl></div>
-        <div><h3>Regras de negócio</h3><ol class="rules">
-          <li><span class="id">RN-JEN-01</span><span>Builds novos são procurados a cada 30 s; o log de um build em andamento é lido a cada 3 s (ambos configuráveis).</span></li>
-          <li><span class="id">RN-JEN-02</span><span>Linhas de resultado reconhecidas: Playwright, Cypress/Mocha, Jest; outros formatos por regex configurável.</span></li>
-          <li><span class="id">RN-JEN-03</span><span>Status do build: ABORTED → Cancelada; SUCCESS sem falhas → Sucesso; qualquer outro → Falha.</span></li>
-          <li><span class="id">RN-JEN-04</span><span>Totais finais vêm do relatório de testes (JUnit); sem relatório, das linhas do log.</span></li>
-          <li><span class="id">RN-JEN-05</span><span>Sem o plugin de estágios, o servidor segue sem eventos de estágio.</span></li>
-          <li><span class="id">RN-JEN-06</span><span>Quem conecta recebe os últimos 300 eventos para montar o estado atual.</span></li>
-          <li><span class="id">RN-JEN-07</span><span>Credenciais do Jenkins ficam só no servidor (<code>.env</code>).</span></li>
-        </ol></div>
-      </div>
+      
+      <div class="cols"><div><h3>Funcionalidades</h3><dl class="feat"><dt>Descoberta de builds</dt><dd>Consulta os jobs de <code>JENKINS_JOBS</code>, inclusive em pastas.</dd><dt>Leitura progressiva do log</dt><dd>Lê só o trecho novo, junta linhas cortadas e remove cores.</dd><dt>Tempo de resposta</dt><dd>Linhas <code>[resp] CT-xxx 412ms</code> no log viram o tempo de resposta do cenário.</dd><dt>Executar e parar</dt><dd>Rotas <code>/api/build</code> e <code>/api/stop</code>.</dd></dl></div><div><h3>Regras de negócio</h3><ol class="rules"><li><span class="id">RN-JEN-01</span><span>Builds novos são procurados a cada 30 s; o log de um build em andamento é lido a cada 3 s (ambos configuráveis).</span></li><li><span class="id">RN-JEN-02</span><span>Linhas de resultado reconhecidas: Playwright, Cypress/Mocha, Jest; outros formatos por regex configurável.</span></li><li><span class="id">RN-JEN-03</span><span>Status do build: ABORTED → Cancelada; SUCCESS sem falhas → Sucesso; qualquer outro → Falha.</span></li><li><span class="id">RN-JEN-04</span><span>Totais finais vêm do relatório de testes (JUnit); sem relatório, das linhas do log.</span></li><li><span class="id">RN-JEN-05</span><span>Sem o plugin de estágios, o servidor segue sem eventos de estágio.</span></li><li><span class="id">RN-JEN-06</span><span>Quem conecta recebe os últimos 300 eventos para montar o estado atual.</span></li><li><span class="id">RN-JEN-07</span><span>Credenciais do Jenkins ficam só no servidor (<code>.env</code>).</span></li></ol></div></div>
     </section>
 
     <section class="cat" id="jira" aria-labelledby="t08">
@@ -451,20 +324,8 @@ flowchart LR
   E --> G["Evento jira no feed"]
   F --> G
 </pre></div>
-      <div class="cols">
-        <div><h3>Funcionalidades</h3><dl class="feat">
-          <dt>Cenários por consulta</dt><dd>Busca issues com a consulta configurada e devolve chave, nome, status, componente e link.</dd>
-          <dt>Bugs automáticos</dt><dd>Cria ou comenta bugs para cenários que falharam.</dd>
-          <dt>Bug manual</dt><dd>Rota <code>/api/jira/bug</code>.</dd>
-        </dl></div>
-        <div><h3>Regras de negócio</h3><ol class="rules">
-          <li><span class="id">RN-JIR-01</span><span>Abertura automática de bugs é desligada por padrão.</span></li>
-          <li><span class="id">RN-JIR-02</span><span>Não cria bug duplicado: se há bug aberto (status diferente de concluído) com o mesmo ID de cenário, comenta nele.</span></li>
-          <li><span class="id">RN-JIR-03</span><span>Bug criado leva título <code>[QA] componente – cenário</code>, link do build e as labels configuradas.</span></li>
-          <li><span class="id">RN-JIR-04</span><span>Funciona com Jira Cloud (API v3) e Server/Data Center (API v2).</span></li>
-          <li><span class="id">RN-JIR-05</span><span>Credenciais do Jira ficam só no servidor (<code>.env</code>).</span></li>
-        </ol></div>
-      </div>
+      
+      <div class="cols"><div><h3>Funcionalidades</h3><dl class="feat"><dt>Cenários por consulta</dt><dd>Busca issues com a consulta configurada e devolve chave, nome, status, componente e link.</dd><dt>Bugs automáticos</dt><dd>Cria ou comenta bugs para cenários que falharam.</dd><dt>Bug manual</dt><dd>Rota <code>/api/jira/bug</code>.</dd></dl></div><div><h3>Regras de negócio</h3><ol class="rules"><li><span class="id">RN-JIR-01</span><span>Abertura automática de bugs é desligada por padrão.</span></li><li><span class="id">RN-JIR-02</span><span>Não cria bug duplicado: se há bug aberto (status diferente de concluído) com o mesmo ID de cenário, comenta nele.</span></li><li><span class="id">RN-JIR-03</span><span>Bug criado leva título <code>[QA] componente – cenário</code>, link do build e as labels configuradas.</span></li><li><span class="id">RN-JIR-04</span><span>Funciona com Jira Cloud (API v3) e Server/Data Center (API v2).</span></li><li><span class="id">RN-JIR-05</span><span>Credenciais do Jira ficam só no servidor (<code>.env</code>).</span></li></ol></div></div>
     </section>
 
     <section class="cat" id="config" aria-labelledby="t09">
@@ -487,21 +348,8 @@ flowchart LR
   C2 --> T
   E1 --> API2["Rotas /api e SSE"] --> T
 </pre></div>
-      <div class="cols">
-        <div><h3>Funcionalidades</h3><dl class="feat">
-          <dt>Geral</dt><dd>Nome do workspace, idioma, fuso, alertas, resumo semanal e Recursos de IA.</dd>
-          <dt>Dados</dt><dd>Retenção do histórico, meta de taxa de sucesso e restauração dos dados de exemplo.</dd>
-          <dt>Integrações</dt><dd>Azure DevOps, GitLab CI, Jenkins, Jira e Importação de JSON.</dd>
-        </dl></div>
-        <div><h3>Regras de negócio</h3><ol class="rules">
-          <li><span class="id">RN-CFG-01</span><span>Meta de taxa de sucesso padrão: 95% (aceita de 50% a 100%).</span></li>
-          <li><span class="id">RN-CFG-02</span><span>Recursos de IA começam desligados.</span></li>
-          <li><span class="id">RN-CFG-03</span><span>O que é criado na tela fica no navegador da pessoa e não é compartilhado com outras pessoas.</span></li>
-          <li><span class="id">RN-CFG-04</span><span>Tokens nunca ficam no navegador; a conexão real com Jenkins e Jira é feita só pelo servidor.</span></li>
-          <li><span class="id">RN-CFG-05</span><span>Com chave de API definida, o servidor exige a chave em <code>/events</code> e nas rotas que alteram algo.</span></li>
-          <li><span class="id">RN-CFG-06</span><span>As telas de Integrações guardam só o estado visual; configurar ali não conecta o serviço.</span></li>
-        </ol></div>
-      </div>
+      
+      <div class="cols"><div><h3>Funcionalidades</h3><dl class="feat"><dt>Geral</dt><dd>Nome do workspace, idioma, fuso, alertas, resumo semanal e Recursos de IA.</dd><dt>Dados</dt><dd>Retenção do histórico, meta de taxa de sucesso e restauração dos dados de exemplo.</dd><dt>Integrações</dt><dd>Azure DevOps, GitLab CI, Jenkins, Jira e Importação de JSON.</dd></dl></div><div><h3>Regras de negócio</h3><ol class="rules"><li><span class="id">RN-CFG-01</span><span>Meta de taxa de sucesso padrão: 95% (aceita de 50% a 100%).</span></li><li><span class="id">RN-CFG-02</span><span>Recursos de IA começam desligados.</span></li><li><span class="id">RN-CFG-03</span><span>O que é criado na tela fica no navegador da pessoa e não é compartilhado com outras pessoas.</span></li><li><span class="id">RN-CFG-04</span><span>Tokens nunca ficam no navegador; a conexão real com Jenkins e Jira é feita só pelo servidor.</span></li><li><span class="id">RN-CFG-05</span><span>Com chave de API definida, o servidor exige a chave em <code>/events</code> e nas rotas que alteram algo.</span></li><li><span class="id">RN-CFG-06</span><span>As telas de Integrações guardam só o estado visual; configurar ali não conecta o serviço.</span></li></ol></div></div>
     </section>
 
     <section class="cat" id="agente" aria-labelledby="t10">
@@ -524,22 +372,14 @@ flowchart LR
   G --> R
   H --> R
 </pre></div>
-      <div class="cols">
-        <div><h3>Funcionalidades</h3><dl class="feat">
-          <dt>Chat</dt><dd>Painel no Dashboard e tela cheia, com sugestões de perguntas.</dd>
-          <dt>Analisar com IA</dt><dd>Botões em várias telas que enviam a pergunta pronta.</dd>
-        </dl></div>
-        <div><h3>Regras de negócio</h3><ol class="rules">
-          <li><span class="id">RN-IA-01</span><span>Só aparece com Recursos de IA ligado; desligado, nenhum botão de IA é exibido.</span></li>
-          <li><span class="id">RN-IA-02</span><span>Nesta versão responde por regras sobre os dados carregados, sem chamar modelo de IA.</span></li>
-          <li><span class="id">RN-IA-03</span><span>Nenhuma integração com modelo de IA deve ser adicionada nesta fase.</span></li>
-        </ol></div>
-      </div>
+      
+      <div class="cols"><div><h3>Funcionalidades</h3><dl class="feat"><dt>Chat</dt><dd>Painel no Dashboard e tela cheia, com sugestões de perguntas.</dd><dt>Analisar com IA</dt><dd>Botões em várias telas que enviam a pergunta pronta.</dd></dl></div><div><h3>Regras de negócio</h3><ol class="rules"><li><span class="id">RN-IA-01</span><span>Só aparece com Recursos de IA ligado; desligado, nenhum botão de IA é exibido.</span></li><li><span class="id">RN-IA-02</span><span>Nesta versão responde por regras sobre os dados carregados, sem chamar modelo de IA.</span></li><li><span class="id">RN-IA-03</span><span>Nenhuma integração com modelo de IA deve ser adicionada nesta fase.</span></li></ol></div></div>
     </section>
 
     <section class="cat" id="sso" aria-labelledby="t11">
       <div class="cat-h"><span class="n">11</span><h2 id="t11">Login com SSO e permissões</h2><span class="tag prop">Proposta</span></div>
       <p class="cat-desc">Desenhado e documentado em <code>docs/SSO.md</code>; ainda não implementado. Depende da escolha do provedor de SSO.</p>
+      
       <div class="diagram"><pre class="mermaid">
 flowchart LR
   A["Entrar com SSO"] --> B["Provedor da empresa<br/>login + MFA"]
@@ -551,29 +391,18 @@ flowchart LR
   G --> H["Tela esconde o resto"]
   G --> I["Servidor bloqueia rotas<br/>não permitidas"]
 </pre></div>
-      <div class="cols">
-        <div><h3>Funcionalidades</h3><dl class="feat">
-          <dt>Login</dt><dd>Entrar com SSO corporativo ou pelo e-mail (descobre o provedor pelo domínio); telas de redirecionamento e acesso negado.</dd>
-          <dt>Permissões</dt><dd>Papéis × seções do menu e × ações; grupos do SSO e e-mails ligados a papéis; histórico de alterações.</dd>
-        </dl></div>
-        <div><h3>Regras de negócio</h3><ol class="rules">
-          <li><span class="id">RN-SSO-01</span><span>Não existe usuário e senha padrão; quem confere a senha é o provedor da empresa.</span></li>
-          <li><span class="id">RN-SSO-02</span><span>O primeiro Gestor é definido no servidor (e-mail no arquivo de permissões ou no <code>.env</code>).</span></li>
-          <li><span class="id">RN-SSO-03</span><span>Quem está em mais de um grupo recebe o papel com mais acesso.</span></li>
-          <li><span class="id">RN-SSO-04</span><span>Quem não está em nenhum grupo tem o acesso negado (padrão) ou entra como Leitor.</span></li>
-          <li><span class="id">RN-SSO-05</span><span>O papel Gestor tem acesso total e não pode ser alterado.</span></li>
-          <li><span class="id">RN-SSO-06</span><span>A permissão vale na tela e no servidor: rotas de seções ou ações não permitidas são bloqueadas.</span></li>
-          <li><span class="id">RN-SSO-07</span><span>Toda alteração de permissão fica registrada com quem fez e quando.</span></li>
-        </ol></div>
-      </div>
+      
+      <div class="cols"><div><h3>Funcionalidades</h3><dl class="feat"><dt>Login</dt><dd>Entrar com SSO corporativo ou pelo e-mail (descobre o provedor pelo domínio); telas de redirecionamento e acesso negado.</dd><dt>Permissões</dt><dd>Papéis × seções do menu e × ações; grupos do SSO e e-mails ligados a papéis; histórico de alterações.</dd></dl></div><div><h3>Regras de negócio</h3><ol class="rules"><li><span class="id">RN-SSO-01</span><span>Não existe usuário e senha padrão; quem confere a senha é o provedor da empresa.</span></li><li><span class="id">RN-SSO-02</span><span>O primeiro Gestor é definido no servidor (e-mail no arquivo de permissões ou no <code>.env</code>).</span></li><li><span class="id">RN-SSO-03</span><span>Quem está em mais de um grupo recebe o papel com mais acesso.</span></li><li><span class="id">RN-SSO-04</span><span>Quem não está em nenhum grupo tem o acesso negado (padrão) ou entra como Leitor.</span></li><li><span class="id">RN-SSO-05</span><span>O papel Gestor tem acesso total e não pode ser alterado.</span></li><li><span class="id">RN-SSO-06</span><span>A permissão vale na tela e no servidor: rotas de seções ou ações não permitidas são bloqueadas.</span></li><li><span class="id">RN-SSO-07</span><span>Toda alteração de permissão fica registrada com quem fez e quando.</span></li></ol></div></div>
     </section>
+
+    <section class="cat" id="descoberto" aria-labelledby="t12"><div class="cat-h"><span class="n">12</span><h2 id="t12">Descoberto no código</h2><span class="tag opt">Automático</span></div><p class="cat-desc">Lido direto dos arquivos. Atualiza sozinho cada vez que o script roda.</p><h3 style="margin:26px 0 10px">Rotas HTTP</h3><div class="table-wrap"><table><thead><tr><th>Método</th><th>Caminho</th><th>Descrição (comentário acima)</th><th>Onde</th></tr></thead><tbody><tr><td><code>POST</code></td><td><code>/api/build</code></td><td>—</td><td><code>server/server.js:537</code></td></tr><tr><td><code>*</code></td><td><code>/api/health</code></td><td>—</td><td><code>server/server.js:493</code></td></tr><tr><td><code>POST</code></td><td><code>/api/jira/bug</code></td><td>—</td><td><code>server/server.js:559</code></td></tr><tr><td><code>GET</code></td><td><code>/api/jira/scenarios</code></td><td>—</td><td><code>server/server.js:550</code></td></tr><tr><td><code>GET</code></td><td><code>/api/state</code></td><td>—</td><td><code>server/server.js:524</code></td></tr><tr><td><code>POST</code></td><td><code>/api/stop</code></td><td>—</td><td><code>server/server.js:544</code></td></tr><tr><td><code>GET</code></td><td><code>/events</code></td><td>—</td><td><code>server/server.js:507</code></td></tr></tbody></table></div><h3 style="margin:26px 0 10px">Eventos emitidos</h3><div class="table-wrap"><table><thead><tr><th>Evento</th><th>Onde</th></tr></thead><tbody><tr><td><code>scenario</code></td><td><code>server/server.js:130</code> · <code>server/server.js:425</code> · <code>server/server.js:437</code></td></tr><tr><td><code>stage</code></td><td><code>server/server.js:149</code></td></tr><tr><td><code>build_start</code></td><td><code>server/server.js:173</code> · <code>server/server.js:415</code></td></tr><tr><td><code>build_end</code></td><td><code>server/server.js:195</code> · <code>server/server.js:216</code> · <code>server/server.js:447</code></td></tr><tr><td><code>jira</code></td><td><code>server/server.js:299</code> · <code>server/server.js:321</code></td></tr></tbody></table></div><h3 style="margin:26px 0 10px">Variáveis de ambiente</h3><div class="table-wrap"><table><thead><tr><th>Variável</th><th>Descrição (.env.example)</th><th>Usada em</th></tr></thead><tbody><tr><td><code>API_KEY</code></td><td>Chave exigida pela plataforma (?key=...) e pelas rotas POST (header x-api-key). Deixe vazio para desligar.</td><td><code>server/server.js:18</code></td></tr><tr><td><code>CORS_ORIGIN</code></td><td>Origem permitida para a plataforma (ex.: https://seu-usuario.github.io). "*" libera qualquer origem.</td><td><code>server/server.js:17</code></td></tr><tr><td><code>DEMO</code></td><td>true = gera execuções fictícias, sem precisar de Jenkins</td><td><code>server/server.js:19</code></td></tr><tr><td><code>DISCOVER_MS</code></td><td>Intervalo para descobrir builds novos (ms)</td><td><code>server/server.js:26</code></td></tr><tr><td><code>JENKINS_JOBS</code></td><td>Jobs a acompanhar, separados por vírgula. Jobs dentro de pastas: Pasta/SubPasta/Job</td><td><code>server/server.js:24</code></td></tr><tr><td><code>JENKINS_TOKEN</code></td><td>—</td><td><code>server/server.js:23</code></td></tr><tr><td><code>JENKINS_URL</code></td><td>—</td><td><code>server/server.js:21</code></td></tr><tr><td><code>JENKINS_USER</code></td><td>—</td><td><code>server/server.js:22</code></td></tr><tr><td><code>JIRA_API_VERSION</code></td><td>3 = Jira Cloud · 2 = Jira Server/Data Center</td><td><code>server/server.js:35</code></td></tr><tr><td><code>JIRA_AUTO_BUG</code></td><td>true = abre (ou comenta) um bug para cada cenário que falhar</td><td><code>server/server.js:36</code></td></tr><tr><td><code>JIRA_EMAIL</code></td><td>—</td><td><code>server/server.js:32</code></td></tr><tr><td><code>JIRA_ISSUE_TYPE</code></td><td>—</td><td><code>server/server.js:37</code></td></tr><tr><td><code>JIRA_LABELS</code></td><td>—</td><td><code>server/server.js:38</code></td></tr><tr><td><code>JIRA_PIPELINE_FIELD</code></td><td>Campo do Jira que indica o componente/pipeline do cenário: components, labels ou customfield_xxxxx</td><td><code>server/server.js:40</code></td></tr><tr><td><code>JIRA_PROJECT</code></td><td>—</td><td><code>server/server.js:34</code></td></tr><tr><td><code>JIRA_SCENARIOS_JQL</code></td><td>Consulta (JQL) usada na API do Jira para buscar os cenários de teste</td><td><code>server/server.js:39</code></td></tr><tr><td><code>JIRA_TOKEN</code></td><td>—</td><td><code>server/server.js:33</code></td></tr><tr><td><code>JIRA_URL</code></td><td>—</td><td><code>server/server.js:31</code></td></tr><tr><td><code>LOG_REGEX</code></td><td>Opcional: regex própria para as linhas de resultado do log. Grupos nomeados: status, name, dur (opcional) e unit (ms|s|m, opcional)</td><td><code>server/server.js:27</code> · <code>server/server.js:27</code></td></tr><tr><td><code>POLL_MS</code></td><td>Intervalo de leitura do log de um build em andamento (ms)</td><td><code>server/server.js:25</code></td></tr><tr><td><code>PORT</code></td><td>—</td><td><code>server/server.js:16</code></td></tr><tr><td><code>RESP_REGEX</code></td><td>Opcional: regex para o tempo de resposta. Grupos: name, ms</td><td><code>server/server.js:28</code></td></tr></tbody></table></div><h3 style="margin:26px 0 10px">Chaves de armazenamento do navegador</h3><div class="table-wrap"><table><thead><tr><th>Chave</th><th>Onde</th></tr></thead><tbody><tr><td><code>qa:cfg</code></td><td><code>assets/js/40-cenarios.js:93</code> · <code>assets/js/70-configuracoes.js:24</code> · <code>assets/js/70-configuracoes.js:113</code> · <code>assets/js/70-configuracoes.js:130</code></td></tr><tr><td><code>qa:ints</code></td><td><code>assets/js/60-integracoes.js:5</code> · <code>assets/js/91-conexao-servidor.js:288</code> · <code>assets/js/91-conexao-servidor.js:360</code></td></tr><tr><td><code>qa:jiraSync</code></td><td><code>assets/js/40-cenarios.js:6</code> · <code>assets/js/40-cenarios.js:54</code> · <code>assets/js/40-cenarios.js:75</code></td></tr><tr><td><code>qa:pipes2</code></td><td><code>assets/js/01-dados.js:5</code> · <code>assets/js/01-dados.js:120</code></td></tr><tr><td><code>qa:scens</code></td><td><code>assets/js/01-dados.js:100</code> · <code>assets/js/01-dados.js:121</code></td></tr></tbody></table></div><h3 style="margin:26px 0 10px">Dados globais</h3><div class="table-wrap"><table><thead><tr><th>Nome</th><th>Onde</th></tr></thead><tbody><tr><td><code>NAV</code></td><td><code>assets/js/00-base.js:52</code></td></tr><tr><td><code>TECHS</code></td><td><code>assets/js/01-dados.js:20</code></td></tr><tr><td><code>TECH_IC</code></td><td><code>assets/js/01-dados.js:25</code></td></tr><tr><td><code>RUNS</code></td><td><code>assets/js/01-dados.js:60</code></td></tr><tr><td><code>SUITE</code></td><td><code>assets/js/01-dados.js:125</code></td></tr><tr><td><code>PERIODS</code></td><td><code>assets/js/01-dados.js:170</code></td></tr><tr><td><code>AUF</code></td><td><code>assets/js/51-analises-tempo.js:5</code></td></tr><tr><td><code>MODELS</code></td><td><code>assets/js/70-configuracoes.js:26</code></td></tr><tr><td><code>CFG_TABS</code></td><td><code>assets/js/70-configuracoes.js:32</code></td></tr><tr><td><code>VIEWS</code></td><td><code>assets/js/80-navegacao.js:5</code></td></tr><tr><td><code>SC_IC</code></td><td><code>assets/js/90-tempo-real.js:154</code></td></tr><tr><td><code>CFG</code></td><td><code>server/server.js:15</code></td></tr><tr><td><code>DEMO_SCENARIOS</code></td><td><code>server/server.js:372</code></td></tr></tbody></table></div></section>
 
     <section class="catalog" id="regras" aria-labelledby="tRN">
       <div class="cat-h"><span class="n">RN</span><h2 id="tRN">Catálogo de regras de negócio</h2></div>
       <p class="cat-desc">Todas as regras acima numa tabela só, para consulta e auditoria.</p>
       <div class="tools">
         <label for="q" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">Buscar regra</label>
-        <input id="q" type="search" placeholder="Buscar por texto ou código (ex.: RN-ANA-07)">
+        <input id="q" type="search" placeholder="Buscar por texto ou código">
         <label for="cat" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">Categoria</label>
         <select id="cat"><option value="">Todas as categorias</option></select>
         <span class="count" id="count" aria-live="polite"></span>
@@ -585,7 +414,6 @@ flowchart LR
     </section>
   </main>
 </div>
-
 <script>
 (function(){
   // Monta o catálogo a partir das regras escritas em cada categoria (uma única fonte)
@@ -622,6 +450,5 @@ const dark = document.documentElement.dataset.theme === 'dark' ||
 mermaid.initialize({ startOnLoad: false, theme: dark ? 'dark' : 'default', securityLevel: 'strict' });
 await mermaid.run({ querySelector: 'pre.mermaid' });
 </script>
-
 </body>
 </html>

@@ -49,27 +49,68 @@ São **68 nós, 117 ligações e 48 trechos de código**.
 - O endereço guarda o nó aberto (`canvas-ligacoes.html#m-avgtech`), para mandar um link direto.
 - **Esc** fecha o painel.
 
-### Mantendo o Canvas em dia
-
-O Canvas é **gerado a partir do código**. As funções mostradas são lidas de `assets/js/*.js` e `server/server.js`, e os textos das regras vêm do Mapa. Depois de mudar uma função citada, gere de novo na raiz do projeto:
+## Gerar os dois com um comando
 
 ```bash
-python3 docs/mapa/gerador/gen.py . docs/mapa/mapa-funcionalidades.html docs/mapa/canvas-ligacoes.html docs/mapa/gerador/template.html --completo
+python3 docs/mapa/gerar_docs.py
 ```
 
-| Arquivo | Função |
+O script lê o projeto inteiro e grava `docs/mapa/mapa-funcionalidades.html` e `docs/mapa/canvas-ligacoes.html`. Roda em cerca de 0,1 s, usa só o Python 3.8+ (nada para instalar, sem rede) e gera sempre a mesma saída para o mesmo código.
+
+### De onde vem cada coisa
+
+| Conteúdo | Origem |
 |---|---|
-| `docs/mapa/gerador/gen.py` | Define os nós, as ligações e as fórmulas e extrai o código das funções. |
-| `docs/mapa/gerador/template.html` | Visual e comportamento do canvas (zoom, painel, busca). |
-| `docs/mapa/gerador/completo.py` | Transforma a página num HTML completo e adiciona o Mermaid quando houver diagramas. |
+| Funções, código, comentários acima delas e **quem chama quem** | Automático (lido de `assets/js` e `server/`) |
+| Rotas HTTP, eventos emitidos, variáveis de ambiente, chaves do `localStorage`, dados globais | Automático (seção "Descoberto no código" do Mapa) |
+| Regras escritas em comentários (`// RN-ABC-01 texto`) | Automático |
+| Categorias, regras de negócio, fórmulas das métricas, diagramas e a curadoria do Canvas | [`mapa.config.json`](../mapa.config.json), na raiz do projeto |
 
-O gerador **para com erro** quando:
+### Por que um script **e** um arquivo de configuração
 
-- uma função citada não existe mais (por exemplo, se foi renomeada);
-- uma ligação aponta para um nó que não existe;
-- uma ligação volta para uma coluna anterior;
-- uma regra citada não está no Mapa.
+Havia duas formas de reaproveitar a documentação em outro projeto. Só um prompt é frágil: depende de uma IA, cada execução sai diferente, nada valida o resultado e ele desatualiza sozinho. Só um script não basta, porque regra de negócio e fórmula **não estão escritas no código**: o script descobre a estrutura, mas não o que ela significa. A combinação resolve:
 
-Assim o Canvas não fica desatualizado sem ninguém perceber. Para uma função nova, adicione um `node(...)` em `gen.py` e as ligações com `e(origem, destino, 'rótulo')`.
+- o **script** faz o que é mecânico, valida e é repetível;
+- o **`mapa.config.json`** guarda o que só uma pessoa (ou uma IA) sabe;
+- o **prompt** ([`docs/mapa/PROMPT.md`](mapa/PROMPT.md)) ensina uma IA a preencher o config de um projeto novo.
 
-> Ao criar ou mudar uma **regra de negócio**, atualize primeiro o Mapa (`<li><span class="id">RN-…</span><span>texto</span></li>`) e depois gere o Canvas de novo.
+### Comandos
+
+| Comando | O que faz |
+|---|---|
+| `python3 docs/mapa/gerar_docs.py` | Gera o Mapa e o Canvas. |
+| `… --so mapa` ou `--so canvas` | Gera só um dos dois. |
+| `… --init` | Cria um `mapa.config.json` inicial a partir do código (não sobrescreve um existente). |
+| `… --prompt` | Imprime o prompt para uma IA completar o config. |
+| `… --estrito` | Transforma avisos em erro (bom para CI). |
+| `… --config ARQ`, `--saida PASTA`, `--max-nos N`, `--ignorar PADRÃO` | Ajustes de caminho e de tamanho. |
+
+### O que ele valida
+
+O script **para com erro** e lista cada problema quando:
+
+- o config cita uma função ou arquivo que não existe (por exemplo, depois de renomear uma função);
+- um nó do Canvas cita uma regra que não existe;
+- uma ligação aponta para um nó inexistente ou volta para uma coluna anterior;
+- há regras repetidas ou JSON inválido.
+
+E **avisa** (sem parar) quando um arquivo do código não está em nenhuma categoria do Mapa, ou quando há uma regra `RN-…` num comentário que não está no Mapa.
+
+### Usar em outro projeto
+
+1. Copie só o arquivo `docs/mapa/gerar_docs.py` para o outro projeto.
+2. Rode `python3 gerar_docs.py . --init`. Ele cria o `mapa.config.json` com as categorias e funções que encontrou.
+3. Cole o prompt de `python3 gerar_docs.py --prompt` no seu agente de código para completar o config (regras, fórmulas, diagramas, nós do Canvas).
+4. Rode `python3 gerar_docs.py .`.
+
+**Sem completar o config**, o comando já gera uma versão automática: o Mapa com uma categoria por pasta (funções, rotas, variáveis e regras dos comentários) e o Canvas organizado pelo grafo de chamadas (quem chama fica à esquerda). Ela é estrutural: mostra **como o código se liga**, não **o que significa**. Fórmulas e regras de negócio só aparecem depois que o config é preenchido.
+
+### Mantendo em dia
+
+Depois de mudar o código, rode o comando de novo. As funções, rotas, eventos e variáveis se atualizam sozinhos. Só o conteúdo escrito à mão exige edição:
+
+- **nova regra de negócio:** adicione em `categorias[].regras` do config (ou num comentário `// RN-XXX-NN texto` ao lado do código);
+- **nova métrica ou tela no Canvas:** adicione um nó em `canvas.nos` e as ligações em `canvas.ligacoes`;
+- **função renomeada:** o script diz qual referência quebrou; corrija o nome no config.
+
+Os diagramas do Mapa usam o Mermaid, carregado do CDN jsDelivr quando a página abre. Sem internet, eles aparecem como texto.
