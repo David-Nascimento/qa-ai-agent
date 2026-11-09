@@ -99,6 +99,9 @@ if (API) {
     const r = extRun(d) || { p: d.job || 'Jira' };
     logEvent(r, 'fail', `Bug ${d.key} ${d.action === 'comment' ? 'atualizado' : 'aberto'} no Jira para ${d.scenario}`);
   });
+  // o servidor sincroniza o Jira sozinho e avisa; a tela só lê o cache (não chama o Jira)
+  es.addEventListener('jira_sync', loadJiraState);
+  loadJiraState();
   let warned = false;
   es.onopen = () => {
     warned = false;

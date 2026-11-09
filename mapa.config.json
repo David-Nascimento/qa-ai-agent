@@ -287,7 +287,7 @@
    "status": "Implementado",
    "status_tipo": "real",
    "descricao": "Os cenários não são cadastrados no portal: vêm do Jira pela API, e o portal cruza cada um com o último resultado no Jenkins.",
-   "codigo": "`40-cenarios.js` · `server.js` (`jiraScenarios`, rota `/api/jira/scenarios`)",
+   "codigo": "`40-cenarios.js` (`renderScens`, `applyJiraState`, `loadJiraState`) · `server.js` (`jiraScenarios`, rotas `/api/jira/scenarios` e `/api/jira/state`)",
    "diagrama": "flowchart LR\n  A[\"Atualizar do Jira\"] --> B[\"Servidor busca issues<br/>com a consulta JQL\"]\n  B --> C[\"Campo do componente<br/>components · labels · customfield\"]\n  C --> D[\"Lista de cenários<br/>chave · nome · status · componente\"]\n  D --> E{\"Achou o cenário na<br/>última execução do componente?<br/>por ID CT-xxx ou nome\"}\n  E -- \"sim\" --> F[\"Último resultado<br/>Sucesso · Falha · Executando\"]\n  E -- \"não\" --> G[\"Sem execução\"]",
    "funcionalidades": [
     [
@@ -305,6 +305,14 @@
     [
      "Filtros",
      "Texto, componente, status no Jira e último resultado."
+    ],
+    [
+     "Ciclos de teste",
+     "Filtra por ciclo do Zephyr Scale e mostra o resultado de cada cenário no ciclo."
+    ],
+    [
+     "Idade dos dados",
+     "“sincronizado há X min” mostra quando o servidor leu o Jira pela última vez."
     ]
    ],
    "regras": [
@@ -327,6 +335,14 @@
     [
      "RN-CEN-05",
      "A busca no Jira traz no máximo 1.000 cenários, em páginas de 100."
+    ],
+    [
+     "RN-CEN-06",
+     "A coluna Ciclos e o filtro de ciclo só aparecem quando há ciclos (Zephyr Scale ligado no servidor, ou dados de exemplo)."
+    ],
+    [
+     "RN-CEN-07",
+     "Com um ciclo escolhido, a coluna mostra o resultado do cenário nesse ciclo; o resumo traz a contagem por resultado e os casos que não têm cenário no Jira."
     ]
    ]
   },
@@ -406,7 +422,7 @@
    "status": "Implementado",
    "status_tipo": "real",
    "descricao": "O servidor acompanha os builds pela API REST do Jenkins e transforma o log em eventos por cenário.",
-   "codigo": "`server/server.js` (`discover`, `track`, `parseLines`, `finish`)",
+   "codigo": "`server/server.js` (`discover`, `track`, `parseLines`, `finish`, `pollWait`)",
    "diagrama": "sequenceDiagram\n  participant S as Servidor\n  participant J as Jenkins\n  participant P as Portal\n  loop a cada 30 s\n    S->>J: builds em andamento dos jobs configurados\n  end\n  S-->>P: build_start\n  loop a cada 3 s enquanto houver log novo\n    S->>J: trecho novo do log\n    S-->>P: scenario (uma por linha de resultado)\n    S->>J: estágios da pipeline\n    S-->>P: stage (quando muda)\n  end\n  S->>J: resultado e relatório de testes\n  S-->>P: build_end",
    "funcionalidades": [
     [
@@ -424,12 +440,16 @@
     [
      "Executar e parar",
      "Rotas `/api/build` e `/api/stop`."
+    ],
+    [
+     "Tolerância a falhas",
+     "Erro passageiro do Jenkins não vira Falha; o servidor espera e tenta de novo."
     ]
    ],
    "regras": [
     [
      "RN-JEN-01",
-     "Builds novos são procurados a cada 30 s; o log de um build em andamento é lido a cada 3 s (ambos configuráveis)."
+     "Builds novos são procurados a cada 30 s; o log de um build em andamento é lido a cada 3 s (ambos configuráveis). Quando o Jenkins pede calma (429), o intervalo aumenta sozinho."
     ],
     [
      "RN-JEN-02",
@@ -454,6 +474,18 @@
     [
      "RN-JEN-07",
      "Credenciais do Jenkins ficam só no servidor (`.env`)."
+    ],
+    [
+     "RN-JEN-08",
+     "Erro passageiro na leitura do log (429, erro 5xx, queda de rede) não marca o build como Falha: o servidor adia a leitura e tenta de novo, até 5 vezes seguidas."
+    ],
+    [
+     "RN-JEN-09",
+     "Os estágios são lidos na 1ª leitura, a cada 3 leituras e na última, para poupar chamadas ao Jenkins."
+    ],
+    [
+     "RN-JEN-10",
+     "No máximo 10 builds são acompanhados ao mesmo tempo; acima de 5, o intervalo de leitura aumenta. Os demais esperam a próxima descoberta."
     ]
    ]
   },
@@ -501,6 +533,91 @@
      "Credenciais do Jira ficam só no servidor (`.env`)."
     ]
    ]
+  },
+  {
+   "id": "sincronizacao",
+   "titulo": "Servidor: sincronização do Jira e ciclos de teste",
+   "status": "Implementado",
+   "status_tipo": "real",
+   "descricao": "O servidor consulta o Jira de tempos em tempos, guarda o resultado em cache e a tela lê desse cache. Com o Zephyr Scale ligado, traz também os ciclos de teste e o resultado de cada caso. Toda chamada externa é protegida contra limite de requisições.",
+   "codigo": "`server/server.js` (`syncJira`, `syncCycles`, `zephyrList`, `zephyrItems`, `jiraState`, `fetchRetry`) · `40-cenarios.js` (`applyJiraState`, `loadJiraState`)",
+   "funcionalidades": [
+    [
+     "Sincronização periódica",
+     "A cada 5 minutos (`JIRA_SYNC_MS`), trazendo só o que mudou."
+    ],
+    [
+     "Ciclos do Zephyr Scale",
+     "Lê os ciclos (testrun) e o resultado de cada caso pela API ATM do Jira Server/Data Center."
+    ],
+    [
+     "Ligação com o cenário",
+     "A chave do caso (`PROJ-T123`) na issue do cenário liga o resultado do ciclo ao cenário."
+    ],
+    [
+     "Aviso em tempo real",
+     "O evento `jira_sync` avisa a tela quando há dados novos; a tela lê só o cache."
+    ],
+    [
+     "Proteção contra limite",
+     "Espera e tenta de novo em 429/502/503/504, respeitando o `Retry-After`."
+    ]
+   ],
+   "regras": [
+    [
+     "RN-SIN-01",
+     "A tela lê o cache do servidor (`GET /api/jira/state`): não importa quantas pessoas abrem o portal, o Jira recebe sempre as mesmas chamadas."
+    ],
+    [
+     "RN-SIN-02",
+     "O servidor sincroniza a cada 5 minutos (`JIRA_SYNC_MS`); `0` desliga a sincronização."
+    ],
+    [
+     "RN-SIN-03",
+     "A primeira rodada e uma a cada 6 horas são completas; as demais trazem só as issues alteradas desde a última rodada (filtro relativo `updated >= -Nm`, que não depende do fuso do Jira). Cenários apagados no Jira só saem na rodada completa."
+    ],
+    [
+     "RN-SIN-04",
+     "Os ciclos do Zephyr Scale (Server/Data Center) vêm da API ATM do próprio Jira, com a mesma autenticação. Ligado por `ZEPHYR=true`."
+    ],
+    [
+     "RN-SIN-05",
+     "O resultado de um caso no ciclo liga ao cenário pela chave do caso (`PROJ-T123`), lida do campo `ZEPHYR_CASE_FIELD` da issue ou, se vazio, do título e dos labels."
+    ],
+    [
+     "RN-SIN-06",
+     "Só os ciclos ativos (não encerrados e atualizados nos últimos 30 dias) têm os itens relidos a cada rodada. Ciclo encerrado (`Done`) ou antigo é lido uma vez e só de novo se mudar."
+    ],
+    [
+     "RN-SIN-07",
+     "Depois de cada build, os ciclos ativos são relidos 20 s depois, para dar tempo do Zephyr receber os resultados."
+    ],
+    [
+     "RN-SIN-08",
+     "A atualização manual (botão Atualizar do Jira) roda no máximo 1 vez a cada 30 s; antes disso a tela recebe os dados em cache."
+    ],
+    [
+     "RN-SIN-09",
+     "Se o Jira falhar, o servidor mantém os últimos dados e a tela avisa que a última tentativa falhou."
+    ],
+    [
+     "RN-SIN-10",
+     "Respostas 429, 502, 503 e 504 e quedas de rede são repetidas até 3 vezes, com espera crescente; o `Retry-After` do servidor tem prioridade. Chamadas que criam algo (POST) só repetem no 429, para não duplicar."
+    ],
+    [
+     "RN-SIN-11",
+     "Cada 429 dobra o intervalo de leitura do serviço (até 8 vezes) e o intervalo volta ao normal aos poucos, conforme chegam respostas boas."
+    ],
+    [
+     "RN-SIN-12",
+     "Status do Zephyr na tela: Pass → Sucesso, Fail → Falha, Blocked → Bloqueado, In Progress → Executando, Not Executed → Não executado."
+    ],
+    [
+     "RN-SIN-13",
+     "A tela usa a consulta do servidor enquanto a pessoa não a editar. Ao editar, os cenários vêm da consulta dela e só os ciclos vêm do servidor."
+    ]
+   ],
+   "diagrama": "sequenceDiagram\n  participant S as Servidor\n  participant J as Jira\n  participant Z as Zephyr Scale\n  participant P as Portal\n  S->>J: cenários (rodada completa na partida)\n  S->>Z: ciclos e itens\n  S-->>P: jira_sync\n  P->>S: lê o cache (/api/jira/state)\n  loop a cada 5 min\n    S->>J: só as issues alteradas\n    S->>Z: lista de ciclos e itens dos ativos\n    S-->>P: jira_sync\n  end\n  Note over S,Z: build termina, 20 s depois relê os ciclos ativos\n  Note over S,J: 429 ou 503, espera (Retry-After) e tenta de novo"
   },
   {
    "id": "config",
@@ -741,11 +858,14 @@
     "passos": [
      "Busca: /rest/api/3/search/jql (Cloud) ou /rest/api/2/search (Server).",
      "Criação: POST /issue · comentário: POST /issue/{chave}/comment.",
-     "Autenticação: e-mail + API token (Cloud) ou token pessoal (Server)."
+     "Autenticação: e-mail + API token (Cloud) ou token pessoal (Server).",
+     "Sincronização incremental: a consulta ganha “updated >= -Nm”.",
+     "Jira Data Center aceita token pessoal (JIRA_AUTH=bearer)."
     ],
     "regras": [
      "RN-JIR-04",
-     "RN-JIR-05"
+     "RN-JIR-05",
+     "RN-SIN-03"
     ]
    },
    {
@@ -948,10 +1068,14 @@
      "Emite build_start com número, início, duração estimada e pasta.",
      "Lê só o trecho novo do log a partir do deslocamento (X-Text-Size).",
      "Lê os estágios a cada volta.",
-     "No fim, chama finish()."
+     "No fim, chama finish().",
+     "Erro passageiro do Jenkins não vira Falha: adia a leitura e tenta de novo (até 5×)."
     ],
     "regras": [
-     "RN-JEN-01"
+     "RN-JEN-01",
+     "RN-JEN-08",
+     "RN-JEN-09",
+     "RN-JEN-10"
     ],
     "codigo": [
      {
@@ -1074,7 +1198,7 @@
     "titulo": "Eventos em tempo real (SSE)",
     "onde": "server.js · emit() · GET /events",
     "descricao": "Envia cada evento a todos os portais conectados e guarda os últimos 300 para quem chega depois.",
-    "formula": "eventos: build_start · scenario · stage · build_end · jira",
+    "formula": "eventos: build_start · scenario · stage · build_end · jira · jira_sync",
     "passos": [
      "Reconexão automática do navegador em 3 s (retry: 3000).",
      "Ping a cada 25 s para manter a conexão aberta."
@@ -1179,15 +1303,25 @@
     "cat": "portal",
     "titulo": "Atualizar do Jira",
     "onde": "40-cenarios.js · syncJira()",
-    "descricao": "Chama /api/jira/scenarios com a consulta e o campo das Configurações e substitui a lista de cenários.",
+    "descricao": "Pede ao servidor o estado em cache (cenários e ciclos) e atualiza a lista. Se a pessoa editou a consulta, busca os cenários por ela e liga só os ciclos.",
     "formula": "CT-xxx no título → ID do cenário\nresto do título → nome",
     "regras": [
-     "RN-CEN-01"
+     "RN-CEN-01",
+     "RN-SIN-08",
+     "RN-SIN-13"
     ],
     "codigo": [
      {
       "arquivo": "assets/js/40-cenarios.js",
       "funcao": "syncJira"
+     },
+     {
+      "arquivo": "assets/js/40-cenarios.js",
+      "funcao": "applyJiraState"
+     },
+     {
+      "arquivo": "assets/js/40-cenarios.js",
+      "funcao": "loadJiraState"
      }
     ]
    },
@@ -1254,7 +1388,7 @@
     "titulo": "SCENS · cenários",
     "onde": "40-cenarios.js",
     "descricao": "Cenários vindos do Jira (ou de exemplo).",
-    "formula": "{ key, id, name, p, js, url }"
+    "formula": "{ key, id, name, p, js, url, case, cycles }"
    },
    {
     "id": "d_cfg",
@@ -1839,6 +1973,132 @@
      "RN-IA-01",
      "RN-IA-02"
     ]
+   },
+   {
+    "id": "src_zephyr",
+    "col": 0,
+    "cat": "fonte",
+    "titulo": "Zephyr Scale (Server/DC)",
+    "onde": "API ATM · /rest/atm/1.0 no próprio Jira",
+    "descricao": "Ciclos de teste (testrun) e o resultado de cada caso.",
+    "passos": [
+     "Mesma autenticação do Jira (Basic ou token pessoal).",
+     "Lista: GET /testrun/search · itens de um ciclo: GET /testrun/{chave}.",
+     "Os caminhos seguem a API ATM do Server/Data Center e precisam ser confirmados no seu ambiente (ZEPHYR_API_PATH).",
+     "Os casos de teste do Zephyr não são issues do Jira."
+    ],
+    "regras": [
+     "RN-SIN-04",
+     "RN-SIN-05"
+    ]
+   },
+   {
+    "id": "s_http",
+    "col": 1,
+    "cat": "servidor",
+    "titulo": "Espera e nova tentativa",
+    "onde": "server.js · fetchRetry()",
+    "descricao": "Toda chamada ao Jenkins, ao Jira e ao Zephyr passa por aqui: em 429, 502, 503 ou 504 o servidor espera e tenta de novo.",
+    "formula": "espera = maior entre Retry-After e 1 s × 2^tentativa (±20%)\nmáximo 60 s · até 3 repetições",
+    "passos": [
+     "GET repete também em queda de rede; POST só repete no 429.",
+     "Cada 429 dobra o intervalo de leitura do serviço (até 8×); ele volta ao normal com as respostas boas.",
+     "O fator aparece em /api/health (slow)."
+    ],
+    "regras": [
+     "RN-SIN-10",
+     "RN-SIN-11",
+     "RN-JEN-08"
+    ],
+    "codigo": [
+     {
+      "arquivo": "server/server.js",
+      "funcao": "fetchRetry"
+     }
+    ]
+   },
+   {
+    "id": "s_jsync",
+    "col": 4,
+    "cat": "servidor",
+    "titulo": "Sincronização do Jira",
+    "onde": "server.js · syncJira() · syncCycles() · jiraState()",
+    "descricao": "A cada 5 minutos traz só o que mudou (cenários e ciclos), guarda em cache e avisa a tela com o evento jira_sync.",
+    "formula": "issues: updated >= -Nm (N = minutos desde a última rodada + 2)\nciclo ativo = não encerrado e atualizado nos últimos 30 dias",
+    "passos": [
+     "Rodada completa na partida e a cada 6 horas; as outras são incrementais.",
+     "Depois de cada build, relê só os ciclos ativos (20 s depois).",
+     "Se o Jira falhar, mantém os últimos dados e registra o erro.",
+     "O caso do ciclo vira o cenário pela chave PROJ-T123."
+    ],
+    "regras": [
+     "RN-SIN-01",
+     "RN-SIN-02",
+     "RN-SIN-03",
+     "RN-SIN-06",
+     "RN-SIN-07",
+     "RN-SIN-09",
+     "RN-SIN-12"
+    ],
+    "codigo": [
+     {
+      "arquivo": "server/server.js",
+      "funcao": "syncJira"
+     },
+     {
+      "arquivo": "server/server.js",
+      "funcao": "syncCycles"
+     },
+     {
+      "arquivo": "server/server.js",
+      "funcao": "jiraState"
+     }
+    ]
+   },
+   {
+    "id": "d_cycles",
+    "col": 6,
+    "cat": "dados",
+    "titulo": "CYCLES · ciclos de teste",
+    "onde": "40-cenarios.js",
+    "descricao": "Ciclos do Zephyr Scale (ou de exemplo) com a contagem por resultado.",
+    "formula": "{ key, name, status, folder, totals: { pass, fail, blocked, run, pend, unlinked } }"
+   },
+   {
+    "id": "c_cyc",
+    "col": 7,
+    "cat": "calculo",
+    "titulo": "Ciclos do cenário e resumo",
+    "onde": "40-cenarios.js · cyclesOf() · cycleSummary()",
+    "descricao": "Diz em quais ciclos cada cenário aparece e com qual resultado, e resume o ciclo escolhido.",
+    "formula": "resultado no ciclo = status do caso (chave PROJ-T123) dentro do ciclo\nsem cenário no Jira = casos do ciclo fora da lista carregada",
+    "regras": [
+     "RN-SIN-05",
+     "RN-CEN-06",
+     "RN-CEN-07"
+    ],
+    "codigo": [
+     {
+      "arquivo": "assets/js/40-cenarios.js",
+      "funcao": "cyclesOf"
+     },
+     {
+      "arquivo": "assets/js/40-cenarios.js",
+      "funcao": "cycleSummary"
+     }
+    ]
+   },
+   {
+    "id": "m_cyc",
+    "col": 8,
+    "cat": "metrica",
+    "titulo": "Resultado no ciclo",
+    "onde": "Cenários · coluna Ciclos",
+    "descricao": "Resultado de cada cenário em cada ciclo de teste.",
+    "formula": "Sucesso · Falha · Bloqueado · Executando · Não executado",
+    "regras": [
+     "RN-SIN-12"
+    ]
    }
   ],
   "ligacoes": [
@@ -2348,6 +2608,73 @@
    [
     "m_proj",
     "t_ag"
+   ],
+   [
+    "src_zephyr",
+    "s_jsync",
+    "ciclos e itens"
+   ],
+   [
+    "src_jira",
+    "s_jsync",
+    "issues alteradas"
+   ],
+   [
+    "s_http",
+    "s_discover",
+    "protege a descoberta"
+   ],
+   [
+    "s_http",
+    "s_track",
+    "protege a leitura"
+   ],
+   [
+    "s_http",
+    "s_jsync",
+    "protege as chamadas"
+   ],
+   [
+    "s_finish",
+    "s_jsync",
+    "relê ciclos ativos"
+   ],
+   [
+    "s_jsync",
+    "s_emit",
+    "jira_sync"
+   ],
+   [
+    "s_jsync",
+    "f_sync",
+    "estado em cache"
+   ],
+   [
+    "f_sse",
+    "f_sync",
+    "jira_sync"
+   ],
+   [
+    "f_sync",
+    "d_cycles",
+    "ciclos"
+   ],
+   [
+    "d_cycles",
+    "c_cyc"
+   ],
+   [
+    "d_scens",
+    "c_cyc",
+    "ciclos de cada cenário"
+   ],
+   [
+    "c_cyc",
+    "m_cyc"
+   ],
+   [
+    "m_cyc",
+    "t_cen"
    ]
   ],
   "notas": [

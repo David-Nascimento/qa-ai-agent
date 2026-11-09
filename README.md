@@ -108,14 +108,16 @@ Cada informação aparece **em um lugar só**: o resumo fica no Dashboard, os co
 - Os cenários **não são cadastrados na plataforma**. Eles vêm do **Jira pela API REST**: o servidor chama o endpoint de busca de issues com uma consulta **JQL**, a linguagem de busca da própria API do Jira.
 - A faixa **Origem: Jira** mostra a consulta usada, quantos cenários vieram e a hora da última atualização.
   - **Editar consulta** permite trocar a JQL e o **campo que indica o componente** (`components`, `labels` ou um campo personalizado como `customfield_10045`).
-  - **Atualizar do Jira** recarrega a lista.
+  - **Atualizar do Jira** pede os dados ao servidor (no máximo 1 vez a cada 30 s; o servidor também sincroniza sozinho a cada 5 minutos).
+  - **sincronizado há X min** mostra a idade dos dados.
 - Colunas:
   - **chave Jira**, com link para a issue;
   - **cenário** (ID `CT-xxx` e nome);
   - **componente**;
   - **status no Jira**;
-  - **último resultado**: Sucesso, Falha ou Executando, com link para a execução.
-- Filtros por texto (chave, ID ou nome), componente, status no Jira e último resultado.
+  - **último resultado**: Sucesso, Falha ou Executando, com link para a execução;
+  - **ciclos** (só com o Zephyr Scale ligado): em quais ciclos de teste o cenário aparece e com qual resultado.
+- Filtros por texto (chave, ID ou nome), componente, status no Jira, último resultado e **ciclo de teste**. Ao escolher um ciclo, aparece um resumo com a contagem por resultado e os casos que não têm cenário no Jira.
 - Sem servidor conectado, a tela mostra cenários de exemplo no mesmo formato.
 
 ![Cenários do Jira](docs/img/cenarios.png)
@@ -305,7 +307,7 @@ Dois documentos mostram **como a plataforma funciona por dentro**. Abra direto n
 
 | Documento | Responde | Abrir |
 |---|---|---|
-| **Mapa de funcionalidades** | *Qual é a regra?* Funcionalidades separadas por categoria, um diagrama da lógica de cada uma e **75 regras de negócio numeradas** (RN-DASH-01, RN-ANA-06…), com catálogo e filtro. | [`docs/mapa/mapa-funcionalidades.html`](docs/mapa/mapa-funcionalidades.html) |
+| **Mapa de funcionalidades** | *Qual é a regra?* Funcionalidades separadas por categoria, um diagrama da lógica de cada uma e **93 regras de negócio numeradas** (RN-DASH-01, RN-ANA-06…), com catálogo e filtro. | [`docs/mapa/mapa-funcionalidades.html`](docs/mapa/mapa-funcionalidades.html) |
 | **Canvas de ligações** | *De onde vem esse número?* Canvas de nós ligando fontes → servidor → dados → funções de cálculo → métricas → telas, com **fórmula, regras e código real** de cada função. | [`docs/mapa/canvas-ligacoes.html`](docs/mapa/canvas-ligacoes.html) |
 
 | Mapa de funcionalidades | Canvas de ligações |
@@ -436,6 +438,18 @@ Os comandos da tela, como executar e parar, vão por `POST` normal.
 
 **Latência esperada:** o intervalo de polling (`POLL_MS`, padrão 3 s) mais o tempo do teste imprimir a linha no console. Para uma tela de acompanhamento, 2–5 s é o equilíbrio entre atraso e carga no Jenkins.
 
+### Proteção contra limite de requisições
+
+Como a leitura é por polling, o servidor se protege para não esgotar o limite do Jenkins, do Jira ou do Zephyr:
+
+- **Espera e nova tentativa:** respostas `429`, `502`, `503` e `504` e quedas de rede são repetidas até 3 vezes (`HTTP_RETRIES`), com espera crescente. Se o servidor mandar `Retry-After`, ele vale. Chamadas que criam algo (`POST`) só repetem no `429`, para não duplicar.
+- **Erro passageiro não vira Falha:** se a leitura do log falhar por limite ou queda, o build **não** é marcado como Falha; o servidor adia a leitura e tenta de novo (até `TRACK_MAX_ERRORS`).
+- **Menos chamadas:** os estágios são lidos a cada 3 leituras do log (`STAGES_EVERY`).
+- **Intervalo adaptativo:** cada `429` dobra o intervalo de leitura (até 8 vezes) e ele volta ao normal aos poucos. Acima de 5 builds simultâneos o intervalo também aumenta, e no máximo 10 são acompanhados (`MAX_TRACKED_BUILDS`).
+- **Cache do Jira:** a tela lê um cache do servidor, então o número de pessoas com o portal aberto **não** aumenta as chamadas ao Jira.
+
+O fator de lentidão aparece em `GET /api/health` (`slow`; `1` = normal).
+
 ---
 
 ## Servidor de tempo real
@@ -465,6 +479,18 @@ Os comandos da tela, como executar e parar, vão por `POST` normal.
 | `JIRA_LABELS` | `qa-ai-agent` | Labels aplicadas, separadas por vírgula |
 | `JIRA_SCENARIOS_JQL` | `project = QA AND issuetype = Test ORDER BY key` | Consulta (JQL) usada na API do Jira para buscar os cenários |
 | `JIRA_PIPELINE_FIELD` | `components` | Campo do Jira que indica o componente do cenário (`components`, `labels` ou `customfield_xxxxx`) |
+| `JIRA_AUTH` | `basic` | `basic` = e-mail/usuário + token · `bearer` = token pessoal (PAT) do Data Center |
+| `JIRA_SYNC_MS` | `300000` | Intervalo da sincronização do Jira (5 min). `0` desliga |
+| `JIRA_FULL_SYNC_MS` | `21600000` | Rodada completa a cada 6 h; as outras trazem só o que mudou |
+| `JIRA_AFTER_BUILD_MS` | `20000` | Depois de cada build, relê os ciclos ativos após este tempo. `0` desliga |
+| `JIRA_GAP_MS` / `JIRA_MIN_MANUAL_MS` | `200` / `30000` | Pausa entre chamadas seguidas · intervalo mínimo entre atualizações manuais |
+| `ZEPHYR` | `false` | `true` lê os ciclos de teste do Zephyr Scale (Server/Data Center) |
+| `ZEPHYR_API_PATH` | `/rest/atm/1.0` | Prefixo da API ATM do Zephyr, no endereço do Jira |
+| `ZEPHYR_TQL` | `projectKey = "<JIRA_PROJECT>"` | Escolhe quais ciclos acompanhar |
+| `ZEPHYR_CASE_FIELD` | vazio | Campo da issue do cenário com a chave do caso (`PROJ-T123`). Vazio = título e labels |
+| `ZEPHYR_MAX_CYCLES` / `ZEPHYR_ACTIVE_DAYS` / `ZEPHYR_CLOSED_STATUS` | `100` / `30` / `Done` | Quantos ciclos · por quantos dias um ciclo é "ativo" · status que encerram o ciclo |
+| `HTTP_RETRIES` / `HTTP_BACKOFF_MS` / `HTTP_MAX_WAIT_MS` | `3` / `1000` / `60000` | Repetições, espera inicial e espera máxima em 429/503 |
+| `STAGES_EVERY` / `TRACK_MAX_ERRORS` / `MAX_TRACKED_BUILDS` | `3` / `5` / `10` | Estágios a cada N leituras · erros seguidos antes de dar Falha · builds acompanhados ao mesmo tempo |
 
 ---
 
@@ -567,6 +593,24 @@ O resultado vem assim:
 - **Componente/pipeline:** vem do campo `JIRA_PIPELINE_FIELD`: `components` (padrão), `labels` ou `customfield_xxxxx`.
 - **ID do cenário:** se o título da issue começa com `CT-xxx`, esse ID liga o cenário às linhas do log do Jenkins e ao último resultado.
 
+### Sincronização e ciclos de teste (Zephyr Scale)
+
+O servidor consulta o Jira **sozinho**, a cada 5 minutos, e guarda o resultado em cache. A tela só lê esse cache (`GET /api/jira/state`) e é avisada pelo evento `jira_sync`. Assim o Jira recebe as mesmas poucas chamadas, não importa quantas pessoas abrem o portal.
+
+- **Incremental:** a primeira rodada e uma a cada 6 horas são completas. As demais trazem só as issues alteradas, com `(consulta) AND updated >= -Nm`. O tempo relativo evita erro de fuso horário.
+- **Ciclos:** com `ZEPHYR=true`, o servidor lê os ciclos (`testrun`) e o resultado de cada caso pela **API ATM do Zephyr Scale Server/Data Center**, no endereço do próprio Jira e com a mesma autenticação. Só os ciclos **ativos** (não encerrados e atualizados nos últimos 30 dias) são relidos a cada rodada; os encerrados são lidos uma vez.
+- **Depois de cada build**, os ciclos ativos são relidos 20 s depois, para dar tempo do Zephyr receber os resultados.
+- **Ligação com o cenário:** o caso do ciclo vira o cenário pela **chave do caso** (`PROJ-T123`), guardada na issue do cenário. Configure o campo em `ZEPHYR_CASE_FIELD` (por exemplo `customfield_10200`); se ficar vazio, o servidor procura a chave no título e nos labels.
+- **Falha do Jira:** o servidor mantém os últimos dados e a tela avisa "última tentativa falhou".
+
+```env
+ZEPHYR=true
+ZEPHYR_CASE_FIELD=customfield_10200
+JIRA_AUTH=bearer          # Data Center com token pessoal
+```
+
+> **Confirme a API do Zephyr no seu ambiente.** Os caminhos (`/testrun/search`, `/testrun/{chave}`) e o formato das respostas seguem a API ATM do Server/Data Center, mas foram escritos sem acesso a um Jira real; os testes usam um Jira falso. Se o formato for diferente, o ajuste fica em `zephyrList()` e `zephyrItems()`, em `server/server.js`. Detalhes em [`docs/CONTRATOS.md`](docs/CONTRATOS.md).
+
 ### O que o servidor faz com as falhas
 Com `JIRA_AUTO_BUG=true`, ao fim de cada build, para cada cenário que falhou:
 
@@ -632,12 +676,14 @@ es.addEventListener('scenario', e => console.log(JSON.parse(e.data)));
 
 | Método | Rota | Autenticação | Descrição |
 |---|---|---|---|
-| `GET` | `/api/health` | livre | Estado do servidor: modo demo, Jenkins/Jira configurados, clientes conectados, builds ativos |
+| `GET` | `/api/health` | livre | Estado do servidor: modo demo, Jenkins/Jira/Zephyr configurados, última sincronização do Jira, fator de lentidão (`slow`), clientes conectados, builds ativos |
 | `GET` | `/events` | `?key=` | Fluxo SSE de eventos |
 | `GET` | `/api/state` | `x-api-key` ou `?key=` | Builds em acompanhamento, com cenários e estágios |
 | `POST` | `/api/build` | `x-api-key` | `{ "job": "E-commerce/Checkout", "params": { "AMBIENTE": "hml" } }` dispara o build |
 | `POST` | `/api/stop` | `x-api-key` | `{ "job": "...", "build": 77 }` para o build |
 | `GET` | `/api/jira/scenarios` | `x-api-key` | `?jql=...&field=components` busca os cenários de teste no Jira |
+| `GET` | `/api/jira/state` | `x-api-key` | Cenários e ciclos em cache (não chama o Jira) |
+| `POST` | `/api/jira/sync` | `x-api-key` | Atualização manual; no máximo 1 a cada 30 s, antes disso devolve o cache com `throttled: true` |
 | `POST` | `/api/jira/bug` | `x-api-key` | `{ "job", "build", "scenario", "details?" }` abre ou comenta o bug |
 
 ---

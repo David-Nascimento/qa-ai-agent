@@ -52,6 +52,7 @@ test('lê os cenários do Jira com paginação e mapeia o componente', async () 
       JIRA_TOKEN: 'tok',
       JIRA_PROJECT: 'QA',
       JIRA_API_VERSION: '3',
+      JIRA_SYNC_MS: '0',
       JENKINS_URL: '',
       HTTPS_PROXY: '',
       HTTP_PROXY: '',

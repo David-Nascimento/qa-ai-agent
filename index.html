@@ -111,9 +111,11 @@
           <label class="search"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#55576b" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg><input id="cSearch" type="search" placeholder="Buscar por chave, ID ou nome..." aria-label="Buscar cenário"></label>
           <div class="sel"><select id="cPipe" aria-label="Componente"></select></div>
           <div class="sel"><select id="cStatus" aria-label="Status no Jira"></select></div>
+          <div class="sel" id="cCycleBox" hidden><select id="cCycle" aria-label="Ciclo de teste"></select></div>
           <div class="sel"><select id="cRes" aria-label="Último resultado"><option value="">Todos os resultados</option><option>Sucesso</option><option>Falha</option><option>Sem execução</option></select></div>
         </div>
-        <div class="table-wrap"><table><thead><tr><th>Chave Jira</th><th>Cenário</th><th>Componente</th><th>Status no Jira</th><th>Último resultado</th></tr></thead><tbody id="scenRows"></tbody></table></div>
+        <div class="jsrc" id="cycSum" hidden></div>
+        <div class="table-wrap"><table><thead><tr><th>Chave Jira</th><th>Cenário</th><th>Componente</th><th>Status no Jira</th><th>Último resultado</th><th id="thCycle" hidden>Ciclos</th></tr></thead><tbody id="scenRows"></tbody></table></div>
       </div>
     </section>
 

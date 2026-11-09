@@ -38,6 +38,39 @@ const CFG = {
     labels: list(env.JIRA_LABELS || 'qa-ai-agent'),
     scenarioJql: env.JIRA_SCENARIOS_JQL || 'project = QA AND issuetype = Test ORDER BY key',
     pipelineField: env.JIRA_PIPELINE_FIELD || 'components',
+    // basic = usuário/e-mail + token · bearer = token pessoal (PAT) do Jira Data Center
+    auth: env.JIRA_AUTH === 'bearer' ? 'bearer' : 'basic',
+  },
+  // Sincronização periódica do Jira (cenários + ciclos). 0 desliga.
+  sync: {
+    ms: +(env.JIRA_SYNC_MS ?? 300000),
+    fullMs: +(env.JIRA_FULL_SYNC_MS || 6 * 3600000),
+    afterBuildMs: +(env.JIRA_AFTER_BUILD_MS ?? 20000),
+    gapMs: +(env.JIRA_GAP_MS ?? 200),
+    minManualMs: +(env.JIRA_MIN_MANUAL_MS ?? 30000),
+  },
+  // Ciclos de teste do Zephyr Scale (Server/Data Center), pela API ATM do próprio Jira
+  zephyr: {
+    on: env.ZEPHYR === 'true',
+    api: env.ZEPHYR_API_PATH || '/rest/atm/1.0',
+    tql: env.ZEPHYR_TQL || '',
+    caseField: env.ZEPHYR_CASE_FIELD || '',
+    max: +(env.ZEPHYR_MAX_CYCLES || 100),
+    activeDays: +(env.ZEPHYR_ACTIVE_DAYS || 30),
+    closed: list(env.ZEPHYR_CLOSED_STATUS || 'Done').map(s => s.toLowerCase()),
+    cycleUrl: env.ZEPHYR_CYCLE_URL || '{jira}/secure/Tests.jspa#/testPlayer/{key}',
+  },
+  // Proteção contra limite de requisições (HTTP 429/503) e quedas passageiras
+  http: {
+    retries: +(env.HTTP_RETRIES ?? 3),
+    backoffMs: +(env.HTTP_BACKOFF_MS || 1000),
+    maxWaitMs: +(env.HTTP_MAX_WAIT_MS || 60000),
+  },
+  track: {
+    stagesEvery: Math.max(1, +(env.STAGES_EVERY || 3)),
+    maxErrors: +(env.TRACK_MAX_ERRORS || 5),
+    maxBuilds: +(env.MAX_TRACKED_BUILDS || 10),
+    fastBuilds: 5, // acima disso o intervalo de leitura aumenta
   },
 };
 
@@ -46,16 +79,83 @@ const b64 = s => Buffer.from(s).toString('base64');
 const log = (...a) => console.log(new Date().toISOString(), ...a);
 
 /* ------------------------------------------------------------------ */
+/* HTTP com espera e nova tentativa                                    */
+/* ------------------------------------------------------------------ */
+// Limitador por serviço: sobe quando recebe 429 e desce aos poucos nas respostas boas.
+// O fator multiplica o intervalo de leitura do Jenkins (POLL_MS).
+const makeThrottle = () => ({
+  factor: 1,
+  hit() {
+    this.factor = Math.min(8, this.factor * 2);
+  },
+  ok() {
+    if (this.factor > 1) this.factor = Math.max(1, this.factor * 0.95);
+  },
+});
+const jenkinsThrottle = makeThrottle();
+const jiraThrottle = makeThrottle();
+
+const TRANSIENT = new Set([429, 502, 503, 504]);
+// Retry-After pode vir em segundos ou como data
+function retryAfterMs(headers) {
+  const v = headers?.get('retry-after');
+  if (!v) return 0;
+  const n = Number(v);
+  if (!Number.isNaN(n)) return n * 1000;
+  const d = Date.parse(v);
+  return Number.isNaN(d) ? 0 : Math.max(0, d - Date.now());
+}
+
+function httpError(label, res, path) {
+  const e = new Error(`${label} ${res.status} em ${path}`);
+  e.status = res.status;
+  return e;
+}
+
+// GET repete em 429/502/503/504 e em erro de rede. POST repete só em 429 (não duplica ação).
+async function fetchRetry(label, url, opts = {}, throttle = null) {
+  const safe = !opts.method || opts.method === 'GET';
+  for (let i = 0; ; i++) {
+    let res = null,
+      err = null;
+    try {
+      res = await fetch(url, opts);
+    } catch (e) {
+      err = e;
+    }
+    const transient = err ? safe : TRANSIENT.has(res.status) && (safe || res.status === 429);
+    if (res && !transient) throttle?.ok();
+    if (!transient || i >= CFG.http.retries) {
+      if (err) throw err;
+      return res;
+    }
+    const given = retryAfterMs(res?.headers);
+    const backoff = CFG.http.backoffMs * 2 ** i * (0.8 + Math.random() * 0.4);
+    const wait = Math.min(CFG.http.maxWaitMs, Math.max(given, backoff));
+    if (res?.status === 429) throttle?.hit();
+    log(
+      `${label}: ${res?.status ?? err.message}; nova tentativa ${i + 1}/${CFG.http.retries} em ${Math.round(wait)} ms`
+    );
+    await sleep(wait);
+  }
+}
+// Erro passageiro (limite, queda de rede, 5xx): não deve virar "Falha" do build
+const isTransient = e => e.status === undefined || e.status === 429 || e.status >= 500;
+
+/* ------------------------------------------------------------------ */
 /* Eventos (SSE)                                                       */
 /* ------------------------------------------------------------------ */
 const clients = new Set();
 const recent = []; // últimos eventos, reenviados a quem conecta
 const MAX_RECENT = 300;
 
-function emit(type, data) {
+// keep=false: evento só para quem está conectado (não entra no reenvio dos últimos eventos)
+function emit(type, data, keep = true) {
   const msg = `event: ${type}\ndata: ${JSON.stringify(data)}\n\n`;
-  recent.push(msg);
-  if (recent.length > MAX_RECENT) recent.shift();
+  if (keep) {
+    recent.push(msg);
+    if (recent.length > MAX_RECENT) recent.shift();
+  }
   for (const res of clients) res.write(msg);
 }
 
@@ -70,15 +170,13 @@ const jobPath = job =>
 const jenkinsHeaders = () => ({ Authorization: 'Basic ' + b64(`${CFG.jenkins.user}:${CFG.jenkins.token}`) });
 
 async function jenkinsRaw(path, opts = {}) {
-  const res = await fetch(CFG.jenkins.url + path, {
-    ...opts,
-    headers: { ...jenkinsHeaders(), ...(opts.headers || {}) },
-  });
-  if (!res.ok) {
-    const e = new Error(`Jenkins ${res.status} em ${path}`);
-    e.status = res.status;
-    throw e;
-  }
+  const res = await fetchRetry(
+    'Jenkins',
+    CFG.jenkins.url + path,
+    { ...opts, headers: { ...jenkinsHeaders(), ...(opts.headers || {}) } },
+    jenkinsThrottle
+  );
+  if (!res.ok) throw httpError('Jenkins', res, path);
   return res;
 }
 const jenkinsJson = async path => (await jenkinsRaw(path)).json();
@@ -156,6 +254,10 @@ async function pollStages(st) {
 
 const active = new Map();
 
+// Intervalo de leitura do log: cresce com o número de builds acompanhados e quando o Jenkins pede calma (429)
+const pollWait = () =>
+  CFG.jenkins.pollMs * jenkinsThrottle.factor * Math.max(1, Math.ceil(active.size / CFG.track.fastBuilds));
+
 async function track(job, b) {
   const key = `${job}#${b.number}`;
   const st = {
@@ -179,15 +281,25 @@ async function track(job, b) {
     url: `${CFG.jenkins.url}/${jobPath(job)}/${b.number}/`,
   });
   try {
-    let more = true;
+    let more = true,
+      loops = 0,
+      errors = 0;
     while (more) {
-      const res = await jenkinsRaw(`/${jobPath(job)}/${b.number}/logText/progressiveText?start=${st.offset}`);
-      const text = await res.text();
-      st.offset = +(res.headers.get('x-text-size') || st.offset);
-      more = res.headers.get('x-more-data') === 'true';
-      parseLines(st, text, !more);
-      await pollStages(st);
-      if (more) await sleep(CFG.jenkins.pollMs);
+      try {
+        const res = await jenkinsRaw(`/${jobPath(job)}/${b.number}/logText/progressiveText?start=${st.offset}`);
+        const text = await res.text();
+        st.offset = +(res.headers.get('x-text-size') || st.offset);
+        more = res.headers.get('x-more-data') === 'true';
+        parseLines(st, text, !more);
+        // estágios: na 1ª leitura, a cada N leituras e na última (economiza ~1/3 das chamadas)
+        if (loops++ % CFG.track.stagesEvery === 0 || !more) await pollStages(st);
+        errors = 0;
+      } catch (e) {
+        // erro passageiro: espera e tenta de novo, sem marcar o build como falha
+        if (!isTransient(e) || ++errors > CFG.track.maxErrors) throw e;
+        log(`${key}: ${e.message}; leitura ${errors}/${CFG.track.maxErrors} adiada`);
+      }
+      if (more) await sleep(pollWait());
     }
     await finish(st);
   } catch (e) {
@@ -200,7 +312,12 @@ async function track(job, b) {
 
 async function finish(st) {
   const base = `/${jobPath(st.job)}/${st.build}`;
-  const info = await jenkinsJson(`${base}/api/json?tree=result,duration`).catch(() => ({}));
+  // sem resultado (erro passageiro) não dá para saber se passou: tenta de novo antes de concluir
+  let info = {};
+  for (let i = 0; i < 3 && !info.result; i++) {
+    info = await jenkinsJson(`${base}/api/json?tree=result,duration`).catch(() => ({}));
+    if (!info.result && i < 2) await sleep(pollWait());
+  }
   let tr = null;
   try {
     tr = await jenkinsJson(`${base}/testReport/api/json?tree=passCount,failCount,skipCount`);
@@ -224,6 +341,7 @@ async function finish(st) {
     result: info.result,
   });
   log(`${st.job}#${st.build} finalizado: ${status} (${passed}/${total})`);
+  syncSoon();
 
   if (CFG.jira.autoBug && jiraReady()) {
     for (const [name, s] of st.scen) {
@@ -241,7 +359,14 @@ async function discover() {
       const d = await jenkinsJson(
         `/${jobPath(job)}/api/json?tree=builds[number,building,timestamp,estimatedDuration]{0,5}`
       );
-      for (const b of d.builds || []) if (b.building && !active.has(`${job}#${b.number}`)) track(job, b);
+      for (const b of d.builds || []) {
+        if (!b.building || active.has(`${job}#${b.number}`)) continue;
+        if (active.size >= CFG.track.maxBuilds) {
+          log(`Limite de ${CFG.track.maxBuilds} builds acompanhados: ${job}#${b.number} fica para a próxima rodada`);
+          continue;
+        }
+        track(job, b);
+      }
     } catch (e) {
       log(`Falha ao consultar ${job}: ${e.message}`);
     }
@@ -259,19 +384,28 @@ const stopBuild = (job, build) => jenkinsRaw(`/${jobPath(job)}/${build}/stop`, {
 /* ------------------------------------------------------------------ */
 /* Jira                                                                */
 /* ------------------------------------------------------------------ */
-const jiraReady = () => CFG.jira.url && CFG.jira.email && CFG.jira.token && CFG.jira.project;
+const jiraReady = () =>
+  CFG.jira.url && CFG.jira.token && CFG.jira.project && (CFG.jira.auth === 'bearer' || CFG.jira.email);
+
+const jiraHeaders = () => ({
+  Authorization:
+    CFG.jira.auth === 'bearer' ? `Bearer ${CFG.jira.token}` : 'Basic ' + b64(`${CFG.jira.email}:${CFG.jira.token}`),
+  Accept: 'application/json',
+  'Content-Type': 'application/json',
+});
 
 async function jira(path, { method = 'GET', body } = {}) {
-  const res = await fetch(`${CFG.jira.url}/rest/api/${CFG.jira.version}${path}`, {
-    method,
-    headers: {
-      Authorization: 'Basic ' + b64(`${CFG.jira.email}:${CFG.jira.token}`),
-      Accept: 'application/json',
-      'Content-Type': 'application/json',
-    },
-    body: body && JSON.stringify(body),
-  });
-  if (!res.ok) throw new Error(`Jira ${res.status}: ${(await res.text()).slice(0, 300)}`);
+  const res = await fetchRetry(
+    'Jira',
+    `${CFG.jira.url}/rest/api/${CFG.jira.version}${path}`,
+    { method, headers: jiraHeaders(), body: body && JSON.stringify(body) },
+    jiraThrottle
+  );
+  if (!res.ok) {
+    const e = new Error(`Jira ${res.status}: ${(await res.text()).slice(0, 300)}`);
+    e.status = res.status;
+    throw e;
+  }
   return res.status === 204 ? null : res.json();
 }
 // Jira Cloud (v3) usa Atlassian Document Format; Server/Data Center (v2) aceita texto
@@ -331,8 +465,18 @@ async function reportBug({ job, build, scenario, buildUrl, details = '' }) {
 
 // Cenários de teste lidos do Jira pela API de busca (JQL), com paginação.
 // field: campo que indica o componente/pipeline (components, labels ou customfield_xxxxx).
+// Chave do caso de teste do Zephyr (PROJ-T123) guardada na issue do cenário: no campo
+// ZEPHYR_CASE_FIELD, se existir, ou então no título e nos labels.
+const CASE_KEY = /\b[A-Z][A-Z0-9_]+-T\d+\b/;
+function caseKeyOf(f) {
+  const own = CFG.zephyr.caseField ? JSON.stringify(f[CFG.zephyr.caseField] ?? '') : '';
+  return (own.match(CASE_KEY) ||
+    (f.summary || '').match(CASE_KEY) ||
+    (f.labels || []).join(' ').match(CASE_KEY) || [''])[0];
+}
+
 async function jiraScenarios({ jql = CFG.jira.scenarioJql, field = CFG.jira.pipelineField, max = 1000 } = {}) {
-  const fields = ['summary', 'status', 'components', 'labels', 'updated', field]
+  const fields = ['summary', 'status', 'components', 'labels', 'updated', field, CFG.zephyr.caseField]
     .filter((v, i, a) => v && a.indexOf(v) === i)
     .join(',');
   const out = [];
@@ -353,6 +497,7 @@ async function jiraScenarios({ jql = CFG.jira.scenarioJql, field = CFG.jira.pipe
         name: f.summary || it.key,
         status: f.status?.name || '',
         pipeline: String(pipeline || ''),
+        caseKey: caseKeyOf(f),
         updated: f.updated,
         url: `${CFG.jira.url}/browse/${it.key}`,
       });
@@ -369,6 +514,230 @@ async function jiraScenarios({ jql = CFG.jira.scenarioJql, field = CFG.jira.pipe
   return out.slice(0, max);
 }
 
+/* ------------------------------------------------------------------ */
+/* Zephyr Scale (Server/Data Center): ciclos de teste                  */
+/* ------------------------------------------------------------------ */
+// Os casos de teste do Zephyr NÃO são issues do Jira; os ciclos se chamam "testrun" na API ATM.
+// Os caminhos abaixo seguem a API ATM do Zephyr Scale Server/DC e devem ser confirmados no seu
+// ambiente (ver docs/CONTRATOS.md). Autenticação: a mesma do Jira.
+const txt = v => (v && typeof v === 'object' ? (v.name ?? v.value ?? '') : (v ?? ''));
+const cycleUrl = key => CFG.zephyr.cycleUrl.replace('{jira}', CFG.jira.url).replace('{key}', encodeURIComponent(key));
+
+async function zephyrJson(path, params) {
+  const q = params ? '?' + new URLSearchParams(params) : '';
+  const res = await fetchRetry(
+    'Zephyr',
+    `${CFG.jira.url}${CFG.zephyr.api}${path}${q}`,
+    { headers: jiraHeaders() },
+    jiraThrottle
+  );
+  if (!res.ok) throw httpError('Zephyr', res, path);
+  return res.json();
+}
+
+// Status do Zephyr (Pass, Fail, Blocked, In Progress, Not Executed) → pass | fail | blocked | run | pend
+function caseStatus(s) {
+  const t = String(txt(s)).toLowerCase();
+  if (/not|n[aã]o|unexec/.test(t)) return 'pend';
+  if (/pass|aprov/.test(t)) return 'pass';
+  if (/fail|reprov|falh/.test(t)) return 'fail';
+  if (/block|bloque/.test(t)) return 'blocked';
+  if (/progress|andamento/.test(t)) return 'run';
+  return 'pend';
+}
+
+// Lista os ciclos (sem os itens), do mais recente para o mais antigo
+async function zephyrList() {
+  const tql = CFG.zephyr.tql || `projectKey = "${CFG.jira.project}"`;
+  const seen = new Map();
+  for (let startAt = 0; seen.size < CFG.zephyr.max; ) {
+    const d = await zephyrJson('/testrun/search', {
+      query: tql,
+      fields: 'key,name,status,folder,updatedOn,plannedStartDate,plannedEndDate',
+      startAt,
+      maxResults: 100,
+    });
+    const rows = Array.isArray(d) ? d : d.results || d.values || [];
+    const before = seen.size;
+    for (const r of rows) if (r.key) seen.set(r.key, r);
+    if (rows.length < 100 || seen.size === before) break; // fim, ou a API ignorou a paginação
+    startAt += rows.length;
+    await sleep(CFG.sync.gapMs);
+  }
+  return [...seen.values()]
+    .map(r => ({
+      key: r.key,
+      name: r.name || r.key,
+      status: String(txt(r.status)),
+      folder: String(txt(r.folder)),
+      updated: r.updatedOn || '',
+      start: r.plannedStartDate || '',
+      end: r.plannedEndDate || '',
+    }))
+    .sort((a, b) => String(b.updated).localeCompare(String(a.updated)))
+    .slice(0, CFG.zephyr.max);
+}
+
+// Itens (casos) de um ciclo e o resultado de cada um
+async function zephyrItems(key) {
+  const d = await zephyrJson(`/testrun/${encodeURIComponent(key)}`);
+  return (d.items || [])
+    .map(i => ({ case: i.testCaseKey || i.testCase?.key || '', status: caseStatus(i.status) }))
+    .filter(i => i.case);
+}
+
+/* ------------------------------------------------------------------ */
+/* Sincronização periódica do Jira (cache no servidor)                 */
+/* ------------------------------------------------------------------ */
+// A tela lê sempre deste cache: não importa quantas pessoas abrem a plataforma, o Jira recebe
+// as mesmas poucas chamadas a cada JIRA_SYNC_MS.
+const jcache = {
+  syncedAt: 0,
+  scenAt: 0,
+  fullAt: 0,
+  scenarios: new Map(),
+  cycles: new Map(),
+  error: null,
+  running: false,
+  again: false,
+};
+
+// Acrescenta "updated >= -Nm" (tempo relativo: não depende do fuso do Jira) antes do ORDER BY
+function onlyUpdated(jql, mins) {
+  const m = jql.match(/^(.*?)(\s+order\s+by\s+.*)?$/is);
+  const base = m[1].trim();
+  return `${base ? `(${base}) AND ` : ''}updated >= -${mins}m${m[2] || ''}`;
+}
+// Ciclo "ativo" = não encerrado e atualizado recentemente: só esses são relidos a cada rodada
+const isActive = c =>
+  !CFG.zephyr.closed.includes(c.status.toLowerCase()) &&
+  !(Date.parse(c.updated) < Date.now() - CFG.zephyr.activeDays * 86400000);
+
+async function syncCycles(openOnly, changed) {
+  let list;
+  if (openOnly) list = [...jcache.cycles.values()].map(c => c.meta);
+  else {
+    list = await zephyrList();
+    const keep = new Set(list.map(c => c.key));
+    for (const k of [...jcache.cycles.keys()])
+      if (!keep.has(k)) {
+        jcache.cycles.delete(k);
+        changed.push(k);
+      }
+  }
+  for (const meta of list) {
+    const old = jcache.cycles.get(meta.key);
+    if (openOnly && !isActive(meta)) continue;
+    if (!openOnly && old && !isActive(meta) && old.meta.updated === meta.updated) {
+      old.meta = meta; // encerrado e sem mudança: não precisa reler os itens
+      continue;
+    }
+    let items;
+    try {
+      items = await zephyrItems(meta.key);
+    } catch (e) {
+      if (isTransient(e)) throw e; // limite ou queda: interrompe a rodada em vez de insistir
+      log(`Zephyr: ciclo ${meta.key} ignorado (${e.message})`);
+      continue;
+    }
+    const sig = items.map(i => i.case + i.status).join('|');
+    if (!old || old.sig !== sig || old.meta.status !== meta.status) changed.push(meta.key);
+    jcache.cycles.set(meta.key, { meta, items, sig });
+    await sleep(CFG.sync.gapMs);
+  }
+}
+
+// full: relê todos os cenários · openOnly: só os itens dos ciclos ativos (usado após cada build)
+async function syncJira({ full = false, openOnly = false } = {}) {
+  if (!jiraReady()) return;
+  if (jcache.running) {
+    jcache.again = true;
+    return;
+  }
+  jcache.running = true;
+  const t0 = Date.now(),
+    changed = [];
+  try {
+    if (!openOnly) {
+      full = full || !jcache.scenAt || t0 - jcache.fullAt > CFG.sync.fullMs;
+      const mins = Math.ceil((t0 - jcache.scenAt) / 60000) + 2;
+      const rows = await jiraScenarios({ jql: full ? CFG.jira.scenarioJql : onlyUpdated(CFG.jira.scenarioJql, mins) });
+      if (full) {
+        const keep = new Set(rows.map(r => r.key));
+        for (const k of [...jcache.scenarios.keys()])
+          if (!keep.has(k)) {
+            jcache.scenarios.delete(k);
+            changed.push(k);
+          }
+        jcache.fullAt = t0;
+      }
+      for (const r of rows) {
+        const old = jcache.scenarios.get(r.key);
+        if (!old || old.updated !== r.updated) changed.push(r.key);
+        jcache.scenarios.set(r.key, r);
+      }
+      jcache.scenAt = t0;
+    }
+    if (CFG.zephyr.on) await syncCycles(openOnly, changed);
+    jcache.syncedAt = Date.now();
+    jcache.error = null;
+    log(`Jira: ${full ? 'completa' : openOnly ? 'ciclos abertos' : 'incremental'} · ${changed.length} alteração(ões)`);
+  } catch (e) {
+    jcache.error = e.message;
+    log(`Jira: falha na sincronização (${e.message}); mantendo os últimos dados`);
+  } finally {
+    jcache.running = false;
+  }
+  emit('jira_sync', { at: jcache.syncedAt || null, error: jcache.error, changed: changed.length }, false);
+  if (jcache.again) {
+    jcache.again = false;
+    setTimeout(() => syncJira({ openOnly: true }), 1000);
+  }
+}
+
+// Depois de cada build, relê só os ciclos ativos (dá tempo do Zephyr receber os resultados)
+let afterTimer = null;
+function syncSoon() {
+  if (!CFG.zephyr.on || !CFG.sync.afterBuildMs || !jiraReady()) return;
+  clearTimeout(afterTimer);
+  afterTimer = setTimeout(() => syncJira({ openOnly: true }), CFG.sync.afterBuildMs);
+}
+
+function startJiraSync() {
+  if (!jiraReady() || !CFG.sync.ms) return;
+  log(
+    `Jira: sincronização a cada ${Math.round(CFG.sync.ms / 1000)} s${CFG.zephyr.on ? ' · ciclos do Zephyr Scale ativos' : ''}`
+  );
+  syncJira({ full: true });
+  setInterval(() => syncJira(), CFG.sync.ms);
+}
+
+// Estado entregue à tela: cenários com os ciclos em que aparecem + resumo de cada ciclo
+function jiraState() {
+  const byCase = new Map();
+  for (const s of jcache.scenarios.values()) if (s.caseKey) byCase.set(s.caseKey, s.key);
+  const inCycles = new Map();
+  const cycles = [...jcache.cycles.values()].map(({ meta, items }) => {
+    const totals = { total: items.length, pass: 0, fail: 0, blocked: 0, run: 0, pend: 0, unlinked: 0 };
+    for (const i of items) {
+      totals[i.status]++;
+      const sk = byCase.get(i.case);
+      if (!sk) totals.unlinked++;
+      else inCycles.set(sk, [...(inCycles.get(sk) || []), { key: meta.key, name: meta.name, status: i.status }]);
+    }
+    return { ...meta, url: cycleUrl(meta.key), totals };
+  });
+  return {
+    syncedAt: jcache.syncedAt || null,
+    error: jcache.error,
+    jql: CFG.jira.scenarioJql,
+    field: CFG.jira.pipelineField,
+    zephyr: CFG.zephyr.on,
+    scenarios: [...jcache.scenarios.values()].map(s => ({ ...s, cycles: inCycles.get(s.key) || [] })),
+    cycles,
+  };
+}
+
 const DEMO_SCENARIOS = [
   ['QA-101', 'CT-001 Fluxo de compra completo', 'Checkout'],
   ['QA-102', 'CT-002 Aplicar cupom de desconto', 'Checkout'],
@@ -376,7 +745,23 @@ const DEMO_SCENARIOS = [
   ['QA-104', 'CT-004 Timeout na API de pagamento', 'Pagamento'],
   ['QA-105', 'CT-005 Validação de carrinho vazio', 'Checkout'],
   ['QA-130', 'CT-030 Login no app', 'App do Cliente'],
-].map(([key, name, pipeline]) => ({ key, name, status: 'Pronto', pipeline, url: '' }));
+].map(([key, name, pipeline], i) => ({ key, name, status: 'Pronto', pipeline, caseKey: `QA-T${i + 1}`, url: '' }));
+
+// Dados de exemplo para o modo demonstração (sem Jira)
+function seedDemoJira() {
+  for (const s of DEMO_SCENARIOS) jcache.scenarios.set(s.key, s);
+  const cycle = (key, name, status, st) => {
+    const items = DEMO_SCENARIOS.map((s, i) => ({ case: s.caseKey, status: st[i] || 'pend' }));
+    jcache.cycles.set(key, {
+      meta: { key, name, status, folder: '/Regressão', updated: new Date().toISOString(), start: '', end: '' },
+      items,
+      sig: '',
+    });
+  };
+  cycle('QA-R1', 'Regressão Sprint 42', 'In Progress', ['pass', 'pass', 'fail', 'fail', 'pend', 'pass']);
+  cycle('QA-R2', 'Smoke da release 3.8', 'Done', ['pass', 'pass', 'pass', 'pass', 'pass', 'pass']);
+  jcache.syncedAt = Date.now();
+}
 
 /* ------------------------------------------------------------------ */
 /* Modo demonstração (sem Jenkins)                                     */
@@ -497,6 +882,9 @@ const server = http.createServer(async (req, res) => {
       jenkins: !!CFG.jenkins.url,
       jobs: CFG.jenkins.jobs,
       jira: !!jiraReady(),
+      zephyr: CFG.zephyr.on,
+      jiraSync: { at: jcache.syncedAt || null, error: jcache.error },
+      slow: { jenkins: +jenkinsThrottle.factor.toFixed(2), jira: +jiraThrottle.factor.toFixed(2) },
       clients: clients.size,
       active: active.size,
     });
@@ -556,6 +944,20 @@ const server = http.createServer(async (req, res) => {
       });
       return send(res, 200, { scenarios });
     }
+    // Estado em cache (cenários + ciclos). Não chama o Jira: quem chama é a sincronização periódica.
+    if (req.method === 'GET' && url.pathname === '/api/jira/state') {
+      if (!jiraReady() && !CFG.demo) return send(res, 400, { error: 'Jira não configurado no servidor' });
+      return send(res, 200, jiraState());
+    }
+    // Atualização manual: no máximo 1 por JIRA_MIN_MANUAL_MS, para o botão não esgotar o limite do Jira
+    if (req.method === 'POST' && url.pathname === '/api/jira/sync') {
+      if (!jiraReady())
+        return send(res, CFG.demo ? 200 : 400, CFG.demo ? jiraState() : { error: 'Jira não configurado' });
+      const wait = jcache.syncedAt + CFG.sync.minManualMs - Date.now();
+      if (wait > 0) return send(res, 200, { ...jiraState(), throttled: true, retryInMs: wait });
+      await syncJira();
+      return send(res, 200, jiraState());
+    }
     if (req.method === 'POST' && url.pathname === '/api/jira/bug') {
       if (!jiraReady()) return send(res, 400, { error: 'Jira não configurado' });
       const body = await readJson(req);
@@ -571,7 +973,11 @@ const server = http.createServer(async (req, res) => {
 
 server.listen(CFG.port, () => {
   log(`QA AI Agent — servidor em http://localhost:${CFG.port}`);
-  if (CFG.demo) return startDemo();
+  if (CFG.demo) {
+    seedDemoJira();
+    return startDemo();
+  }
+  startJiraSync();
   if (!CFG.jenkins.url || !CFG.jenkins.jobs.length) {
     log('JENKINS_URL e JENKINS_JOBS não configurados. Use DEMO=true para testar sem Jenkins.');
     return;
