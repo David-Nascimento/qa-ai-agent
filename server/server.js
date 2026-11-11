@@ -1,5 +1,5 @@
 // QA AI Agent — servidor de tempo real
-// Lê as execuções do Jenkins e integra com o Jira usando somente as APIs REST,
+// Lê as execuções do Jenkins e do GitHub Actions e integra com o Jira usando somente as APIs REST,
 // e envia os eventos para a plataforma via Server-Sent Events (SSE).
 // Requer Node.js 20.6+ (fetch nativo e --env-file). Sem dependências externas.
 
@@ -26,6 +26,17 @@ const CFG = {
     discoverMs: +(env.DISCOVER_MS || 30000),
     logRegex: env.LOG_REGEX ? new RegExp(env.LOG_REGEX, 'u') : null,
     respRegex: new RegExp(env.RESP_REGEX || String.raw`\[resp\]\s+(?<name>.+?)\s+(?<ms>\d+)\s*ms`, 'u'),
+  },
+  // GitHub Actions: cada workflow é acompanhado como um "job" do Jenkins (job = dono/repositório/arquivo.yml)
+  github: {
+    api: (env.GITHUB_API_URL || 'https://api.github.com').replace(/\/$/, ''),
+    token: env.GITHUB_TOKEN || '',
+    // "dono/repo/workflow.yml" acompanha um workflow · "dono/repo" acompanha todos os workflows do repositório
+    workflows: list(env.GITHUB_WORKFLOWS),
+    pollMs: +(env.GITHUB_POLL_MS || 10000),
+    discoverMs: +(env.GITHUB_DISCOVER_MS || 30000),
+    // só baixa o log dos jobs cujo nome casa com esta expressão (cada log custa 1 chamada)
+    logJobs: env.GITHUB_LOG_JOBS ? new RegExp(env.GITHUB_LOG_JOBS, 'iu') : null,
   },
   jira: {
     url: (env.JIRA_URL || '').replace(/\/$/, ''),
@@ -94,25 +105,37 @@ const makeThrottle = () => ({
 });
 const jenkinsThrottle = makeThrottle();
 const jiraThrottle = makeThrottle();
+const githubThrottle = makeThrottle();
 
 const TRANSIENT = new Set([429, 502, 503, 504]);
-// Retry-After pode vir em segundos ou como data
+// O GitHub avisa o limite com 403 (ou 429) + x-ratelimit-remaining: 0 (limite primário) ou Retry-After
+// (limite secundário). Um 403 comum (sem permissão) não tem esses cabeçalhos e continua sendo erro.
+const rateLimited = res =>
+  !!res &&
+  (res.status === 403 || res.status === 429) &&
+  (res.headers.get('x-ratelimit-remaining') === '0' || res.headers.has('retry-after'));
+// Retry-After pode vir em segundos ou como data; no limite primário do GitHub vale o x-ratelimit-reset
 function retryAfterMs(headers) {
   const v = headers?.get('retry-after');
-  if (!v) return 0;
-  const n = Number(v);
-  if (!Number.isNaN(n)) return n * 1000;
-  const d = Date.parse(v);
-  return Number.isNaN(d) ? 0 : Math.max(0, d - Date.now());
+  if (v) {
+    const n = Number(v);
+    if (!Number.isNaN(n)) return n * 1000;
+    const d = Date.parse(v);
+    return Number.isNaN(d) ? 0 : Math.max(0, d - Date.now());
+  }
+  const reset = Number(headers?.get('x-ratelimit-reset'));
+  return headers?.get('x-ratelimit-remaining') === '0' && reset ? Math.max(0, reset * 1000 - Date.now()) : 0;
 }
 
 function httpError(label, res, path) {
   const e = new Error(`${label} ${res.status} em ${path}`);
   e.status = res.status;
+  e.limited = rateLimited(res); // limite de requisições: espera e tenta de novo, não é falha do build
   return e;
 }
 
-// GET repete em 429/502/503/504 e em erro de rede. POST repete só em 429 (não duplica ação).
+// GET repete em 429/502/503/504, no limite do GitHub e em erro de rede. POST repete só quando o
+// servidor recusou por limite (429 ou limite do GitHub): a ação não foi executada, então não duplica.
 async function fetchRetry(label, url, opts = {}, throttle = null) {
   const safe = !opts.method || opts.method === 'GET';
   for (let i = 0; ; i++) {
@@ -123,13 +146,19 @@ async function fetchRetry(label, url, opts = {}, throttle = null) {
     } catch (e) {
       err = e;
     }
-    const transient = err ? safe : TRANSIENT.has(res.status) && (safe || res.status === 429);
+    const limited = rateLimited(res);
+    const transient = err ? safe : (TRANSIENT.has(res.status) || limited) && (safe || res.status === 429 || limited);
     if (res && !transient) throttle?.ok();
     if (!transient || i >= CFG.http.retries) {
       if (err) throw err;
       return res;
     }
     const given = retryAfterMs(res?.headers);
+    // o limite só volta daqui a muito tempo (ex.: reset do GitHub em 40 min): não adianta insistir agora
+    if (limited && given > CFG.http.maxWaitMs) {
+      throttle?.hit();
+      return res;
+    }
     const backoff = CFG.http.backoffMs * 2 ** i * (0.8 + Math.random() * 0.4);
     const wait = Math.min(CFG.http.maxWaitMs, Math.max(given, backoff));
     if (res?.status === 429) throttle?.hit();
@@ -140,7 +169,7 @@ async function fetchRetry(label, url, opts = {}, throttle = null) {
   }
 }
 // Erro passageiro (limite, queda de rede, 5xx): não deve virar "Falha" do build
-const isTransient = e => e.status === undefined || e.status === 429 || e.status >= 500;
+const isTransient = e => e.status === undefined || e.status === 429 || e.status >= 500 || e.limited === true;
 
 /* ------------------------------------------------------------------ */
 /* Eventos (SSE)                                                       */
@@ -189,6 +218,7 @@ const DEFAULT_LINE =
   /^\s*(?<status>✓|✔|√|✗|✘|×|✕)\s+(?:\d+\s+)?(?<name>.+?)\s*\((?<dur>\d+(?:[.,]\d+)?)\s*(?<unit>ms|s|m)\)\s*$/u;
 const PASS = new Set(['✓', '✔', '√', 'ok', 'OK', 'pass', 'passed', 'PASS', 'PASSED', 'Passed', 'SUCCESS']);
 const ANSI = /\x1b\[[0-9;]*[A-Za-z]/g;
+const STAMP = /^﻿?\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z ?/;
 
 function toSeconds(v, unit) {
   const n = parseFloat(String(v).replace(',', '.'));
@@ -213,7 +243,8 @@ function parseLines(st, text, final) {
   st.buf = final ? '' : lines.pop();
   const re = CFG.jenkins.logRegex || DEFAULT_LINE;
   for (const raw of lines) {
-    const line = raw.replace(ANSI, '');
+    // remove cores e o carimbo de hora que o GitHub Actions põe no início de cada linha do log
+    const line = raw.replace(ANSI, '').replace(STAMP, '');
     const r = line.match(CFG.jenkins.respRegex);
     if (r?.groups) {
       st.resp.set(cleanName(r.groups.name), +r.groups.ms);
@@ -341,14 +372,16 @@ async function finish(st) {
     result: info.result,
   });
   log(`${st.job}#${st.build} finalizado: ${status} (${passed}/${total})`);
-  syncSoon();
+  await afterBuild(st, `${CFG.jenkins.url}${base}/`);
+}
 
+// Depois de qualquer build (Jenkins ou GitHub Actions): atualiza os ciclos e abre bugs das falhas
+async function afterBuild(st, buildUrl) {
+  syncSoon();
   if (CFG.jira.autoBug && jiraReady()) {
     for (const [name, s] of st.scen) {
       if (s !== 'fail') continue;
-      await reportBug({ job: st.job, build: st.build, scenario: name, buildUrl: `${CFG.jenkins.url}${base}/` }).catch(
-        e => log(`Jira: ${e.message}`)
-      );
+      await reportBug({ job: st.job, build: st.build, scenario: name, buildUrl }).catch(e => log(`Jira: ${e.message}`));
     }
   }
 }
@@ -380,6 +413,259 @@ async function triggerBuild(job, params) {
   setTimeout(discover, 4000); // o build entra na fila e começa alguns segundos depois
 }
 const stopBuild = (job, build) => jenkinsRaw(`/${jobPath(job)}/${build}/stop`, { method: 'POST' });
+
+/* ------------------------------------------------------------------ */
+/* GitHub Actions                                                      */
+/* ------------------------------------------------------------------ */
+// Mesmo processo do Jenkins, adaptado ao que a API do GitHub oferece:
+//   workflow  = job do Jenkins         (job = "dono/repo/arquivo.yml", pasta = "dono/repo")
+//   run       = build                  (build = run_number)
+//   job do workflow = estágio          (evento "stage")
+//   cenários  = linhas do log de cada job, lidas quando o job termina. O GitHub só libera o log de
+//               um job concluído, então os cenários chegam por job e não linha a linha.
+// Custo: respostas 304 (ETag) não contam no limite de 5.000 chamadas/hora do token.
+const ghReady = () => !!(CFG.github.token && CFG.github.workflows.length);
+const ghHeaders = () => ({
+  Authorization: `Bearer ${CFG.github.token}`,
+  Accept: 'application/vnd.github+json',
+  'X-GitHub-Api-Version': '2022-11-28',
+});
+// limite informado pelo GitHub na última resposta
+const ghRate = { limit: null, remaining: null, reset: 0 };
+const ghEtags = new Map(); // caminho → { etag, body }
+
+// "dono/repo/arquivo.yml" → { repo, file } se o job pertence a um workflow configurado; senão null
+function ghParse(job) {
+  const m = String(job).match(/^([^/]+\/[^/]+)\/([^/]+\.ya?ml)$/i);
+  if (!m) return null;
+  const low = x => x.toLowerCase();
+  return CFG.github.workflows.some(w => low(w) === low(m[1]) || low(w) === low(job))
+    ? { repo: m[1], file: m[2] }
+    : null;
+}
+
+function ghGuard() {
+  if (ghRate.remaining === 0 && ghRate.reset * 1000 > Date.now()) {
+    const e = new Error(`GitHub: limite de chamadas esgotado até ${new Date(ghRate.reset * 1000).toISOString()}`);
+    e.limited = true;
+    throw e;
+  }
+}
+
+async function ghRaw(path, opts = {}) {
+  ghGuard();
+  const res = await fetchRetry(
+    'GitHub',
+    CFG.github.api + path,
+    { ...opts, headers: { ...ghHeaders(), ...(opts.headers || {}) } },
+    githubThrottle
+  );
+  const h = res.headers;
+  if (h.get('x-ratelimit-remaining') !== null) {
+    ghRate.limit = +h.get('x-ratelimit-limit') || ghRate.limit;
+    ghRate.remaining = +h.get('x-ratelimit-remaining');
+    ghRate.reset = +h.get('x-ratelimit-reset') || 0;
+  }
+  if (!res.ok && res.status !== 304) throw httpError('GitHub', res, path);
+  return res;
+}
+
+// GET com ETag: se nada mudou o GitHub responde 304, que não consome o limite
+async function ghJson(path) {
+  const hit = ghEtags.get(path);
+  const res = await ghRaw(path, hit ? { headers: { 'If-None-Match': hit.etag } } : {});
+  if (res.status === 304 && hit) return hit.body;
+  const body = await res.json();
+  const etag = res.headers.get('etag');
+  if (etag) {
+    if (ghEtags.size >= 500) ghEtags.delete(ghEtags.keys().next().value);
+    ghEtags.set(path, { etag, body });
+  }
+  return body;
+}
+
+// Espera entre leituras de um run: cresce quando o GitHub pede calma e quando o limite está acabando
+function ghWait() {
+  const low = ghRate.remaining !== null && ghRate.remaining < 200 ? 4 : 1;
+  const base =
+    CFG.github.pollMs * githubThrottle.factor * low * Math.max(1, Math.ceil(active.size / CFG.track.fastBuilds));
+  const untilReset = ghRate.remaining === 0 ? Math.min(300000, Math.max(0, ghRate.reset * 1000 - Date.now())) : 0;
+  return Math.max(base, untilReset);
+}
+
+// Estado do job do GitHub → status de estágio no formato que a tela já conhece (o mesmo do Jenkins)
+function ghStage(j) {
+  if (j.status !== 'completed') return 'IN_PROGRESS';
+  return (
+    {
+      success: 'SUCCESS',
+      neutral: 'SUCCESS',
+      cancelled: 'ABORTED',
+      skipped: 'NOT_EXECUTED',
+      action_required: 'PAUSED_PENDING_INPUT',
+    }[j.conclusion] || 'FAILED'
+  );
+}
+const ghFile = run =>
+  String(run.path || '')
+    .split('/')
+    .pop()
+    .split('@')[0] || String(run.workflow_id);
+
+// Lê o log de um job concluído e transforma as linhas de resultado em eventos "scenario"
+async function ghJobLog(st, j) {
+  if (j.conclusion === 'skipped' || (CFG.github.logJobs && !CFG.github.logJobs.test(j.name))) return;
+  try {
+    const res = await ghRaw(`/repos/${st.repo}/actions/jobs/${j.id}/logs`);
+    parseLines(st, await res.text(), true);
+  } catch (e) {
+    if (isTransient(e)) throw e; // tenta de novo na próxima leitura
+    log(`${st.job}#${st.build}: log do job "${j.name}" indisponível (${e.message})`); // expirado ou sem permissão
+  }
+}
+
+async function ghTrack(repo, run) {
+  const file = ghFile(run),
+    job = `${repo}/${file}`,
+    key = `${job}#${run.run_number}`;
+  const st = {
+    src: 'github',
+    job,
+    repo,
+    runId: run.id,
+    build: run.run_number,
+    buf: '',
+    start: Date.parse(run.run_started_at || run.created_at) || Date.now(),
+    scen: new Map(),
+    resp: new Map(),
+    stages: {},
+    logged: new Set(),
+  };
+  active.set(key, st);
+  log(`Acompanhando ${key}`);
+  emit('build_start', {
+    job,
+    build: run.run_number,
+    timestamp: st.start,
+    folder: repo,
+    name: run.name || file,
+    source: 'GitHub Actions',
+    branch: run.head_branch,
+    url: run.html_url,
+  });
+  let r = run,
+    errors = 0,
+    limits = 0;
+  try {
+    while (r.status !== 'completed') {
+      await sleep(ghWait());
+      try {
+        // run primeiro e jobs depois: a lista de jobs é sempre igual ou mais nova que o run
+        r = await ghJson(`/repos/${repo}/actions/runs/${run.id}`);
+        const { jobs = [] } = await ghJson(`/repos/${repo}/actions/runs/${run.id}/jobs?per_page=100`);
+        for (const j of jobs) {
+          if (j.status === 'queued' || j.status === 'waiting' || j.status === 'pending') continue;
+          const status = ghStage(j);
+          if (st.stages[j.name] !== status) {
+            st.stages[j.name] = status;
+            const end = Date.parse(j.completed_at) || Date.now();
+            emit('stage', {
+              job,
+              build: run.run_number,
+              stage: j.name,
+              status,
+              duration: Math.max(0, end - (Date.parse(j.started_at) || end)),
+            });
+          }
+          if (j.status === 'completed' && !st.logged.has(j.id)) {
+            await ghJobLog(st, j);
+            st.logged.add(j.id);
+          }
+        }
+        errors = limits = 0;
+      } catch (e) {
+        // limite ou queda passageira: espera e tenta de novo, sem marcar o run como falha
+        if (!isTransient(e)) throw e;
+        if (e.limited ? ++limits > 60 : ++errors > CFG.track.maxErrors) throw e;
+        log(`${key}: ${e.message}; leitura adiada`);
+      }
+    }
+    await ghFinish(st, r);
+  } catch (e) {
+    log(`Erro em ${key}: ${e.message}`);
+    emit('build_end', { job, build: run.run_number, status: 'Falha', error: e.message, source: 'GitHub Actions' });
+  } finally {
+    active.delete(key);
+  }
+}
+
+async function ghFinish(st, r) {
+  const scen = [...st.scen.values()];
+  const passed = scen.filter(s => s === 'pass').length;
+  const failed = scen.filter(s => s === 'fail').length;
+  const status =
+    r.conclusion === 'cancelled' ? 'Cancelada' : r.conclusion === 'success' && failed === 0 ? 'Sucesso' : 'Falha';
+  const end = Date.parse(r.updated_at) || Date.now();
+  emit('build_end', {
+    job: st.job,
+    build: st.build,
+    status,
+    duration: Math.max(0, end - st.start),
+    passed,
+    failed,
+    total: passed + failed,
+    result: String(r.conclusion || '').toUpperCase(),
+    source: 'GitHub Actions',
+  });
+  log(`${st.job}#${st.build} finalizado: ${status} (${passed}/${passed + failed})`);
+  await afterBuild(st, r.html_url);
+}
+
+// Procura runs em andamento: 1 chamada por workflow (ou por repositório) a cada GITHUB_DISCOVER_MS
+async function ghDiscover() {
+  for (const w of CFG.github.workflows) {
+    const parts = w.split('/');
+    const repo = parts.slice(0, 2).join('/'),
+      file = parts[2];
+    try {
+      const d = await ghJson(
+        file
+          ? `/repos/${repo}/actions/workflows/${encodeURIComponent(file)}/runs?per_page=5`
+          : `/repos/${repo}/actions/runs?per_page=10`
+      );
+      for (const run of d.workflow_runs || []) {
+        if (run.status === 'completed') continue;
+        const key = `${repo}/${ghFile(run)}#${run.run_number}`;
+        if (active.has(key)) continue;
+        if (active.size >= CFG.track.maxBuilds) {
+          log(`Limite de ${CFG.track.maxBuilds} builds acompanhados: ${key} fica para a próxima rodada`);
+          continue;
+        }
+        ghTrack(repo, run);
+      }
+    } catch (e) {
+      log(`Falha ao consultar ${w}: ${e.message}`);
+    }
+  }
+}
+
+// Dispara o workflow (precisa de "on: workflow_dispatch"). Sem "ref", usa a branch padrão do repositório.
+async function ghTrigger(job, params = {}) {
+  const { repo, file } = ghParse(job);
+  const { ref, ...inputs } = params;
+  const branch = ref || (await ghJson(`/repos/${repo}`)).default_branch;
+  await ghRaw(`/repos/${repo}/actions/workflows/${encodeURIComponent(file)}/dispatches`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ref: branch, ...(Object.keys(inputs).length ? { inputs } : {}) }),
+  });
+  setTimeout(ghDiscover, 6000); // o run aparece alguns segundos depois do disparo
+}
+async function ghStop(job, build) {
+  const st = active.get(`${job}#${build}`);
+  if (!st?.runId) throw new Error('Run não está em acompanhamento');
+  await ghRaw(`/repos/${st.repo}/actions/runs/${st.runId}/cancel`, { method: 'POST' });
+}
 
 /* ------------------------------------------------------------------ */
 /* Jira                                                                */
@@ -881,10 +1167,17 @@ const server = http.createServer(async (req, res) => {
       demo: CFG.demo,
       jenkins: !!CFG.jenkins.url,
       jobs: CFG.jenkins.jobs,
+      github: ghReady(),
+      workflows: CFG.github.workflows,
+      githubRate: { limit: ghRate.limit, remaining: ghRate.remaining, reset: ghRate.reset || null },
       jira: !!jiraReady(),
       zephyr: CFG.zephyr.on,
       jiraSync: { at: jcache.syncedAt || null, error: jcache.error },
-      slow: { jenkins: +jenkinsThrottle.factor.toFixed(2), jira: +jiraThrottle.factor.toFixed(2) },
+      slow: {
+        jenkins: +jenkinsThrottle.factor.toFixed(2),
+        jira: +jiraThrottle.factor.toFixed(2),
+        github: +githubThrottle.factor.toFixed(2),
+      },
       clients: clients.size,
       active: active.size,
     });
@@ -926,13 +1219,14 @@ const server = http.createServer(async (req, res) => {
       const { job, params } = await readJson(req);
       if (!job) return send(res, 400, { error: 'Informe "job"' });
       if (CFG.demo) return send(res, 202, { ok: true, demo: true });
-      await triggerBuild(job, params);
+      if (ghParse(job)) await ghTrigger(job, params);
+      else await triggerBuild(job, params);
       return send(res, 202, { ok: true });
     }
     if (req.method === 'POST' && url.pathname === '/api/stop') {
       const { job, build } = await readJson(req);
       if (!job || !build) return send(res, 400, { error: 'Informe "job" e "build"' });
-      if (!CFG.demo) await stopBuild(job, build);
+      if (!CFG.demo) await (ghParse(job) ? ghStop(job, build) : stopBuild(job, build));
       return send(res, 202, { ok: true });
     }
     if (req.method === 'GET' && url.pathname === '/api/jira/scenarios') {
@@ -978,13 +1272,22 @@ server.listen(CFG.port, () => {
     return startDemo();
   }
   startJiraSync();
-  if (!CFG.jenkins.url || !CFG.jenkins.jobs.length) {
-    log('JENKINS_URL e JENKINS_JOBS não configurados. Use DEMO=true para testar sem Jenkins.');
+  const jenkinsOn = CFG.jenkins.url && CFG.jenkins.jobs.length;
+  if (!jenkinsOn && !ghReady()) {
+    log(
+      'Nenhuma fonte configurada (JENKINS_URL/JENKINS_JOBS ou GITHUB_TOKEN/GITHUB_WORKFLOWS). Use DEMO=true para testar.'
+    );
     return;
   }
-  log(
-    `Jenkins: ${CFG.jenkins.url} · jobs: ${CFG.jenkins.jobs.join(', ')} · Jira: ${jiraReady() ? CFG.jira.url : 'desligado'}`
-  );
-  discover();
-  setInterval(discover, CFG.jenkins.discoverMs);
+  log(`Jira: ${jiraReady() ? CFG.jira.url : 'desligado'}`);
+  if (jenkinsOn) {
+    log(`Jenkins: ${CFG.jenkins.url} · jobs: ${CFG.jenkins.jobs.join(', ')}`);
+    discover();
+    setInterval(discover, CFG.jenkins.discoverMs);
+  }
+  if (ghReady()) {
+    log(`GitHub Actions: ${CFG.github.api} · workflows: ${CFG.github.workflows.join(', ')}`);
+    ghDiscover();
+    setInterval(ghDiscover, CFG.github.discoverMs);
+  }
 });

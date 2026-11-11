@@ -28,9 +28,9 @@
  "logo_svg": "<svg width=\"30\" height=\"27\" viewBox=\"0 0 42 38\" aria-hidden=\"true\"><rect x=\"19.5\" y=\"1\" width=\"3\" height=\"6\" rx=\"1.5\" fill=\"#8f86ff\"/><circle cx=\"21\" cy=\"2.5\" r=\"2.5\" fill=\"#8f86ff\"/><rect x=\"0\" y=\"16\" width=\"5\" height=\"11\" rx=\"2.5\" fill=\"#8f86ff\"/><rect x=\"37\" y=\"16\" width=\"5\" height=\"11\" rx=\"2.5\" fill=\"#8f86ff\"/><rect x=\"4\" y=\"7\" width=\"34\" height=\"28\" rx=\"10\" fill=\"#7b6ff5\"/><rect x=\"9\" y=\"13\" width=\"24\" height=\"16\" rx=\"7\" fill=\"#e9e6ff\"/><circle cx=\"16\" cy=\"21\" r=\"3\" fill=\"#3d32b8\"/><circle cx=\"26\" cy=\"21\" r=\"3\" fill=\"#3d32b8\"/></svg>",
  "visao_geral": {
   "titulo": "Visão geral da arquitetura",
-  "descricao": "O navegador nunca fala direto com o Jenkins ou o Jira. O servidor consulta as duas APIs, converte tudo para os formatos da plataforma e entrega por rotas `/api` e por eventos em tempo real (SSE). Sem servidor, o portal roda com dados de exemplo e simulação.",
+  "descricao": "O navegador nunca fala direto com o Jenkins, o GitHub ou o Jira. O servidor consulta as APIs, converte tudo para os formatos da plataforma e entrega por rotas `/api` e por eventos em tempo real (SSE). Sem servidor, o portal roda com dados de exemplo e simulação.",
   "diagrama": "flowchart LR\n  subgraph EXT[\"Fontes externas\"]\n    JK[\"Jenkins<br/>API REST\"]\n    JR[\"Jira<br/>API REST\"]\n    IDP[\"Provedor SSO<br/>(proposta)\"]\n  end\n  subgraph SRV[\"Servidor Node · server.js\"]\n    POLL[\"Leitura do Jenkins<br/>descoberta + log progressivo\"]\n    JQ[\"Leitura e escrita no Jira<br/>cenários e bugs\"]\n    BUS[(\"Eventos<br/>últimos 300\")]\n    API[\"Rotas /api\"]\n    SSE[\"/events · SSE\"]\n  end\n  subgraph WEB[\"Portal · navegador\"]\n    NAV[\"Navegação e acesso\"]\n    DASH[\"Dashboard\"]\n    PIP[\"Pipelines\"]\n    EXE[\"Execuções<br/>Histórico · Ao vivo\"]\n    CEN[\"Cenários\"]\n    ANA[\"Análises<br/>Qualidade · Tempo · Estabilidade\"]\n    CFG[\"Configurações\"]\n    AG[\"Agente de QA<br/>(opcional)\"]\n  end\n  JK --> POLL --> BUS --> SSE --> EXE\n  POLL -- \"falhas\" --> JQ\n  JR <--> JQ --> API --> CEN\n  API -- \"executar · parar\" --> JK\n  IDP -.-> NAV\n  EXE --> DASH\n  EXE --> ANA\n  PIP --> ANA\n  CFG --> NAV\n  CFG --> ANA\n  EXE -.-> AG",
-  "nota": "Modos de uso: **sem servidor** (dados de exemplo e simulação 10× acelerada) e **conectado** (`index.html?api=https://servidor&key=CHAVE`), em que Execuções, Detalhe, Dashboard, Análises e Cenários passam a usar o Jenkins e o Jira."
+  "nota": "Modos de uso: **sem servidor** (dados de exemplo e simulação 10× acelerada) e **conectado** (`index.html?api=https://servidor&key=CHAVE`), em que Execuções, Detalhe, Dashboard, Análises e Cenários passam a usar o Jenkins, o GitHub Actions e o Jira."
  },
  "categorias": [
   {
@@ -490,6 +490,75 @@
    ]
   },
   {
+   "id": "github",
+   "titulo": "Servidor: integração com o GitHub Actions",
+   "status": "Implementado",
+   "status_tipo": "real",
+   "descricao": "O servidor acompanha os runs dos workflows pela API REST do GitHub e os traduz para os mesmos eventos do Jenkins: workflow = job, run = build, job do workflow = estágio.",
+   "codigo": "`server/server.js` (`ghDiscover`, `ghTrack`, `ghJobLog`, `ghFinish`, `ghJson`, `ghWait`)",
+   "diagrama": "sequenceDiagram\n  participant S as Servidor\n  participant G as GitHub\n  participant P as Portal\n  loop a cada 30 s\n    S->>G: runs em andamento dos workflows configurados\n  end\n  S-->>P: build_start\n  loop a cada 10 s enquanto o run não termina\n    S->>G: run e jobs (ETag: 304 não gasta limite)\n    S-->>P: stage (quando um job muda)\n    S->>G: log do job concluído\n    S-->>P: scenario (uma por linha de resultado)\n  end\n  S-->>P: build_end",
+   "funcionalidades": [
+    [
+     "Descoberta de runs",
+     "Consulta cada workflow de `GITHUB_WORKFLOWS` (ou o repositório inteiro) e acompanha os runs em andamento."
+    ],
+    [
+     "Jobs como estágios",
+     "Cada job do workflow vira um estágio, com o status no formato do Jenkins."
+    ],
+    [
+     "Cenários pelo log",
+     "Quando um job termina, o log dele é lido uma vez e as linhas de resultado viram cenários (carimbo de hora removido)."
+    ],
+    [
+     "Executar e parar",
+     "`/api/build` dispara o workflow (`workflow_dispatch`) e `/api/stop` cancela o run."
+    ],
+    [
+     "Proteção de limite",
+     "Reconhece o limite do GitHub (403 com `x-ratelimit-remaining: 0` ou `Retry-After`), espera o reset e não chama a API enquanto o limite estiver esgotado."
+    ]
+   ],
+   "regras": [
+    [
+     "RN-GHA-01",
+     "Runs novos são procurados a cada 30 s (1 chamada por workflow); um run em andamento é lido a cada 10 s (run e jobs). Ambos são configuráveis."
+    ],
+    [
+     "RN-GHA-02",
+     "O log de um job só é liberado pelo GitHub depois que o job termina; por isso os cenários chegam por job concluído, uma única vez, e não linha a linha."
+    ],
+    [
+     "RN-GHA-03",
+     "Status do run: cancelled → Cancelada; success sem cenários com falha → Sucesso; qualquer outro → Falha."
+    ],
+    [
+     "RN-GHA-04",
+     "Totais (passou, falhou, total) vêm só das linhas de resultado dos logs; sem elas ficam em 0 e vale o status do run."
+    ],
+    [
+     "RN-GHA-05",
+     "Respostas condicionais por ETag: se nada mudou o GitHub devolve 304, que não consome o limite de 5.000 chamadas por hora do token."
+    ],
+    [
+     "RN-GHA-06",
+     "Limite esgotado com reset distante não derruba o run: o servidor para de chamar a API, espera (no máximo 5 min por vez) e retoma. Com menos de 200 chamadas restantes, o intervalo de leitura quadruplica. Um 403 sem esses cabeçalhos (permissão) continua sendo erro."
+    ],
+    [
+     "RN-GHA-07",
+     "Executar exige `on: workflow_dispatch` no workflow; sem `ref`, usa a branch padrão do repositório. Parar só vale para runs em acompanhamento."
+    ],
+    [
+     "RN-GHA-08",
+     "O token do GitHub fica só no servidor (`.env`)."
+    ],
+    [
+     "RN-GHA-09",
+     "Um re-run mantém o mesmo número de execução e não aparece como execução nova na tela."
+    ]
+   ]
+  },
+  {
    "id": "jira",
    "titulo": "Servidor: integração com o Jira",
    "status": "Implementado",
@@ -638,7 +707,7 @@
     ],
     [
      "Integrações",
-     "Azure DevOps, GitLab CI, Jenkins, Jira e Importação de JSON."
+     "Azure DevOps, GitLab CI, Jenkins, GitHub Actions, Jira e Importação de JSON."
     ]
    ],
    "regras": [
@@ -656,7 +725,7 @@
     ],
     [
      "RN-CFG-04",
-     "Tokens nunca ficam no navegador; a conexão real com Jenkins e Jira é feita só pelo servidor."
+     "Tokens nunca ficam no navegador; a conexão real com Jenkins, GitHub Actions e Jira é feita só pelo servidor."
     ],
     [
      "RN-CFG-05",
@@ -846,6 +915,23 @@
     ],
     "regras": [
      "RN-JEN-07"
+    ]
+   },
+   {
+    "id": "src_github",
+    "col": 0,
+    "cat": "fonte",
+    "titulo": "GitHub Actions",
+    "onde": "API REST · token (Bearer)",
+    "descricao": "Runs, jobs e logs dos workflows configurados.",
+    "passos": [
+     "Lido pelo servidor, nunca pelo navegador.",
+     "Endpoints: /repos/…/actions/workflows/…/runs (runs), /actions/runs/{id} e /jobs (andamento), /actions/jobs/{id}/logs (cenários), /dispatches e /cancel (comandos).",
+     "Usa ETag: respostas 304 não gastam o limite do token."
+    ],
+    "regras": [
+     "RN-GHA-05",
+     "RN-GHA-08"
     ]
    },
    {
@@ -1085,6 +1171,35 @@
     ]
    },
    {
+    "id": "s_ghtrack",
+    "col": 2,
+    "cat": "servidor",
+    "titulo": "Acompanhamento do run",
+    "onde": "server.js · ghTrack()",
+    "descricao": "Para cada run em andamento: emite o início, lê run e jobs em laço e baixa o log de cada job quando ele termina.",
+    "formula": "repetir a cada 10 s até o run ficar completed",
+    "passos": [
+     "Emite build_start com número do run, repositório, workflow e branch.",
+     "Cada job que muda vira um evento stage.",
+     "Job concluído: lê o log uma vez e emite os cenários.",
+     "Limite de chamadas ou queda passageira não vira Falha: espera e tenta de novo.",
+     "No fim, chama ghFinish()."
+    ],
+    "regras": [
+     "RN-GHA-01",
+     "RN-GHA-02",
+     "RN-GHA-03",
+     "RN-GHA-04",
+     "RN-GHA-06"
+    ],
+    "codigo": [
+     {
+      "arquivo": "server/server.js",
+      "funcao": "ghTrack"
+     }
+    ]
+   },
+   {
     "id": "s_parse",
     "col": 3,
     "cat": "servidor",
@@ -1224,7 +1339,7 @@
      "build_start: cria a execução (e o componente, se não existir).",
      "scenario: marca o cenário como rodando, aprovado ou falho e soma os aprovados.",
      "build_end: fecha a execução; cenários que não rodaram ficam “não executados”.",
-     "Desliga a simulação e muda a aba para “Ao vivo · Jenkins”."
+     "Desliga a simulação e muda a aba para “Ao vivo · CI”."
     ],
     "regras": [
      "RN-EXE-02",
@@ -1998,10 +2113,10 @@
     "cat": "servidor",
     "titulo": "Espera e nova tentativa",
     "onde": "server.js · fetchRetry()",
-    "descricao": "Toda chamada ao Jenkins, ao Jira e ao Zephyr passa por aqui: em 429, 502, 503 ou 504 o servidor espera e tenta de novo.",
+    "descricao": "Toda chamada ao Jenkins, ao GitHub, ao Jira e ao Zephyr passa por aqui: em 429, 502, 503, 504 ou no limite do GitHub o servidor espera e tenta de novo.",
     "formula": "espera = maior entre Retry-After e 1 s × 2^tentativa (±20%)\nmáximo 60 s · até 3 repetições",
     "passos": [
-     "GET repete também em queda de rede; POST só repete no 429.",
+     "GET repete também em queda de rede; POST só repete quando o servidor recusou por limite.",
      "Cada 429 dobra o intervalo de leitura do serviço (até 8×); ele volta ao normal com as respostas boas.",
      "O fator aparece em /api/health (slow)."
     ],
@@ -2111,6 +2226,11 @@
     "src_jenkins",
     "s_track",
     "log · estágios · resultado"
+   ],
+   [
+    "src_github",
+    "s_ghtrack",
+    "runs · jobs · logs"
    ],
    [
     "f_actions",
@@ -2684,11 +2804,11 @@
    },
    {
     "col": 0,
-    "texto": "DOIS MODOS\nSem servidor: dados de exemplo + simulação 10× acelerada.\nConectado (?api=): Jenkins e Jira reais pelo servidor; a simulação desliga."
+    "texto": "DOIS MODOS\nSem servidor: dados de exemplo + simulação 10× acelerada.\nConectado (?api=): Jenkins, GitHub Actions e Jira reais pelo servidor; a simulação desliga."
    },
    {
     "col": 6,
-    "texto": "REGRA DE OURO\nO navegador nunca chama Jenkins ou Jira. Tokens só no servidor (.env)."
+    "texto": "REGRA DE OURO\nO navegador nunca chama Jenkins, GitHub ou Jira. Tokens só no servidor (.env)."
    },
    {
     "col": 8,
