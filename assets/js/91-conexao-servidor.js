@@ -84,7 +84,7 @@ if (API) {
     b.childNodes[1].textContent = 'Ao vivo · CI';
   });
   // marca como "Conectado" as integrações que o servidor tem configuradas (só na tela, não grava)
-  fetch(API + '/api/health')
+  fetch(API + '/api/health', { headers: API_KEY ? { 'x-api-key': API_KEY } : {} })
     .then(x => x.json())
     .then(h => {
       const on = { jenkins: h.jenkins, github: h.github, jira: h.jira };
@@ -94,41 +94,80 @@ if (API) {
       renderInts();
     })
     .catch(() => {});
-  const es = new EventSource(API + '/events' + (API_KEY ? '?key=' + encodeURIComponent(API_KEY) : ''));
-  const on = (t, f) =>
-    es.addEventListener(t, e => {
-      try {
-        f(JSON.parse(e.data));
-        liveRefresh(true, t !== 'scenario');
-      } catch (err) {
-        console.error(err);
-      }
+  const authHeaders = API_KEY ? { 'x-api-key': API_KEY } : {};
+  const bindEvents = es => {
+    const on = (t, f) =>
+      es.addEventListener(t, e => {
+        try {
+          f(JSON.parse(e.data));
+          liveRefresh(true, t !== 'scenario');
+        } catch (err) {
+          console.error(err);
+        }
+      });
+    on('build_start', extStart);
+    on('scenario', extScenario);
+    on('build_end', extEnd);
+    on('stage', d => {
+      const r = extRun(d);
+      if (r) logEvent(r, 'pass', `Estágio "${d.stage}": ${d.status}`);
     });
-  on('build_start', extStart);
-  on('scenario', extScenario);
-  on('build_end', extEnd);
-  on('stage', d => {
-    const r = extRun(d);
-    if (r) logEvent(r, 'pass', `Estágio "${d.stage}": ${d.status}`);
-  });
-  on('jira', d => {
-    const r = extRun(d) || { p: d.job || 'Jira' };
-    logEvent(r, 'fail', `Bug ${d.key} ${d.action === 'comment' ? 'atualizado' : 'aberto'} no Jira para ${d.scenario}`);
-  });
-  // o servidor sincroniza o Jira sozinho e avisa; a tela só lê o cache (não chama o Jira)
-  es.addEventListener('jira_sync', loadJiraState);
-  loadJiraState();
-  let warned = false;
-  es.onopen = () => {
-    warned = false;
-    toast('Conectado ao servidor de tempo real');
+    on('jira', d => {
+      const r = extRun(d) || { p: d.job || 'Jira' };
+      logEvent(
+        r,
+        'fail',
+        `Bug ${d.key} ${d.action === 'comment' ? 'atualizado' : 'aberto'} no Jira para ${d.scenario}`
+      );
+    });
+    // o servidor sincroniza o Jira sozinho e avisa; a tela só lê o cache (não chama o Jira)
+    es.addEventListener('jira_sync', loadJiraState);
   };
-  es.onerror = () => {
-    if (!warned) {
-      warned = true;
-      toast('Sem conexão com o servidor de tempo real. Tentando novamente…');
+  // O EventSource não envia cabeçalhos. Em vez de pôr a chave na URL, pedimos um tíquete de uso único
+  // (POST /api/ticket com a chave no cabeçalho) e conectamos com ele. Como o tíquete vale uma conexão só,
+  // a reconexão é nossa: fecha, espera (recuo progressivo) e pede um tíquete novo.
+  let warned = false,
+    wait = 1000,
+    timer = null;
+  const retry = () => {
+    clearTimeout(timer);
+    timer = setTimeout(connect, wait);
+    wait = Math.min(wait * 2, 15000);
+  };
+  async function connect() {
+    let url = API + '/events';
+    try {
+      const r = await fetch(API + '/api/ticket', { method: 'POST', headers: authHeaders });
+      if (r.status === 401) return toast('Chave de API inválida: abra a plataforma com &key=… correta');
+      if (r.ok) url += '?ticket=' + encodeURIComponent((await r.json()).ticket);
+      else if (r.status === 404)
+        url += API_KEY ? '?key=' + encodeURIComponent(API_KEY) : ''; // servidor antigo, sem tíquete
+      else throw new Error('HTTP ' + r.status);
+    } catch {
+      if (!warned) {
+        warned = true;
+        toast('Sem conexão com o servidor de tempo real. Tentando novamente…');
+      }
+      return retry();
     }
-  };
+    const es = new EventSource(url);
+    bindEvents(es);
+    es.onopen = () => {
+      warned = false;
+      wait = 1000;
+      toast('Conectado ao servidor de tempo real');
+    };
+    es.onerror = () => {
+      es.close();
+      if (!warned) {
+        warned = true;
+        toast('Sem conexão com o servidor de tempo real. Tentando novamente…');
+      }
+      retry();
+    };
+  }
+  connect();
+  loadJiraState();
 }
 // Esteiras simuladas já em andamento ao abrir a plataforma (somente sem servidor)
 if (!API)
@@ -353,14 +392,9 @@ function configInt(it) {
   }
   modal(
     `Configurar ${it.name}`,
-    `<div class="field"><label for="i1">URL do servidor ou organização</label><input id="i1" name="url" type="url" placeholder="https://" required></div>
-   <div class="field"><label for="i2">Projeto</label><input id="i2" name="proj" required></div>
-   <div class="field"><label for="i3">Token de acesso</label><input id="i3" name="tok" type="password" autocomplete="off" required><small>Nesta versão MVP o token não é enviado a nenhum serviço.</small></div>`,
-    () => {
-      it.on = true;
-      store.set('ints', INTS);
-      renderInts();
-      toast(`${it.name} configurado`);
-    }
+    `<p style="margin:0 0 10px"><b>Credenciais não são digitadas aqui.</b> Senhas e tokens ficam só no servidor, no arquivo <code>.env</code>, e de preferência <b>cifrados</b> (AES-256-GCM) com <code>npm run segredos -- cifrar</code>. O navegador nunca recebe nem guarda esses valores.</p>
+   <p style="margin:0;color:var(--muted)">Veja o passo a passo em <i>README › Segurança</i>. O status de conexão desta integração é lido do servidor.</p>`,
+    () => {},
+    { ok: 'Entendi', hideCancel: true }
   );
 }

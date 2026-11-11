@@ -75,7 +75,7 @@ test('rotas de comando só aceitam jobs configurados e exigem a chave', async ()
     const pub = await (await fetch(`${base}/api/health`)).json();
     assert.equal(pub.jobs, undefined);
     assert.equal(pub.jenkins, true);
-    const priv = await (await fetch(`${base}/api/health?key=segredo`)).json();
+    const priv = await (await fetch(`${base}/api/health`, { headers: { 'x-api-key': 'segredo' } })).json();
     assert.deepEqual(priv.jobs, ['Loja/Checkout']);
 
     // POLL_MS=abc e DISCOVER_MS vazio: o servidor não martela o Jenkins (descoberta 1x na partida)

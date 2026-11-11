@@ -35,6 +35,9 @@ assets/js/95-agente-ia.js     Agente de QA (só com IA ligada)
 assets/js/99-inicio.js        inicialização
 server/server.js              Jenkins + GitHub Actions + Jira via API REST, SSE, rotas /api
 server/test/*.test.js         testes com Jenkins, GitHub e Jira falsos
+server/cripto.js              AES-256-GCM + scrypt (segredos cifrados, hash da chave da API)
+server/segredos.js            CLI: gerar-chave, cifrar, hash-chave, verificar
+server/scripts/verificar-segredos.mjs   varredura de segredos nos arquivos versionados (`npm run check:secrets`)
 docs/MIGRACAO.md              guia para trazer o projeto antigo para cá
 docs/CONTRATOS.md             formatos de dados e eventos (o "contrato")
 docs/MAPA.md                  guia do Mapa de funcionalidades e do Canvas de ligações
@@ -49,12 +52,13 @@ docs/prototipos/sso/          protótipos HTML estáticos das telas de login e p
 1. **Os scripts compartilham o escopo global e a ordem importa.** Um arquivo só pode *executar na carga* funções e variáveis de arquivos com número menor. Dentro de funções (executadas depois), qualquer módulo pode ser usado.
 2. **Um lugar para cada informação.** Antes de criar algo novo, veja em `docs/CONTRATOS.md` › *Onde cada informação aparece*. Não crie telas nem blocos que repitam métricas existentes; amplie o módulo dono da informação.
 3. **Credenciais só no servidor.** O navegador nunca chama o Jenkins, o GitHub nem o Jira diretamente. Chamadas novas entram em `server/server.js`, perto de `jenkinsJson()`, `ghJson()`, `jira()` e `jiraScenarios()`, e chegam à tela pelas rotas `/api/*` ou pelos eventos SSE.
-4. **Respeite os contratos** de `docs/CONTRATOS.md`: formato de pipeline, execução, cenário, eventos SSE e respostas das rotas. Se um dado do projeto antigo tiver outro formato, **converta no servidor** para o formato do contrato. Não mude a tela para aceitar o formato antigo.
-5. **Não renomeie** IDs de elementos, nomes de funções nem chaves do `localStorage` (`qa:pipes2`, `qa:scens`, `qa:ints`, `qa:cfg`, `qa:jiraSync`) sem atualizar todos os usos.
-6. **IA atrás do interruptor.** Qualquer elemento de IA leva a classe `ai-only` (ou `data-ask`/`data-ask-run`) e só funciona com `CFG.ai === true`.
-7. **Estilo:** use os tokens de cor do `:root`, sem cores soltas. Siga o `.prettierrc.json` (`npx prettier --write`) só nos arquivos que você alterou. Não reformate arquivos que você não tocou.
-8. **Mapa e Canvas em dia.** Os dois HTML em `docs/mapa/` são **gerados**: não edite à mão. Ao criar ou mudar uma regra de negócio, uma fórmula ou um nó, edite `mapa.config.json` e rode `python3 docs/mapa/gerar_docs.py`. Ao renomear uma função citada, o script falha dizendo qual referência corrigir. Commite o config e os HTML gerados juntos.
-9. **Mudanças pequenas:** um commit por funcionalidade, numa branch própria (por exemplo `migracao/cenarios-jira`).
+4. **Segurança é requisito.** Nenhum segredo em texto puro no código, no front, em log ou em teste (use valores fictícios). Tokens novos entram pelo helper `sec()` (aceita `enc:v1:`), URLs com credencial passam por `requireHttps()`, e qualquer texto que possa conter segredo vai por `redact()`/`log()`. O front não tem script inline (CSP) e não guarda credenciais. Rode `npm run check:secrets` e `npm test` antes de commitar. Veja README › Segurança.
+5. **Respeite os contratos** de `docs/CONTRATOS.md`: formato de pipeline, execução, cenário, eventos SSE e respostas das rotas. Se um dado do projeto antigo tiver outro formato, **converta no servidor** para o formato do contrato. Não mude a tela para aceitar o formato antigo.
+6. **Não renomeie** IDs de elementos, nomes de funções nem chaves do `localStorage` (`qa:pipes2`, `qa:scens`, `qa:ints`, `qa:cfg`, `qa:jiraSync`) sem atualizar todos os usos.
+7. **IA atrás do interruptor.** Qualquer elemento de IA leva a classe `ai-only` (ou `data-ask`/`data-ask-run`) e só funciona com `CFG.ai === true`.
+8. **Estilo:** use os tokens de cor do `:root`, sem cores soltas. Siga o `.prettierrc.json` (`npx prettier --write`) só nos arquivos que você alterou. Não reformate arquivos que você não tocou.
+9. **Mapa e Canvas em dia.** Os dois HTML em `docs/mapa/` são **gerados**: não edite à mão. Ao criar ou mudar uma regra de negócio, uma fórmula ou um nó, edite `mapa.config.json` e rode `python3 docs/mapa/gerar_docs.py`. Ao renomear uma função citada, o script falha dizendo qual referência corrigir. Commite o config e os HTML gerados juntos.
+10. **Mudanças pequenas:** um commit por funcionalidade, numa branch própria (por exemplo `migracao/cenarios-jira`).
 
 ## Como verificar
 

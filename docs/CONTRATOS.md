@@ -137,7 +137,8 @@ Diferenças que vêm da API do GitHub:
 | Método | Rota | Uso |
 |---|---|---|
 | GET | `/api/health` | estado do servidor: `jenkins`, `github` e `jira` (configurados ou não), `workflows`, `githubRate` (`limit`, `remaining`, `reset`), `jiraSync` (`at`, `error`) e `slow` (fator de lentidão por limite de `jenkins`, `jira` e `github`, 1 = normal) |
-| GET | `/events` | eventos SSE |
+| POST | `/api/ticket` | gera um **tíquete de uso único** (`{ ticket, expiresInMs }`, padrão 30 s) para abrir o SSE sem pôr a chave na URL; exige a chave no cabeçalho |
+| GET | `/events` | eventos SSE; autentica com `x-api-key` ou `?ticket=` (o `?key=` só com `ALLOW_URL_KEY=true`) |
 | GET | `/api/state` | builds em acompanhamento |
 | GET | `/api/jira/scenarios?jql=&field=` | cenários do Jira (consulta na hora, com a consulta informada) |
 | GET | `/api/jira/state` | cenários e ciclos em cache (não chama o Jira) |
@@ -146,7 +147,7 @@ Diferenças que vêm da API do GitHub:
 | POST | `/api/stop` | `{ job, build }` para build (no GitHub, cancela o run; só funciona para runs em acompanhamento) |
 | POST | `/api/jira/bug` | `{ job, build, scenario, details? }` abre/comenta bug |
 
-Erros das rotas: `400` corpo inválido ou `build` não numérico, `401` chave da API ausente ou errada, `403` job fora de `JENKINS_JOBS`, `413` corpo grande demais e `502` falha ao falar com Jenkins, GitHub ou Jira.
+Erros das rotas: `400` corpo inválido ou `build` não numérico, `401` chave da API ausente, errada ou tíquete já usado/expirado, `403` job fora de `JENKINS_JOBS`, `413` corpo grande demais, `429` muitas chaves inválidas do mesmo IP (com `Retry-After`), `503` limite de conexões SSE e `502` falha ao falar com Jenkins, GitHub ou Jira.
 
 ## Configuração da interface — `CFG` (`localStorage` `qa:cfg`)
 

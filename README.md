@@ -218,6 +218,8 @@ http://localhost:8080/index.html?api=http://localhost:3000
 http://localhost:8080/index.html?api=https://qa-api.suaempresa.com&key=SUA_API_KEY#aovivo
 ```
 
+A `key` só é usada na primeira abertura: a tela a guarda na sessão da aba e a **remove da URL** (não fica no histórico nem em favoritos). Veja [Segurança](#segurança).
+
 Com `?api=`:
 - a simulação é desligada;
 - a aba muda para **“Ao vivo · CI”**;
@@ -308,7 +310,7 @@ Dois documentos mostram **como a plataforma funciona por dentro**. Abra direto n
 
 | Documento | Responde | Abrir |
 |---|---|---|
-| **Mapa de funcionalidades** | *Qual é a regra?* Funcionalidades separadas por categoria, um diagrama da lógica de cada uma e **106 regras de negócio numeradas** (RN-DASH-01, RN-ANA-06…), com catálogo e filtro. | [`docs/mapa/mapa-funcionalidades.html`](docs/mapa/mapa-funcionalidades.html) |
+| **Mapa de funcionalidades** | *Qual é a regra?* Funcionalidades separadas por categoria, um diagrama da lógica de cada uma e **118 regras de negócio numeradas** (RN-DASH-01, RN-ANA-06…), com catálogo e filtro. | [`docs/mapa/mapa-funcionalidades.html`](docs/mapa/mapa-funcionalidades.html) |
 | **Canvas de ligações** | *De onde vem esse número?* Canvas de nós ligando fontes → servidor → dados → funções de cálculo → métricas → telas, com **fórmula, regras e código real** de cada função. | [`docs/mapa/canvas-ligacoes.html`](docs/mapa/canvas-ligacoes.html) |
 
 | Mapa de funcionalidades | Canvas de ligações |
@@ -463,7 +465,11 @@ O fator de lentidão aparece em `GET /api/health` (`slow`; `1` = normal).
 |---|---|---|
 | `PORT` | `3000` | Porta HTTP |
 | `CORS_ORIGIN` | `*` | Origem permitida da plataforma (por exemplo `https://usuario.github.io`) |
-| `API_KEY` | vazio | Se definida, é exigida em `/events?key=` e no header `x-api-key` das rotas POST |
+| `API_KEY` / `API_KEY_HASH` | vazio | Se definida, é exigida no header `x-api-key` (e em `/events` por tíquete). `API_KEY_HASH` guarda só o hash scrypt. Aceitam o formato cifrado; veja [Segurança](#segurança) |
+| `SECRETS_KEY_FILE` | — | Arquivo com a chave-mestra para decifrar valores `enc:v1:…` |
+| `TLS_CERT_FILE` / `TLS_KEY_FILE` | — | HTTPS nativo (opcional) |
+| `TRUST_PROXY`, `AUTH_MAX_FAILS`, `AUTH_FAIL_WINDOW_MS`, `TICKET_TTL_MS`, `MAX_SSE_CLIENTS` | `false`, `10`, `300000`, `30000`, `200` | Bloqueio de tentativas, tíquete do SSE e limite de conexões |
+| `ALLOW_URL_KEY`, `ALLOW_INSECURE_UPSTREAM` | `false` | Compatibilidade: aceitar `?key=` na URL e upstream `http://` com credencial |
 | `DEMO` | `false` | `true` gera execuções fictícias, sem Jenkins |
 | `JENKINS_URL` | — | Endereço do Jenkins |
 | `JENKINS_USER` / `JENKINS_TOKEN` | — | Usuário e **API token** (Basic Auth) |
@@ -711,7 +717,9 @@ Exemplo:
 Consumo no navegador, como a plataforma faz:
 
 ```js
-const es = new EventSource('http://localhost:3000/events?key=SUA_API_KEY');
+// o EventSource não envia cabeçalhos: peça um tíquete de uso único e conecte com ele
+const { ticket } = await (await fetch('http://localhost:3000/api/ticket', { method: 'POST', headers: { 'x-api-key': 'SUA_API_KEY' } })).json();
+const es = new EventSource('http://localhost:3000/events?ticket=' + ticket);
 es.addEventListener('scenario', e => console.log(JSON.parse(e.data)));
 ```
 
@@ -722,8 +730,9 @@ es.addEventListener('scenario', e => console.log(JSON.parse(e.data)));
 | Método | Rota | Autenticação | Descrição |
 |---|---|---|---|
 | `GET` | `/api/health` | livre | Estado do servidor: modo demo, Jenkins/GitHub/Jira/Zephyr configurados, limite restante do GitHub (`githubRate`), última sincronização do Jira, fator de lentidão (`slow`), clientes conectados, builds ativos |
-| `GET` | `/events` | `?key=` | Fluxo SSE de eventos |
-| `GET` | `/api/state` | `x-api-key` ou `?key=` | Builds em acompanhamento, com cenários e estágios |
+| `POST` | `/api/ticket` | `x-api-key` | Gera um tíquete de uso único (30 s) para abrir o SSE |
+| `GET` | `/events` | `?ticket=` ou `x-api-key` | Fluxo SSE de eventos |
+| `GET` | `/api/state` | `x-api-key` | Builds em acompanhamento, com cenários e estágios |
 | `POST` | `/api/build` | `x-api-key` | `{ "job": "E-commerce/Checkout", "params": { "AMBIENTE": "hml" } }` dispara o build |
 | `POST` | `/api/stop` | `x-api-key` | `{ "job": "...", "build": 77 }` para o build |
 | `GET` | `/api/jira/scenarios` | `x-api-key` | `?jql=...&field=components` busca os cenários de teste no Jira |
@@ -735,14 +744,54 @@ es.addEventListener('scenario', e => console.log(JSON.parse(e.data)));
 
 ## Segurança
 
-- **Tokens do Jenkins e do Jira ficam só no servidor**, em `.env`, que está no `.gitignore`. Nunca coloque tokens no `index.html`.
-- Defina `API_KEY` e `CORS_ORIGIN` em produção. Sem `API_KEY` e com `CORS_ORIGIN=*`, qualquer página pode disparar e parar builds (o servidor avisa no log ao iniciar).
-- **Executar e Parar só funcionam para jobs listados** em `JENKINS_JOBS` (ou workflows de `GITHUB_WORKFLOWS`). Qualquer outro job recebe 403.
-- Sem a chave, `/api/health` não mostra nomes de jobs/workflows nem o limite do token do GitHub.
-- Variáveis numéricas inválidas voltam ao padrão (por exemplo `POLL_MS=abc`), e uma regex inválida (`LOG_REGEX`) faz o servidor parar dizendo qual é.
-- Publique o servidor atrás de **HTTPS**, por exemplo com Nginx, Caddy ou o load balancer da empresa.
-- Use um usuário técnico no Jenkins e no Jira, com as **permissões mínimas** listadas acima.
-- O `?key=` na URL aparece no histórico do navegador. Para ambientes sensíveis, prefira colocar o servidor e a plataforma atrás do SSO da empresa e deixar `API_KEY` como segunda camada.
+Resumo: **nenhuma senha ou token fica em texto puro no disco, no navegador ou no log.** Tudo é opcional e retrocompatível, mas recomendado.
+
+### Segredos cifrados (AES-256-GCM)
+
+Os valores de `JENKINS_TOKEN`, `GITHUB_TOKEN`, `JIRA_TOKEN` e `API_KEY` aceitam o formato `enc:v1:…`. O servidor decifra **só na memória**, ao iniciar. Cada valor tem salt e IV próprios, a chave é derivada com scrypt (N=2¹⁵) e o GCM detecta qualquer alteração.
+
+```bash
+cd server
+npm run segredos -- gerar-chave ~/.qa-ai-agent.key        # chave-mestra (arquivo 600, fora do repositório)
+export SECRETS_KEY_FILE=~/.qa-ai-agent.key
+printf %s "$MEU_TOKEN" | npm run --silent segredos -- cifrar   # cole o resultado no .env: JENKINS_TOKEN=enc:v1:...
+printf %s "minha-chave-da-api" | npm run --silent segredos -- hash-chave   # API_KEY_HASH=scrypt:v1:...
+npm run segredos -- verificar .env                        # confere se tudo abre e aponta o que está em claro
+```
+
+- O segredo entra pelo **stdin**, nunca como argumento (não vai para o histórico do shell).
+- A chave-mestra vem de `SECRETS_KEY_FILE` (preferido) ou `SECRETS_KEY`, e é **apagada do ambiente** depois de lida.
+- **Guarde um backup da chave-mestra** em um cofre (Vault, Secrets Manager, gerenciador de senhas). Sem ela os valores cifrados não abrem.
+- Chave errada ou valor adulterado: o servidor **não sobe** e diz qual variável falhou.
+- A cifra protege o `.env` em repouso (backup, disco, repositório por engano). Quem controla o processo e a chave-mestra ainda lê os segredos; por isso a chave-mestra deve ficar em outro lugar (arquivo 600, secret do orquestrador).
+- Se um token já esteve em texto puro em algum lugar, **revogue e gere outro**; cifrar depois não desfaz o vazamento.
+
+### Chave da API e conexão em tempo real
+
+- **`API_KEY_HASH`** guarda só o hash scrypt da chave: o servidor nunca tem a chave em si. Use `API_KEY` **ou** `API_KEY_HASH`.
+- A chave vai no cabeçalho **`x-api-key`**. O `?key=` na URL fica **desligado** (vazaria em histórico, logs e Referer); `ALLOW_URL_KEY=true` só para compatibilidade.
+- O SSE usa **tíquete de uso único**: a plataforma chama `POST /api/ticket` com a chave e conecta em `/events?ticket=…` (vale 30 s e uma conexão). A tela guarda a chave só na `sessionStorage` da aba e a remove da URL assim que abre. Se a conexão cair, pede outro tíquete e reconecta sozinha.
+- **Bloqueio de tentativas:** depois de 10 falhas em 5 min, o IP recebe `429` (`AUTH_MAX_FAILS`, `AUTH_FAIL_WINDOW_MS`). Atrás de proxy, use `TRUST_PROXY=true` para considerar o `X-Forwarded-For`.
+- Comparações de chave em tempo constante; `/api/health` sem chave não mostra jobs, workflows nem limite do token.
+
+### Transporte
+
+- **TLS no servidor:** `TLS_CERT_FILE` + `TLS_KEY_FILE` ligam HTTPS nativo (TLS 1.2+, HSTS). Ou publique atrás de Nginx, Caddy ou o load balancer com HTTPS.
+- **Upstreams só por HTTPS:** com token configurado, `JENKINS_URL`, `JIRA_URL` e `GITHUB_API_URL` precisam ser `https://` (exceto `localhost`), ou o servidor não inicia. Em rede interna confiável, `ALLOW_INSECURE_UPSTREAM=true`.
+- Respostas com `X-Content-Type-Options`, `Cache-Control: no-store`, `Referrer-Policy: no-referrer` e CSP restritiva. A interface tem CSP (`script-src 'self'`, sem scripts inline), o que limita o estrago de qualquer XSS.
+
+### Logs, limites e escopo
+
+- Logs e mensagens de erro **mascaram** os tokens conhecidos, valores `Bearer`/`Basic`, `?key=`/`?ticket=` e padrões de token do GitHub.
+- Limites: até 200 conexões SSE (`MAX_SSE_CLIENTS`), cabeçalhos de 16 KB, corpo de 1 MB, timeouts de cabeçalho (15 s) e de requisição (30 s).
+- **Executar e Parar só funcionam para jobs listados** em `JENKINS_JOBS` (ou workflows de `GITHUB_WORKFLOWS`); qualquer outro recebe 403.
+- Defina `API_KEY`/`API_KEY_HASH` e `CORS_ORIGIN` em produção. Sem chave e com `CORS_ORIGIN=*`, qualquer página pode disparar e parar builds (o servidor avisa no log).
+- A tela de Integrações **não pede senha nem token**: credenciais existem só no servidor.
+- Use um usuário técnico no Jenkins, no Jira e no GitHub, com as **permissões mínimas**.
+
+### Antes de fazer commit
+
+`npm run check:secrets` (em `server/`) varre os arquivos versionados atrás de tokens, chaves privadas e senhas em texto puro e falha se achar. O `.gitignore` já exclui `.env`, `.env.*`, `*.key` e `*.pem`.
 
 ---
 
@@ -791,7 +840,10 @@ Também é aceito um objeto `{ "executions": [...] }`.
 | Sintoma | Causa provável | O que fazer |
 |---|---|---|
 | “Sem conexão com o servidor de tempo real” | Servidor parado, URL errada ou CORS | Confira `GET /api/health` e o valor de `CORS_ORIGIN` |
-| `401` em `/events` | `API_KEY` definida e `?key=` ausente ou errado | Adicione `&key=` na URL da plataforma |
+| `401` em `/events` | Chave ausente ou errada, ou tíquete já usado | Abra a plataforma com `&key=` correta; a tela pede um tíquete novo a cada conexão |
+| `429` | Muitas chaves inválidas do mesmo IP | Aguarde o `Retry-After`; confira a chave. Atrás de proxy, defina `TRUST_PROXY=true` |
+| O servidor não sobe e cita `https://` | Jenkins/Jira/GitHub em `http://` com token | Use `https://` ou, em rede interna confiável, `ALLOW_INSECURE_UPSTREAM=true` |
+| O servidor não sobe e cita uma variável cifrada | Chave-mestra errada ou ausente | Confira `SECRETS_KEY_FILE`; teste com `npm run segredos -- verificar .env` |
 | Build aparece, mas nenhum cenário | O formato do log não bate com a regex | Veja o console do build e ajuste `LOG_REGEX` |
 | Cenários aparecem só no fim | O framework só imprime ao final (buffer) | Use um reporter que imprime por teste, como `--reporter=list` no Playwright ou `spec` no Cypress |
 | Tempo de resposta sempre vazio | Não há linhas `[resp]` no log | Imprima `[resp] <cenário> <ms>ms` nos testes |
