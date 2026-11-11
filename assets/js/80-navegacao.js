@@ -72,6 +72,3 @@ addEventListener('hashchange', () => {
   detTab = 'cen';
   show(location.hash.slice(1));
 });
-function refresh() {
-  show(location.hash.slice(1));
-}

@@ -5,8 +5,11 @@
 let aTab = 'geral';
 /* Métricas de Análises calculadas a partir das execuções do período escolhido */
 const DAY = 864e5;
+// "Hoje" da plataforma: com servidor conectado é a data real; sem servidor, a data fixa dos dados de exemplo (BASE)
+const today = () => (API ? new Date() : BASE);
 function periodRange(days, back = 0) {
-  const e0 = new Date(BASE.getFullYear(), BASE.getMonth(), BASE.getDate() + 1),
+  const t = today(),
+    e0 = new Date(t.getFullYear(), t.getMonth(), t.getDate() + 1),
     end = new Date(e0 - back * days * DAY),
     start = new Date(end - days * DAY);
   return [start, end];

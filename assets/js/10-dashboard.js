@@ -64,7 +64,7 @@ function renderDashboard() {
     s = '';
   P.split.forEach((v, i) => {
     const len = Math.max(0, (v / 100) * C - GAP);
-    s += `<circle class="seg" data-i="${i}" cx="${cx}" cy="${cx}" r="${R}" fill="none" stroke="${cols[i]}" stroke-width="18" stroke-dasharray="${len} ${C - len}" stroke-dashoffset="${-off}" transform="rotate(-90 ${cx} ${cx})"><title>${names[i]}: ${counts[i]} falhas (${v}%)</title></circle>`;
+    s += `<circle class="seg" data-i="${i}" cx="${cx}" cy="${cx}" r="${R}" fill="none" stroke="${cols[i]}" stroke-width="18" stroke-dasharray="${len} ${C - len}" stroke-dashoffset="${-off}" transform="rotate(-90 ${cx} ${cx})"><title>${esc(names[i])}: ${counts[i]} falhas (${v}%)</title></circle>`;
     off += (v / 100) * C;
   });
   s += `<text x="${cx}" y="${cx + 4}" text-anchor="middle" font-size="34" font-weight="700" fill="#14142b" style="font-variant-numeric:tabular-nums">${P.fail}</text><text x="${cx}" y="${cx + 26}" text-anchor="middle" font-size="14" fill="#55576b">falhas</text>`;
@@ -73,7 +73,7 @@ function renderDashboard() {
   $('#legend').innerHTML = P.split
     .map(
       (v, i) =>
-        `<li><button data-ask="${names[i]}" data-i="${i}" title="${CFG.ai ? `Analisar ${names[i]} com a IA` : `${names[i]}: ${counts[i]} falhas`}"><span class="dot" style="background:${cols[i]}"></span><span class="nm">${names[i]}</span><span class="ct">${counts[i]}</span><span class="pct">${v}%</span><span class="lg-bar"><i style="width:${(v / mx) * 100}%;background:${cols[i]}"></i></span></button></li>`
+        `<li><button data-ask="${esc(names[i])}" data-i="${i}" title="${esc(CFG.ai ? `Analisar ${names[i]} com a IA` : `${names[i]}: ${counts[i]} falhas`)}"><span class="dot" style="background:${cols[i]}"></span><span class="nm">${esc(names[i])}</span><span class="ct">${counts[i]}</span><span class="pct">${v}%</span><span class="lg-bar"><i style="width:${(v / mx) * 100}%;background:${cols[i]}"></i></span></button></li>`
     )
     .join('');
   $('#fpTotal').textContent = `${P.failR}% das execuções`;
@@ -105,7 +105,7 @@ function drawLine(sel, labels, vals) {
     b = 190,
     min = 80,
     max = 100,
-    x = i => l + 20 + i * ((r - l - 30) / (vals.length - 1)),
+    x = i => l + 20 + i * ((r - l - 30) / Math.max(1, vals.length - 1)),
     y = v => b - ((v - min) / (max - min)) * (b - t);
   let g =
     '<defs><linearGradient id="lg' +

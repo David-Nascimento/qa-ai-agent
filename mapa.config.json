@@ -107,7 +107,7 @@
    "regras": [
     [
      "RN-DASH-01",
-     "O período é sempre os últimos 7 dias. Outros períodos ficam em Análises."
+     "O período é sempre os últimos 7 dias, contados a partir de hoje (com servidor conectado) ou da data fixa dos dados de exemplo (sem servidor). Outros períodos ficam em Análises."
     ],
     [
      "RN-DASH-02",
@@ -278,6 +278,10 @@
     [
      "RN-EXE-10",
      "Jobs em pastas do Jenkins (`Pasta/Job`) casam com o componente pela última parte do caminho."
+    ],
+    [
+     "RN-EXE-11",
+     "Execuções vindas do servidor mostram o número real do build/run (#87), que pode se repetir entre jobs e workflows. Internamente cada execução tem um id único, e Parar envia ao servidor o número real do build."
     ]
    ]
   },
@@ -486,6 +490,18 @@
     [
      "RN-JEN-10",
      "No máximo 10 builds são acompanhados ao mesmo tempo; acima de 5, o intervalo de leitura aumenta. Os demais esperam a próxima descoberta."
+    ],
+    [
+     "RN-JEN-11",
+     "Executar e Parar só aceitam jobs listados em `JENKINS_JOBS` (caminho completo ou só o nome, se for único); qualquer outro job ou caminho com `..` recebe 403 e nada é enviado ao Jenkins. O número do build precisa ser numérico."
+    ],
+    [
+     "RN-JEN-12",
+     "Variável numérica vazia ou inválida (por exemplo `POLL_MS=abc`) volta ao padrão e respeita um mínimo; uma expressão regular inválida faz o servidor avisar qual variável e parar. Sem isso o intervalo viraria NaN e o servidor consultaria o Jenkins sem parar."
+    ],
+    [
+     "RN-JEN-13",
+     "A chave da API é comparada em tempo constante. Sem a chave, `/api/health` mostra só o estado geral, sem nomes de jobs/workflows nem o limite do token. Corpo inválido responde 400 e job fora da lista, 403."
     ]
    ]
   },

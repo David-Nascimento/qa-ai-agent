@@ -73,7 +73,7 @@ function startLive(name, manual) {
   };
   RUNS.unshift(r);
   LIVE.unshift(r);
-  logEvent(r, 'start', `#${r.id} iniciada · ${sc.length} cenários`);
+  logEvent(r, 'start', `#${runNo(r)} iniciada · ${sc.length} cenários`);
   if (manual) {
     toast(`#${r.id} ${name} iniciada — acompanhe em Execuções › Ao vivo`);
     liveRefresh(true, true);
@@ -111,7 +111,7 @@ function advance(r, secs, quiet) {
   r.d = Math.round(lv.el);
   if (lv.i >= lv.sc.length && r.s === 'Executando') {
     r.s = r.ok === r.t ? 'Sucesso' : 'Falha';
-    logEvent(r, 'end', `#${r.id} finalizada: ${r.s} (${r.ok}/${r.t}) em ${fmtDur(r.d)}`);
+    logEvent(r, 'end', `#${runNo(r)} finalizada: ${r.s} (${r.ok}/${r.t}) em ${fmtDur(r.d)}`);
     if (lv.manual && !quiet) toast(`#${r.id} ${r.p}: ${r.s} (${r.ok}/${r.t})`);
   }
   return changed;
@@ -166,7 +166,7 @@ function cardFor(r) {
   el = document.createElement('article');
   el.className = 'card lcard';
   el.id = 'lc-' + r.id;
-  el.innerHTML = `<header class="lc-h"><span class="pl-ico">${icoOf(r.p)}</span><div class="lc-id"><b title="${esc(r.p)}">${esc(r.p)}</b><small>${esc(p.group)} · #${r.id} ${techBadge(p.tech)}</small></div><span class="lc-status"></span></header>
+  el.innerHTML = `<header class="lc-h"><span class="pl-ico">${icoOf(r.p)}</span><div class="lc-id"><b title="${esc(r.p)}">${esc(r.p)}</b><small>${esc(p.group)} · #${runNo(r)} ${techBadge(p.tech)}</small></div><span class="lc-status"></span></header>
     <div class="lc-time"></div><div class="lc-prog" aria-hidden="true"></div><div class="lc-stats"></div><ol class="lc-scen"></ol>
     <footer class="lc-f"><button type="button" class="btn-out" data-go="exec-${r.id}">Ver detalhes</button><button type="button" class="btn-out" data-stop="${r.id}">Parar</button></footer>`;
   return el;
@@ -282,11 +282,13 @@ document.addEventListener('click', e => {
     fetch(API + '/api/stop', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...(API_KEY ? { 'x-api-key': API_KEY } : {}) },
-      body: JSON.stringify({ job: (pipeOf(r.p) || {}).job || r.p, build: r.id }),
+      body: JSON.stringify({ job: (pipeOf(r.p) || {}).job || r.p, build: runNo(r) }),
     })
       .then(x =>
         toast(
-          x.ok ? `Parada de #${r.id} solicitada ao ${r.src || 'Jenkins'}` : `O ${r.src || 'Jenkins'} recusou a parada`
+          x.ok
+            ? `Parada de #${runNo(r)} solicitada ao ${r.src || 'Jenkins'}`
+            : `O ${r.src || 'Jenkins'} recusou a parada`
         )
       )
       .catch(() => toast('Sem conexão com o servidor de tempo real.'));

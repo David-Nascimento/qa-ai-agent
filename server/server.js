@@ -4,6 +4,7 @@
 // Requer Node.js 20.6+ (fetch nativo e --env-file). Sem dependências externas.
 
 import http from 'node:http';
+import { timingSafeEqual } from 'node:crypto';
 
 const env = process.env;
 const list = v =>
@@ -12,8 +13,25 @@ const list = v =>
     .map(s => s.trim())
     .filter(Boolean);
 
+// Número de uma variável de ambiente: vazio ou inválido (ex.: "abc") volta ao padrão, e nunca abaixo do mínimo.
+// Sem isso, POLL_MS=abc viraria NaN e o setInterval dispararia sem parar, martelando o Jenkins.
+const num = (v, d, min = 0) => {
+  if (v === undefined || String(v).trim() === '') return d;
+  const n = Number(v);
+  return Number.isFinite(n) ? Math.max(min, n) : d;
+};
+// Expressão regular de uma variável: se for inválida, o servidor avisa qual variável e para
+const rx = (name, v, d = null, flags = 'u') => {
+  try {
+    return v ? new RegExp(v, flags) : d;
+  } catch (e) {
+    console.error(`${name} inválida: ${e.message}`);
+    process.exit(1);
+  }
+};
+
 const CFG = {
-  port: +(env.PORT || 3000),
+  port: num(env.PORT, 3000),
   cors: env.CORS_ORIGIN || '*',
   apiKey: env.API_KEY || '',
   demo: env.DEMO === 'true',
@@ -22,10 +40,10 @@ const CFG = {
     user: env.JENKINS_USER || '',
     token: env.JENKINS_TOKEN || '',
     jobs: list(env.JENKINS_JOBS),
-    pollMs: +(env.POLL_MS || 3000),
-    discoverMs: +(env.DISCOVER_MS || 30000),
-    logRegex: env.LOG_REGEX ? new RegExp(env.LOG_REGEX, 'u') : null,
-    respRegex: new RegExp(env.RESP_REGEX || String.raw`\[resp\]\s+(?<name>.+?)\s+(?<ms>\d+)\s*ms`, 'u'),
+    pollMs: num(env.POLL_MS, 3000, 50),
+    discoverMs: num(env.DISCOVER_MS, 30000, 1000),
+    logRegex: rx('LOG_REGEX', env.LOG_REGEX),
+    respRegex: rx('RESP_REGEX', env.RESP_REGEX, /\[resp\]\s+(?<name>.+?)\s+(?<ms>\d+)\s*ms/u),
   },
   // GitHub Actions: cada workflow é acompanhado como um "job" do Jenkins (job = dono/repositório/arquivo.yml)
   github: {
@@ -33,10 +51,10 @@ const CFG = {
     token: env.GITHUB_TOKEN || '',
     // "dono/repo/workflow.yml" acompanha um workflow · "dono/repo" acompanha todos os workflows do repositório
     workflows: list(env.GITHUB_WORKFLOWS),
-    pollMs: +(env.GITHUB_POLL_MS || 10000),
-    discoverMs: +(env.GITHUB_DISCOVER_MS || 30000),
+    pollMs: num(env.GITHUB_POLL_MS, 10000, 50),
+    discoverMs: num(env.GITHUB_DISCOVER_MS, 30000, 1000),
     // só baixa o log dos jobs cujo nome casa com esta expressão (cada log custa 1 chamada)
-    logJobs: env.GITHUB_LOG_JOBS ? new RegExp(env.GITHUB_LOG_JOBS, 'iu') : null,
+    logJobs: rx('GITHUB_LOG_JOBS', env.GITHUB_LOG_JOBS, null, 'iu'),
   },
   jira: {
     url: (env.JIRA_URL || '').replace(/\/$/, ''),
@@ -54,11 +72,11 @@ const CFG = {
   },
   // Sincronização periódica do Jira (cenários + ciclos). 0 desliga.
   sync: {
-    ms: +(env.JIRA_SYNC_MS ?? 300000),
-    fullMs: +(env.JIRA_FULL_SYNC_MS || 6 * 3600000),
-    afterBuildMs: +(env.JIRA_AFTER_BUILD_MS ?? 20000),
-    gapMs: +(env.JIRA_GAP_MS ?? 200),
-    minManualMs: +(env.JIRA_MIN_MANUAL_MS ?? 30000),
+    ms: num(env.JIRA_SYNC_MS, 300000), // 0 desliga
+    fullMs: num(env.JIRA_FULL_SYNC_MS, 6 * 3600000, 60000),
+    afterBuildMs: num(env.JIRA_AFTER_BUILD_MS, 20000),
+    gapMs: num(env.JIRA_GAP_MS, 200),
+    minManualMs: num(env.JIRA_MIN_MANUAL_MS, 30000),
   },
   // Ciclos de teste do Zephyr Scale (Server/Data Center), pela API ATM do próprio Jira
   zephyr: {
@@ -66,21 +84,21 @@ const CFG = {
     api: env.ZEPHYR_API_PATH || '/rest/atm/1.0',
     tql: env.ZEPHYR_TQL || '',
     caseField: env.ZEPHYR_CASE_FIELD || '',
-    max: +(env.ZEPHYR_MAX_CYCLES || 100),
-    activeDays: +(env.ZEPHYR_ACTIVE_DAYS || 30),
+    max: num(env.ZEPHYR_MAX_CYCLES, 100, 1),
+    activeDays: num(env.ZEPHYR_ACTIVE_DAYS, 30),
     closed: list(env.ZEPHYR_CLOSED_STATUS || 'Done').map(s => s.toLowerCase()),
     cycleUrl: env.ZEPHYR_CYCLE_URL || '{jira}/secure/Tests.jspa#/testPlayer/{key}',
   },
   // Proteção contra limite de requisições (HTTP 429/503) e quedas passageiras
   http: {
-    retries: +(env.HTTP_RETRIES ?? 3),
-    backoffMs: +(env.HTTP_BACKOFF_MS || 1000),
-    maxWaitMs: +(env.HTTP_MAX_WAIT_MS || 60000),
+    retries: num(env.HTTP_RETRIES, 3),
+    backoffMs: num(env.HTTP_BACKOFF_MS, 1000),
+    maxWaitMs: num(env.HTTP_MAX_WAIT_MS, 60000),
   },
   track: {
-    stagesEvery: Math.max(1, +(env.STAGES_EVERY || 3)),
-    maxErrors: +(env.TRACK_MAX_ERRORS || 5),
-    maxBuilds: +(env.MAX_TRACKED_BUILDS || 10),
+    stagesEvery: num(env.STAGES_EVERY, 3, 1),
+    maxErrors: num(env.TRACK_MAX_ERRORS, 5),
+    maxBuilds: num(env.MAX_TRACKED_BUILDS, 10, 1),
     fastBuilds: 5, // acima disso o intervalo de leitura aumenta
   },
 };
@@ -159,6 +177,7 @@ async function fetchRetry(label, url, opts = {}, throttle = null) {
       throttle?.hit();
       return res;
     }
+    res?.body?.cancel().catch(() => {}); // libera a conexão: sem isso cada repetição deixaria um socket preso
     const backoff = CFG.http.backoffMs * 2 ** i * (0.8 + Math.random() * 0.4);
     const wait = Math.min(CFG.http.maxWaitMs, Math.max(given, backoff));
     if (res?.status === 429) throttle?.hit();
@@ -444,6 +463,10 @@ function ghParse(job) {
     : null;
 }
 
+// Job do GitHub: pelo padrão dono/repo/arquivo.yml configurado ou por já estar em acompanhamento
+// (workflows dinâmicos não têm arquivo .yml no caminho)
+const isGhJob = job => !!ghParse(job) || [...active.values()].some(s => s.src === 'github' && s.job === job);
+
 function ghGuard() {
   if (ghRate.remaining === 0 && ghRate.reset * 1000 > Date.now()) {
     const e = new Error(`GitHub: limite de chamadas esgotado até ${new Date(ghRate.reset * 1000).toISOString()}`);
@@ -491,6 +514,17 @@ function ghWait() {
     CFG.github.pollMs * githubThrottle.factor * low * Math.max(1, Math.ceil(active.size / CFG.track.fastBuilds));
   const untilReset = ghRate.remaining === 0 ? Math.min(300000, Math.max(0, ghRate.reset * 1000 - Date.now())) : 0;
   return Math.max(base, untilReset);
+}
+
+// Jobs do run, com paginação (matrizes grandes passam de 100 jobs). Limite de 5 páginas por leitura.
+async function ghJobs(repo, runId) {
+  const out = [];
+  for (let page = 1; page <= 5; page++) {
+    const d = await ghJson(`/repos/${repo}/actions/runs/${runId}/jobs?per_page=100&page=${page}`);
+    out.push(...(d.jobs || []));
+    if (out.length >= (d.total_count || 0) || !(d.jobs || []).length) break;
+  }
+  return out;
 }
 
 // Estado do job do GitHub → status de estágio no formato que a tela já conhece (o mesmo do Jenkins)
@@ -562,7 +596,7 @@ async function ghTrack(repo, run) {
       try {
         // run primeiro e jobs depois: a lista de jobs é sempre igual ou mais nova que o run
         r = await ghJson(`/repos/${repo}/actions/runs/${run.id}`);
-        const { jobs = [] } = await ghJson(`/repos/${repo}/actions/runs/${run.id}/jobs?per_page=100`);
+        const jobs = await ghJobs(repo, run.id);
         for (const j of jobs) {
           if (j.status === 'queued' || j.status === 'waiting' || j.status === 'pending') continue;
           const status = ghStage(j);
@@ -703,7 +737,7 @@ const adf = text => ({
 const rich = text => (CFG.jira.version === '3' ? adf(text) : text);
 
 async function findOpenBug(term) {
-  const jql = `project = "${CFG.jira.project}" AND summary ~ "\\"${term.replace(/"/g, '')}\\"" AND statusCategory != Done ORDER BY created DESC`;
+  const jql = `project = "${CFG.jira.project}" AND summary ~ "\\"${term.replace(/[\\"]/g, '')}\\"" AND statusCategory != Done ORDER BY created DESC`;
   const q = `jql=${encodeURIComponent(jql)}&fields=summary&maxResults=1`;
   const d = await jira(CFG.jira.version === '3' ? `/search/jql?${q}` : `/search?${q}`);
   return d.issues?.[0] || null;
@@ -1140,16 +1174,38 @@ function send(res, code, data) {
   res.writeHead(code, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': CFG.cors });
   res.end(JSON.stringify(data));
 }
+// Erro do cliente (corpo inválido, job fora da lista): responde 4xx em vez de 502
+const clientError = (status, msg) => Object.assign(new Error(msg), { client: status });
 async function readJson(req) {
   let raw = '';
   for await (const c of req) {
     raw += c;
-    if (raw.length > 1e6) throw new Error('Corpo muito grande');
+    if (raw.length > 1e6) throw clientError(413, 'Corpo muito grande');
   }
-  return raw ? JSON.parse(raw) : {};
+  try {
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    throw clientError(400, 'JSON inválido');
+  }
 }
+// Comparação em tempo constante: a chave não vaza pelo tempo de resposta
+const sameKey = (a, b) => {
+  const x = Buffer.from(String(a ?? '')),
+    y = Buffer.from(b);
+  return x.length === y.length && timingSafeEqual(x, y);
+};
 const authorized = (req, url) =>
-  !CFG.apiKey || req.headers['x-api-key'] === CFG.apiKey || url.searchParams.get('key') === CFG.apiKey;
+  !CFG.apiKey || sameKey(req.headers['x-api-key'], CFG.apiKey) || sameKey(url.searchParams.get('key'), CFG.apiKey);
+
+// Só jobs configurados podem ser disparados ou parados: sem isso, qualquer pessoa com acesso à rota
+// executaria qualquer job do Jenkins (ou, com "..", chamaria outros endereços dele).
+// Aceita o caminho completo (Pasta/Job) ou só o nome do job, se ele for único na lista.
+function jenkinsJobOf(job) {
+  const all = CFG.jenkins.jobs;
+  if (all.includes(job)) return job;
+  const hit = all.filter(j => j.split('/').pop() === job);
+  return hit.length === 1 ? hit[0] : null;
+}
 
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, 'http://localhost');
@@ -1162,14 +1218,18 @@ const server = http.createServer(async (req, res) => {
     return res.end();
   }
   if (url.pathname === '/api/health') {
+    // sem chave, mostra só o necessário; nomes de jobs/workflows e limite do token exigem a chave
+    const full = authorized(req, url);
     return send(res, 200, {
       ok: true,
       demo: CFG.demo,
       jenkins: !!CFG.jenkins.url,
-      jobs: CFG.jenkins.jobs,
+      ...(full && { jobs: CFG.jenkins.jobs }),
       github: ghReady(),
-      workflows: CFG.github.workflows,
-      githubRate: { limit: ghRate.limit, remaining: ghRate.remaining, reset: ghRate.reset || null },
+      ...(full && {
+        workflows: CFG.github.workflows,
+        githubRate: { limit: ghRate.limit, remaining: ghRate.remaining, reset: ghRate.reset || null },
+      }),
       jira: !!jiraReady(),
       zephyr: CFG.zephyr.on,
       jiraSync: { at: jcache.syncedAt || null, error: jcache.error },
@@ -1220,13 +1280,25 @@ const server = http.createServer(async (req, res) => {
       if (!job) return send(res, 400, { error: 'Informe "job"' });
       if (CFG.demo) return send(res, 202, { ok: true, demo: true });
       if (ghParse(job)) await ghTrigger(job, params);
-      else await triggerBuild(job, params);
+      else {
+        const j = jenkinsJobOf(job);
+        if (!j) throw clientError(403, `Job "${job}" não está em JENKINS_JOBS`);
+        await triggerBuild(j, params);
+      }
       return send(res, 202, { ok: true });
     }
     if (req.method === 'POST' && url.pathname === '/api/stop') {
       const { job, build } = await readJson(req);
       if (!job || !build) return send(res, 400, { error: 'Informe "job" e "build"' });
-      if (!CFG.demo) await (ghParse(job) ? ghStop(job, build) : stopBuild(job, build));
+      if (!/^\d+$/.test(String(build))) throw clientError(400, '"build" deve ser um número');
+      if (!CFG.demo) {
+        if (isGhJob(job)) await ghStop(job, build);
+        else {
+          const j = jenkinsJobOf(job);
+          if (!j) throw clientError(403, `Job "${job}" não está em JENKINS_JOBS`);
+          await stopBuild(j, build);
+        }
+      }
       return send(res, 202, { ok: true });
     }
     if (req.method === 'GET' && url.pathname === '/api/jira/scenarios') {
@@ -1261,12 +1333,27 @@ const server = http.createServer(async (req, res) => {
     send(res, 404, { error: 'Rota não encontrada' });
   } catch (e) {
     log(`Erro ${req.method} ${url.pathname}: ${e.message}`);
-    send(res, 502, { error: e.message });
+    send(res, e.client || 502, { error: e.message });
   }
 });
 
+// Uma promessa rejeitada e esquecida derrubaria o processo (Node 15+); aqui vira só um aviso no log
+process.on('unhandledRejection', e => log(`Erro não tratado: ${e?.stack || e}`));
+// Encerra limpo (Docker/systemd mandam SIGTERM): fecha o servidor e as conexões SSE
+for (const sig of ['SIGTERM', 'SIGINT'])
+  process.on(sig, () => {
+    log(`${sig}: encerrando`);
+    for (const c of clients) c.end();
+    server.close(() => process.exit(0));
+    setTimeout(() => process.exit(0), 3000).unref();
+  });
+
 server.listen(CFG.port, () => {
   log(`QA AI Agent — servidor em http://localhost:${CFG.port}`);
+  if (!CFG.apiKey && CFG.cors === '*' && !CFG.demo)
+    log(
+      'ATENÇÃO: sem API_KEY e com CORS_ORIGIN=*, qualquer página pode disparar e parar builds. Defina API_KEY e CORS_ORIGIN.'
+    );
   if (CFG.demo) {
     seedDemoJira();
     return startDemo();

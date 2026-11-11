@@ -27,7 +27,8 @@ function extStart(d) {
   p.src = src;
   const sc = (d.scenarios || []).map(n => ({ n, plan: 0, dur: 0, st: 'pend', resp: null }));
   const r = {
-    id: +d.build,
+    id: uniqueRunId(+d.build),
+    build: +d.build,
     p: p.name,
     s: 'Executando',
     ok: 0,
@@ -40,7 +41,7 @@ function extStart(d) {
   LIVE.unshift(r);
   extKey[d.job + '#' + d.build] = r;
   r.src = src;
-  logEvent(r, 'start', `#${r.id} iniciada no ${src}${d.branch ? ` (${d.branch})` : ''}`);
+  logEvent(r, 'start', `#${runNo(r)} iniciada no ${src}${d.branch ? ` (${d.branch})` : ''}`);
   return r;
 }
 function extScenario(d) {
@@ -73,7 +74,7 @@ function extEnd(d) {
   r.d = Math.round((d.duration || 0) / 1000) || r.d;
   r.live.el = r.d;
   r.s = d.status || (r.ok === r.t ? 'Sucesso' : 'Falha');
-  logEvent(r, 'end', `#${r.id} finalizada: ${r.s} (${r.ok}/${r.t}) em ${fmtDur(r.d)}`);
+  logEvent(r, 'end', `#${runNo(r)} finalizada: ${r.s} (${r.ok}/${r.t}) em ${fmtDur(r.d)}`);
 }
 if (API) {
   lvAuto = false;
@@ -165,24 +166,6 @@ setInterval(() => {
   }
   liveRefresh(changed, ended);
 }, 1000);
-function startRunOld(name) {
-  const p = PIPES.find(x => x.name === name);
-  if (!p) return;
-  const r = { id: RUNS[0].id + 1, p: p.name, s: 'Executando', ok: 0, t: p.scen, d: 0, at: new Date(BASE) };
-  RUNS.unshift(r);
-  toast(`Execução #${r.id} de ${name} iniciada`);
-  refresh();
-  setTimeout(() => {
-    const fail = p.rate < 95 && Math.random() < 0.5;
-    r.ok = fail ? p.scen - 1 : p.scen;
-    r.s = fail ? 'Falha' : 'Sucesso';
-    r.d = p.dur;
-    r.at = new Date(BASE.getTime() + 60000 * (RUNS.indexOf(r) + 1));
-    refresh();
-    toast(`#${r.id} ${name}: ${r.s} (${r.ok}/${r.t})`);
-  }, 3500);
-}
-
 document.addEventListener('click', e => {
   if (!e.target.closest('#menu') && !e.target.closest('[data-menu],[data-intmenu]')) $('#menu').hidden = true;
   const g = e.target.closest('[data-go]');

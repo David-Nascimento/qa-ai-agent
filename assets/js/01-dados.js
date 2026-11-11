@@ -31,23 +31,6 @@ const joinPt = a => (a.length < 2 ? a.join('') : a.slice(0, -1).join(', ') + ' e
 const techOf = n => (PIPES.find(p => p.name === n) || { tech: 'API' }).tech;
 const techBadge = (t, n) =>
   `<span class="tech ${techCls(t)}"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true">${TECH_IC[t] || TECH_IC.API}</svg>${n !== undefined ? n + ' ' : ''}${t}</span>`;
-function techStats(t) {
-  const names = PIPES.filter(p => !t || p.tech === t).map(p => p.name);
-  const runs = RUNS.filter(r => names.includes(r.p) && r.s !== 'Executando');
-  const avg = runs.length ? Math.round(runs.reduce((a, r) => a + r.d, 0) / runs.length) : 0;
-  const ok = runs.filter(r => r.s === 'Sucesso').length;
-  const scen = runs.reduce((a, r) => a + r.t, 0);
-  return {
-    pipes: names.length,
-    runs: runs.length,
-    avg,
-    rate: runs.length ? (ok / runs.length) * 100 : 0,
-    fails: runs.length - ok,
-    avgScen: runs.length ? Math.round(avg / (scen / runs.length)) : 0,
-    min: runs.length ? Math.min(...runs.map(r => r.d)) : 0,
-    max: runs.length ? Math.max(...runs.map(r => r.d)) : 0,
-  };
-}
 const icoOf = n =>
   ({ box: ICO_BOX, user: ICO_USER, search: ICO_SEARCH, lock: ICO_LOCK })[(PIPES.find(p => p.name === n) || {}).ico] ||
   ICO_BOX;
@@ -94,6 +77,10 @@ let RUNS = [
     }
   }
 })();
+// Número que a pessoa vê (#87). Para execuções vindas do servidor é o número do build/run, que pode se repetir
+// entre jobs; por isso r.id (usado em rotas e cartões) é sempre único e o número real fica em r.build.
+const runNo = r => r.build ?? r.id;
+const uniqueRunId = n => (RUNS.some(r => r.id === n) ? Math.max(...RUNS.map(r => r.id)) + 1 : n);
 const grpOf = n => (PIPES.find(p => p.name === n) || { group: '—' }).group;
 
 let SCENS =
@@ -233,40 +220,5 @@ const PERIODS = {
     labels: ['out', 'nov', 'nov', 'dez', 'dez', 'jan', 'jan'],
     vals: [88.1, 89.6, 90.3, 89.8, 92.1, 93, 94.6],
     split: [35, 29, 19, 17],
-  },
-};
-const AN = {
-  7: {
-    rate: '93,1%',
-    rateD: '+1,4 p.p.',
-    fails: '86',
-    failsD: '-9%',
-    flaky: 9,
-    mttr: '12m 05s',
-    mttrD: '-11%',
-    ok: [168, 181, 186, 192, 178, 201, 214],
-    ko: [14, 12, 15, 11, 18, 13, 10],
-  },
-  30: {
-    rate: '93,4%',
-    rateD: '+2,1 p.p.',
-    fails: '241',
-    failsD: '+18%',
-    flaky: 12,
-    mttr: '14m 32s',
-    mttrD: '+27%',
-    ok: [176, 188, 196, 205, 190, 214, 232],
-    ko: [17, 14, 16, 13, 19, 15, 12],
-  },
-  90: {
-    rate: '92,7%',
-    rateD: '+0,8 p.p.',
-    fails: '702',
-    failsD: '+6%',
-    flaky: 17,
-    mttr: '16m 10s',
-    mttrD: '+9%',
-    ok: [160, 172, 181, 188, 184, 199, 210],
-    ko: [20, 18, 19, 16, 21, 17, 15],
   },
 };
