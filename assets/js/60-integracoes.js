@@ -9,7 +9,7 @@ INTS = INTS || [
     k: 'azure',
     name: 'Azure DevOps',
     desc: 'Importe execuções de pipelines e resultados.',
-    on: true,
+    on: false, // ainda sem conector: não mostra "Conectado"
     bg: '#e8f1fd',
     fg: '#2f6fd6',
     ic: '<path d="M3 7.5 13 3v18L3 16.5zM13 6l8 3v9l-8 3"/>',

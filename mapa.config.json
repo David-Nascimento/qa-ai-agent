@@ -477,7 +477,7 @@
     ],
     [
      "RN-JEN-07",
-     "Credenciais do Jenkins ficam só no servidor (`.env`)."
+     "Credenciais do Jenkins ficam só no servidor (`.env`), de preferência cifradas (RN-SEG-01)."
     ],
     [
      "RN-JEN-08",
@@ -566,7 +566,7 @@
     ],
     [
      "RN-GHA-08",
-     "O token do GitHub fica só no servidor (`.env`)."
+     "O token do GitHub fica só no servidor (`.env`), de preferência cifrado (RN-SEG-01)."
     ],
     [
      "RN-GHA-09",
@@ -615,7 +615,7 @@
     ],
     [
      "RN-JIR-05",
-     "Credenciais do Jira ficam só no servidor (`.env`)."
+     "Credenciais do Jira ficam só no servidor (`.env`), de preferência cifradas (RN-SEG-01)."
     ]
    ]
   },
@@ -705,6 +705,87 @@
    "diagrama": "sequenceDiagram\n  participant S as Servidor\n  participant J as Jira\n  participant Z as Zephyr Scale\n  participant P as Portal\n  S->>J: cenários (rodada completa na partida)\n  S->>Z: ciclos e itens\n  S-->>P: jira_sync\n  P->>S: lê o cache (/api/jira/state)\n  loop a cada 5 min\n    S->>J: só as issues alteradas\n    S->>Z: lista de ciclos e itens dos ativos\n    S-->>P: jira_sync\n  end\n  Note over S,Z: build termina, 20 s depois relê os ciclos ativos\n  Note over S,J: 429 ou 503, espera (Retry-After) e tenta de novo"
   },
   {
+   "id": "seguranca",
+   "titulo": "Servidor: segurança e segredos",
+   "status": "Implementado",
+   "status_tipo": "real",
+   "descricao": "Como o servidor protege senhas, tokens e a própria API: segredos cifrados em repouso, chave da API com hash, tíquete de uso único no tempo real, bloqueio de tentativas, HTTPS e logs sem segredos.",
+   "codigo": "`server/cripto.js` · `server/segredos.js` · `server/server.js` (`sec`, `keyOk`, `newTicket`, `registerFail`, `redact`) · `server/scripts/verificar-segredos.mjs`",
+   "diagrama": "flowchart LR\n  A[\".env com<br/>enc:v1:… e hash\"] --> B[\"Decifra só na memória<br/>(chave-mestra)\"]\n  B --> C[\"Tokens usados nas<br/>chamadas HTTPS\"]\n  D[\"Navegador\"] -- \"x-api-key\" --> E{\"Chave confere?<br/>IP bloqueado?\"}\n  E -- \"não\" --> F[\"401 / 429\"]\n  E -- \"sim\" --> G[\"Tíquete de uso único\"]\n  G --> H[\"/events (SSE)\"]",
+   "funcionalidades": [
+    [
+     "Segredos cifrados",
+     "`JENKINS_TOKEN`, `GITHUB_TOKEN`, `JIRA_TOKEN` e `API_KEY` aceitam `enc:v1:…` (AES-256-GCM, chave derivada com scrypt). A CLI `npm run segredos` gera a chave, cifra, faz hash e verifica o `.env`."
+    ],
+    [
+     "Chave da API com hash",
+     "`API_KEY_HASH` guarda só o hash scrypt; o servidor nunca tem a chave em si."
+    ],
+    [
+     "Tempo real sem chave na URL",
+     "`POST /api/ticket` entrega um tíquete de uso único; a tela conecta ao SSE com ele e reconecta sozinha."
+    ],
+    [
+     "Proteção da API",
+     "Bloqueio por IP após falhas, cabeçalhos de segurança, limites de conexões e tempos, TLS opcional."
+    ],
+    [
+     "Varredura de segredos",
+     "`npm run check:secrets` procura tokens e chaves nos arquivos versionados."
+    ]
+   ],
+   "regras": [
+    [
+     "RN-SEG-01",
+     "Tokens e senhas podem ficar cifrados no `.env` (`enc:v1:…`, AES-256-GCM). O servidor decifra só na memória e apaga `SECRETS_KEY` do ambiente depois de ler."
+    ],
+    [
+     "RN-SEG-02",
+     "Chave-mestra errada ou valor adulterado impede a partida e a mensagem diz qual variável falhou, sem mostrar valores."
+    ],
+    [
+     "RN-SEG-03",
+     "`API_KEY_HASH` (scrypt) é alternativa a `API_KEY`; a chave é conferida em tempo constante. Definir as duas é erro de configuração."
+    ],
+    [
+     "RN-SEG-04",
+     "A chave da API só vale no cabeçalho `x-api-key`. O `?key=` na URL fica desligado, salvo `ALLOW_URL_KEY=true`."
+    ],
+    [
+     "RN-SEG-05",
+     "O SSE conecta com tíquete de uso único (30 s). Tíquete usado ou vencido recebe 401; ele só abre `/events`."
+    ],
+    [
+     "RN-SEG-06",
+     "Após `AUTH_MAX_FAILS` (10) chaves inválidas do mesmo IP em `AUTH_FAIL_WINDOW_MS` (5 min), o servidor responde 429 com `Retry-After`."
+    ],
+    [
+     "RN-SEG-07",
+     "Com token configurado, Jenkins, Jira e GitHub precisam estar em `https://` (exceto `localhost`); caso contrário o servidor não inicia, salvo `ALLOW_INSECURE_UPSTREAM=true`."
+    ],
+    [
+     "RN-SEG-08",
+     "Logs, erros e eventos mascaram tokens conhecidos, `Bearer`/`Basic`, `?key=`/`?ticket=` e padrões de token do GitHub."
+    ],
+    [
+     "RN-SEG-09",
+     "Toda resposta leva `nosniff`, `no-store`, `no-referrer` e CSP restritiva; a tela tem CSP sem scripts inline. Com TLS ligado, também HSTS."
+    ],
+    [
+     "RN-SEG-10",
+     "A tela guarda a chave só na `sessionStorage` da aba e a remove da URL; a tela de Integrações não pede senha nem token."
+    ],
+    [
+     "RN-SEG-11",
+     "O limite é de 200 conexões SSE, 16 KB de cabeçalhos e 1 MB de corpo, com tempo máximo para cabeçalhos (15 s) e requisição (30 s)."
+    ],
+    [
+     "RN-SEG-12",
+     "`npm run check:secrets` falha se houver token, chave privada ou senha em texto puro nos arquivos versionados."
+    ]
+   ]
+  },
+  {
    "id": "config",
    "titulo": "Configurações, integrações e dados",
    "status": "Implementado",
@@ -745,7 +826,7 @@
     ],
     [
      "RN-CFG-05",
-     "Com chave de API definida, o servidor exige a chave em `/events` e nas rotas que alteram algo."
+     "Com chave de API definida (`API_KEY` ou `API_KEY_HASH`), o servidor exige a chave no cabeçalho `x-api-key` nas rotas da API e um tíquete de uso único no `/events` (veja RN-SEG-04 a RN-SEG-06)."
     ],
     [
      "RN-CFG-06",
@@ -1076,21 +1157,31 @@
     "id": "s_auth",
     "col": 1,
     "cat": "servidor",
-    "titulo": "Chave da API e CORS",
-    "onde": "server.js · authorized()",
-    "descricao": "Protege as rotas: /events, /api/state e as que alteram algo exigem a chave quando API_KEY está definida.",
-    "formula": "x-api-key = API_KEY  ou  ?key = API_KEY",
+    "titulo": "Chave da API, tíquete e bloqueio",
+    "onde": "server.js · authorized() · newTicket() · registerFail()",
+    "descricao": "Protege as rotas: com chave definida, /api/* exige x-api-key e o /events aceita a chave ou um tíquete de uso único. Chaves inválidas repetidas bloqueiam o IP.",
+    "formula": "x-api-key confere com API_KEY / API_KEY_HASH  ou  ?ticket válido (1 uso, 30 s)",
     "passos": [
-     "/api/health é livre.",
+     "/api/health é livre (mostra só o estado geral sem a chave).",
+     "POST /api/ticket entrega o tíquete que a tela usa no SSE.",
+     "10 falhas em 5 min: 429.",
      "CORS_ORIGIN define qual site pode chamar o servidor."
     ],
     "regras": [
-     "RN-CFG-05"
+     "RN-CFG-05",
+     "RN-SEG-03",
+     "RN-SEG-04",
+     "RN-SEG-05",
+     "RN-SEG-06"
     ],
     "codigo": [
      {
       "arquivo": "server/server.js",
       "funcao": "authorized"
+     },
+     {
+      "arquivo": "server/server.js",
+      "funcao": "newTicket"
      }
     ]
    },

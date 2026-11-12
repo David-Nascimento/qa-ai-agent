@@ -9,9 +9,25 @@ const SPEED = 10,
 let lvAuto = true,
   tk = 0;
 // Modo conectado: index.html?api=http://localhost:3000&key=SEU_API_KEY
+// A chave só serve para a primeira abertura: é guardada na sessão da aba (some ao fechar) e removida da URL,
+// para não ficar no histórico, em favoritos, no Referer nem em capturas de tela.
 const QS = new URLSearchParams(location.search),
   API = (QS.get('api') || '').replace(/\/$/, ''),
-  API_KEY = QS.get('key') || '';
+  API_KEY = (() => {
+    let k = QS.get('key') || '';
+    try {
+      if (k) sessionStorage.setItem('qa.key', k);
+      else k = sessionStorage.getItem('qa.key') || '';
+    } catch {
+      /* sem sessionStorage: a chave vale só até recarregar */
+    }
+    if (QS.has('key')) {
+      QS.delete('key');
+      const q = QS.toString();
+      history.replaceState(null, '', location.pathname + (q ? '?' + q : '') + location.hash);
+    }
+    return k;
+  })();
 const pipeOf = n => PIPES.find(p => p.name === n);
 const simNow = () => (API ? new Date() : new Date(BASE.getTime() + 60000 + (Date.now() - T0) * SPEED));
 const hms = d => d.toTimeString().slice(0, 8);

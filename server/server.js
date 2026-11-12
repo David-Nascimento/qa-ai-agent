@@ -4,7 +4,10 @@
 // Requer Node.js 20.6+ (fetch nativo e --env-file). Sem dependências externas.
 
 import http from 'node:http';
-import { timingSafeEqual } from 'node:crypto';
+import https from 'node:https';
+import { readFileSync } from 'node:fs';
+import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
+import { abrir, carregarMestra, conferirChave, estaSelado, ehHash } from './cripto.js';
 
 const env = process.env;
 const list = v =>
@@ -30,15 +33,45 @@ const rx = (name, v, d = null, flags = 'u') => {
   }
 };
 
+// Falha de configuração de segurança: diz qual variável está errada e encerra (nunca sobe "meio aberto")
+const fatal = msg => {
+  console.error('ERRO de configuração: ' + msg);
+  process.exit(1);
+};
+
+// Segredos: aceitam texto puro (legado) ou o formato cifrado "enc:v1:..." gerado por `npm run segredos -- cifrar`.
+// A chave-mestra vem de SECRETS_KEY_FILE (preferido) ou SECRETS_KEY e é apagada do ambiente logo depois de lida,
+// para não vazar para processos filhos nem para dumps de variáveis.
+let MASTER = null;
+try {
+  MASTER = carregarMestra(env);
+} catch (e) {
+  fatal(e.message);
+}
+delete process.env.SECRETS_KEY;
+const SECRET_NAMES = ['JENKINS_TOKEN', 'GITHUB_TOKEN', 'JIRA_TOKEN', 'API_KEY'];
+const sec = name => {
+  const v = (env[name] || '').trim();
+  if (!estaSelado(v)) return v;
+  if (!MASTER) fatal(`${name} está cifrado, mas falta SECRETS_KEY_FILE (ou SECRETS_KEY) para decifrar.`);
+  try {
+    return abrir(v, MASTER);
+  } catch (e) {
+    return fatal(`${name}: ${e.message}`);
+  }
+};
+
 const CFG = {
   port: num(env.PORT, 3000),
   cors: env.CORS_ORIGIN || '*',
-  apiKey: env.API_KEY || '',
+  apiKey: sec('API_KEY'),
+  // hash scrypt da chave de API (alternativa a API_KEY: o servidor nunca guarda a chave em si)
+  apiKeyHash: (env.API_KEY_HASH || '').trim(),
   demo: env.DEMO === 'true',
   jenkins: {
     url: (env.JENKINS_URL || '').replace(/\/$/, ''),
     user: env.JENKINS_USER || '',
-    token: env.JENKINS_TOKEN || '',
+    token: sec('JENKINS_TOKEN'),
     jobs: list(env.JENKINS_JOBS),
     pollMs: num(env.POLL_MS, 3000, 50),
     discoverMs: num(env.DISCOVER_MS, 30000, 1000),
@@ -48,7 +81,7 @@ const CFG = {
   // GitHub Actions: cada workflow é acompanhado como um "job" do Jenkins (job = dono/repositório/arquivo.yml)
   github: {
     api: (env.GITHUB_API_URL || 'https://api.github.com').replace(/\/$/, ''),
-    token: env.GITHUB_TOKEN || '',
+    token: sec('GITHUB_TOKEN'),
     // "dono/repo/workflow.yml" acompanha um workflow · "dono/repo" acompanha todos os workflows do repositório
     workflows: list(env.GITHUB_WORKFLOWS),
     pollMs: num(env.GITHUB_POLL_MS, 10000, 50),
@@ -59,7 +92,7 @@ const CFG = {
   jira: {
     url: (env.JIRA_URL || '').replace(/\/$/, ''),
     email: env.JIRA_EMAIL || '',
-    token: env.JIRA_TOKEN || '',
+    token: sec('JIRA_TOKEN'),
     project: env.JIRA_PROJECT || '',
     version: env.JIRA_API_VERSION || '3',
     autoBug: env.JIRA_AUTO_BUG === 'true',
@@ -95,6 +128,19 @@ const CFG = {
     backoffMs: num(env.HTTP_BACKOFF_MS, 1000),
     maxWaitMs: num(env.HTTP_MAX_WAIT_MS, 60000),
   },
+  // Segurança
+  security: {
+    tlsCert: env.TLS_CERT_FILE || '',
+    tlsKey: env.TLS_KEY_FILE || '',
+    allowInsecureUpstream: env.ALLOW_INSECURE_UPSTREAM === 'true',
+    // a chave na URL (?key=) vaza em logs, histórico e Referer; por padrão só o cabeçalho x-api-key vale
+    allowUrlKey: env.ALLOW_URL_KEY === 'true',
+    trustProxy: env.TRUST_PROXY === 'true',
+    ticketMs: num(env.TICKET_TTL_MS, 30000, 1000),
+    maxFails: num(env.AUTH_MAX_FAILS, 10, 1),
+    failWindowMs: num(env.AUTH_FAIL_WINDOW_MS, 300000, 1000),
+    maxClients: num(env.MAX_SSE_CLIENTS, 200, 1),
+  },
   track: {
     stagesEvery: num(env.STAGES_EVERY, 3, 1),
     maxErrors: num(env.TRACK_MAX_ERRORS, 5),
@@ -103,9 +149,43 @@ const CFG = {
   },
 };
 
+if (CFG.apiKeyHash && !ehHash(CFG.apiKeyHash))
+  fatal('API_KEY_HASH inválido: gere com `npm run segredos -- hash-chave`.');
+if (CFG.apiKey && CFG.apiKeyHash) fatal('defina só um: API_KEY ou API_KEY_HASH.');
+if (!!CFG.security.tlsCert !== !!CFG.security.tlsKey) fatal('TLS_CERT_FILE e TLS_KEY_FILE devem ser definidos juntos.');
+// Credenciais só viajam por HTTPS: um token em http:// passa em claro pela rede.
+// Exceção: loopback (mesma máquina) ou ALLOW_INSECURE_UPSTREAM=true (rede interna confiável, por sua conta e risco).
+const isLoopback = h => ['localhost', '127.0.0.1', '::1', '[::1]'].includes(h);
+function requireHttps(name, u, hasSecret) {
+  if (!u || !hasSecret || CFG.security.allowInsecureUpstream) return;
+  let parsed;
+  try {
+    parsed = new URL(u);
+  } catch {
+    return fatal(`${name} não é uma URL válida.`);
+  }
+  if (parsed.protocol !== 'https:' && !isLoopback(parsed.hostname))
+    fatal(
+      `${name} usa http:// e enviaria credenciais sem criptografia. Use https:// (ou ALLOW_INSECURE_UPSTREAM=true em rede interna confiável).`
+    );
+}
+requireHttps('JENKINS_URL', CFG.jenkins.url, CFG.jenkins.token);
+requireHttps('GITHUB_API_URL', CFG.github.api, CFG.github.token);
+requireHttps('JIRA_URL', CFG.jira.url, CFG.jira.token);
+
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const b64 = s => Buffer.from(s).toString('base64');
-const log = (...a) => console.log(new Date().toISOString(), ...a);
+// Nenhum segredo (nem Authorization) pode aparecer em log ou em mensagem de erro
+const SECRET_VALUES = [CFG.jenkins.token, CFG.github.token, CFG.jira.token, CFG.apiKey].filter(v => v && v.length >= 6);
+const redact = v => {
+  let t = typeof v === 'string' ? v : v instanceof Error ? v.stack || v.message : String(v);
+  for (const s of SECRET_VALUES) t = t.split(s).join('***');
+  return t
+    .replace(/\b(Bearer|Basic|token)\s+[A-Za-z0-9._~+/=-]{8,}/gi, '$1 ***')
+    .replace(/([?&](?:key|ticket|token|access_token)=)[^&\s]+/gi, '$1***')
+    .replace(/\b(gh[pousr]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,})\b/g, '***');
+};
+const log = (...a) => console.log(new Date().toISOString(), ...a.map(redact));
 
 /* ------------------------------------------------------------------ */
 /* HTTP com espera e nova tentativa                                    */
@@ -354,7 +434,7 @@ async function track(job, b) {
     await finish(st);
   } catch (e) {
     log(`Erro em ${key}: ${e.message}`);
-    emit('build_end', { job, build: b.number, status: 'Falha', error: e.message });
+    emit('build_end', { job, build: b.number, status: 'Falha', error: redact(e.message) });
   } finally {
     active.delete(key);
   }
@@ -627,7 +707,13 @@ async function ghTrack(repo, run) {
     await ghFinish(st, r);
   } catch (e) {
     log(`Erro em ${key}: ${e.message}`);
-    emit('build_end', { job, build: run.run_number, status: 'Falha', error: e.message, source: 'GitHub Actions' });
+    emit('build_end', {
+      job,
+      build: run.run_number,
+      status: 'Falha',
+      error: redact(e.message),
+      source: 'GitHub Actions',
+    });
   } finally {
     active.delete(key);
   }
@@ -1003,7 +1089,7 @@ async function syncJira({ full = false, openOnly = false } = {}) {
     jcache.error = null;
     log(`Jira: ${full ? 'completa' : openOnly ? 'ciclos abertos' : 'incremental'} · ${changed.length} alteração(ões)`);
   } catch (e) {
-    jcache.error = e.message;
+    jcache.error = redact(e.message);
     log(`Jira: falha na sincronização (${e.message}); mantendo os últimos dados`);
   } finally {
     jcache.running = false;
@@ -1170,8 +1256,24 @@ function startDemo() {
 /* ------------------------------------------------------------------ */
 /* HTTP                                                                */
 /* ------------------------------------------------------------------ */
-function send(res, code, data) {
-  res.writeHead(code, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': CFG.cors });
+// Cabeçalhos de segurança em toda resposta (a API só devolve JSON/SSE, então a CSP é a mais restritiva possível)
+const TLS_ON = !!(CFG.security.tlsCert && CFG.security.tlsKey);
+const SEC_HEADERS = {
+  'X-Content-Type-Options': 'nosniff',
+  'Cache-Control': 'no-store',
+  'Referrer-Policy': 'no-referrer',
+  'Content-Security-Policy': "default-src 'none'; frame-ancestors 'none'",
+  'X-Frame-Options': 'DENY',
+  'Cross-Origin-Resource-Policy': 'cross-origin',
+  Vary: 'Origin',
+  ...(TLS_ON && { 'Strict-Transport-Security': 'max-age=31536000; includeSubDomains' }),
+};
+function send(res, code, data, extra = {}) {
+  res.writeHead(code, {
+    'Content-Type': 'application/json; charset=utf-8',
+    'Access-Control-Allow-Origin': CFG.cors,
+    ...extra,
+  });
   res.end(JSON.stringify(data));
 }
 // Erro do cliente (corpo inválido, job fora da lista): responde 4xx em vez de 502
@@ -1194,8 +1296,68 @@ const sameKey = (a, b) => {
     y = Buffer.from(b);
   return x.length === y.length && timingSafeEqual(x, y);
 };
-const authorized = (req, url) =>
-  !CFG.apiKey || sameKey(req.headers['x-api-key'], CFG.apiKey) || sameKey(url.searchParams.get('key'), CFG.apiKey);
+const authRequired = () => !!(CFG.apiKey || CFG.apiKeyHash);
+// Chave apresentada: sempre o cabeçalho; "?key=" só com ALLOW_URL_KEY=true (compatibilidade), pois a URL vai para logs e histórico
+const presentedKey = (req, url) =>
+  (req.headers['x-api-key'] || (CFG.security.allowUrlKey ? url.searchParams.get('key') : '') || '').toString();
+// Com API_KEY_HASH, o scrypt é caro: depois de uma conferência válida guardamos só o SHA-256 da chave
+let verifiedDigest = null;
+const digest = k => createHash('sha256').update(k).digest();
+function keyOk(k) {
+  if (!k) return false;
+  if (CFG.apiKey) return sameKey(k, CFG.apiKey);
+  const d = digest(k);
+  if (verifiedDigest && timingSafeEqual(d, verifiedDigest)) return true;
+  if (!conferirChave(k, CFG.apiKeyHash)) return false;
+  verifiedDigest = d;
+  return true;
+}
+const authorized = (req, url) => !authRequired() || keyOk(presentedKey(req, url));
+
+// Bloqueio de tentativas: N falhas de autenticação por IP numa janela => 429 (freia adivinhação de chave)
+const fails = new Map();
+const clientIp = req =>
+  (CFG.security.trustProxy &&
+    String(req.headers['x-forwarded-for'] || '')
+      .split(',')[0]
+      .trim()) ||
+  req.socket.remoteAddress ||
+  '?';
+const blockedMs = ip => {
+  const f = fails.get(ip);
+  if (!f) return 0;
+  if (Date.now() - f.first > CFG.security.failWindowMs) {
+    fails.delete(ip);
+    return 0;
+  }
+  return f.n >= CFG.security.maxFails ? CFG.security.failWindowMs - (Date.now() - f.first) : 0;
+};
+function registerFail(ip) {
+  const f = fails.get(ip);
+  if (!f || Date.now() - f.first > CFG.security.failWindowMs) fails.set(ip, { n: 1, first: Date.now() });
+  else f.n++;
+  if (fails.size > 10000) fails.clear(); // teto de memória
+}
+const tooMany = (res, ms) =>
+  send(res, 429, { error: 'Muitas tentativas inválidas; aguarde' }, { 'Retry-After': String(Math.ceil(ms / 1000)) });
+
+// Tíquetes de uso único para o SSE: o EventSource não envia cabeçalhos, então em vez de pôr a chave na URL
+// o navegador pede um tíquete (POST /api/ticket, com a chave no cabeçalho) que vale uma conexão e expira em segundos.
+const tickets = new Map();
+function newTicket() {
+  const now = Date.now();
+  for (const [t, exp] of tickets) if (exp < now) tickets.delete(t);
+  if (tickets.size > 1000) tickets.clear();
+  const t = randomBytes(24).toString('base64url');
+  tickets.set(t, now + CFG.security.ticketMs);
+  return t;
+}
+function useTicket(t) {
+  if (!t) return false;
+  const exp = tickets.get(t);
+  tickets.delete(t); // uso único, válido ou não
+  return !!exp && exp >= Date.now();
+}
 
 // Só jobs configurados podem ser disparados ou parados: sem isso, qualquer pessoa com acesso à rota
 // executaria qualquer job do Jenkins (ou, com "..", chamaria outros endereços dele).
@@ -1207,19 +1369,30 @@ function jenkinsJobOf(job) {
   return hit.length === 1 ? hit[0] : null;
 }
 
-const server = http.createServer(async (req, res) => {
-  const url = new URL(req.url, 'http://localhost');
+const handler = async (req, res) => {
+  for (const [k, v] of Object.entries(SEC_HEADERS)) res.setHeader(k, v);
+  let url;
+  try {
+    url = new URL(req.url, 'http://localhost');
+  } catch {
+    return send(res, 400, { error: 'URL inválida' });
+  }
+  const ip = clientIp(req);
   if (req.method === 'OPTIONS') {
     res.writeHead(204, {
       'Access-Control-Allow-Origin': CFG.cors,
       'Access-Control-Allow-Headers': 'Content-Type, x-api-key',
       'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+      'Access-Control-Max-Age': '600',
     });
     return res.end();
   }
   if (url.pathname === '/api/health') {
     // sem chave, mostra só o necessário; nomes de jobs/workflows e limite do token exigem a chave
+    const tried = !!presentedKey(req, url);
+    if (tried && blockedMs(ip)) return tooMany(res, blockedMs(ip));
     const full = authorized(req, url);
+    if (tried && !full) registerFail(ip);
     return send(res, 200, {
       ok: true,
       demo: CFG.demo,
@@ -1242,10 +1415,21 @@ const server = http.createServer(async (req, res) => {
       active: active.size,
     });
   }
-  if (!authorized(req, url)) return send(res, 401, { error: 'API key inválida' });
+  if (blockedMs(ip)) return tooMany(res, blockedMs(ip));
+  // o /events também aceita um tíquete de uso único no lugar da chave (ver newTicket)
+  const viaTicket = req.method === 'GET' && url.pathname === '/events' && useTicket(url.searchParams.get('ticket'));
+  if (!viaTicket && !authorized(req, url)) {
+    registerFail(ip);
+    return send(res, 401, { error: 'API key inválida' });
+  }
 
   try {
+    if (req.method === 'POST' && url.pathname === '/api/ticket') {
+      return send(res, 201, { ticket: newTicket(), expiresInMs: CFG.security.ticketMs });
+    }
     if (req.method === 'GET' && url.pathname === '/events') {
+      if (clients.size >= CFG.security.maxClients)
+        return send(res, 503, { error: 'Limite de conexões em tempo real atingido' });
       res.writeHead(200, {
         'Content-Type': 'text/event-stream',
         'Cache-Control': 'no-cache',
@@ -1333,9 +1517,29 @@ const server = http.createServer(async (req, res) => {
     send(res, 404, { error: 'Rota não encontrada' });
   } catch (e) {
     log(`Erro ${req.method} ${url.pathname}: ${e.message}`);
-    send(res, e.client || 502, { error: e.message });
+    send(res, e.client || 502, { error: e.client ? e.message : redact(e.message) });
   }
-});
+};
+
+// HTTPS nativo opcional (TLS_CERT_FILE + TLS_KEY_FILE); sem ele, use um proxy reverso com TLS na frente
+let tlsOpts = null;
+if (TLS_ON) {
+  try {
+    tlsOpts = {
+      cert: readFileSync(CFG.security.tlsCert),
+      key: readFileSync(CFG.security.tlsKey),
+      minVersion: 'TLSv1.2',
+    };
+  } catch (e) {
+    fatal(`não consegui ler o certificado TLS (${e.code || e.message})`);
+  }
+}
+const server = tlsOpts
+  ? https.createServer({ ...tlsOpts, maxHeaderSize: 16384 }, handler)
+  : http.createServer({ maxHeaderSize: 16384 }, handler);
+// Conexões lentas (slowloris) não seguram o servidor; o SSE não é afetado, pois a requisição já terminou
+server.headersTimeout = 15000;
+server.requestTimeout = 30000;
 
 // Uma promessa rejeitada e esquecida derrubaria o processo (Node 15+); aqui vira só um aviso no log
 process.on('unhandledRejection', e => log(`Erro não tratado: ${e?.stack || e}`));
@@ -1349,8 +1553,10 @@ for (const sig of ['SIGTERM', 'SIGINT'])
   });
 
 server.listen(CFG.port, () => {
-  log(`QA AI Agent — servidor em http://localhost:${CFG.port}`);
-  if (!CFG.apiKey && CFG.cors === '*' && !CFG.demo)
+  log(`QA AI Agent — servidor em ${TLS_ON ? 'https' : 'http'}://localhost:${CFG.port}`);
+  if (!TLS_ON && authRequired())
+    log('Aviso: sem TLS, a chave de API trafega em claro. Use TLS_CERT_FILE/TLS_KEY_FILE ou um proxy HTTPS na frente.');
+  if (!authRequired() && CFG.cors === '*' && !CFG.demo)
     log(
       'ATENÇÃO: sem API_KEY e com CORS_ORIGIN=*, qualquer página pode disparar e parar builds. Defina API_KEY e CORS_ORIGIN.'
     );

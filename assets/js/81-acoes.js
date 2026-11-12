@@ -102,7 +102,7 @@ function deleteFolder(g) {
 }
 function modal(title, body, onSubmit, o = {}) {
   $('#modalBox').innerHTML =
-    `<div class="mrow"><h3 id="mTitle">${title}</h3><button class="close" data-close aria-label="Fechar">×</button></div><form class="form" id="mForm">${body}<div class="form-foot" style="gap:10px"><button type="button" class="btn-out" data-close>Cancelar</button><button class="btn-pri${o.danger ? ' danger' : ''}" type="submit">${o.ok || 'Salvar'}</button></div></form>`;
+    `<div class="mrow"><h3 id="mTitle">${title}</h3><button class="close" data-close aria-label="Fechar">×</button></div><form class="form" id="mForm">${body}<div class="form-foot" style="gap:10px"><button type="button" class="btn-out" data-close${o.hideCancel ? ' hidden' : ''}>Cancelar</button><button class="btn-pri${o.danger ? ' danger' : ''}" type="submit">${o.ok || 'Salvar'}</button></div></form>`;
   $('#modalBox').setAttribute('aria-labelledby', 'mTitle');
   $('#modal').hidden = false;
   $('#mForm input')?.focus();
