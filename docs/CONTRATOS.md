@@ -105,27 +105,45 @@ O servidor sincroniza o Jira sozinho (a cada `JIRA_SYNC_MS`) e guarda tudo em ca
 
 | Evento | Campos |
 |---|---|
-| `build_start` | `job`, `build`, `timestamp`, `estimatedDuration`, `folder?`, `url`, `total?`, `scenarios?` |
+| `build_start` | `job`, `build`, `timestamp`, `estimatedDuration?`, `folder?`, `url`, `total?`, `scenarios?`, `name?` (nome do componente; no GitHub, o do workflow), `source?` (`Jenkins` ou `GitHub Actions`; sem ele, Jenkins), `branch?` |
 | `scenario` | `job`, `build`, `name`, `status` (`pass`/`fail`/`run`), `duration` (s), `resp` (ms ou `null`), `elapsed` (s) |
 | `stage` | `job`, `build`, `stage`, `status`, `duration` (ms) |
-| `build_end` | `job`, `build`, `status` (`Sucesso`/`Falha`/`Cancelada`), `duration` (ms), `passed`, `failed`, `total`, `result` |
+| `build_end` | `job`, `build`, `status` (`Sucesso`/`Falha`/`Cancelada`), `duration` (ms), `passed`, `failed`, `total`, `result`, `source?` |
 | `jira` | `job`, `build`, `scenario`, `key`, `action` (`create`/`comment`), `url` |
 | `jira_sync` | `at` (ms), `error` (texto ou `null`), `changed` (quantidade). Só para quem está conectado, não entra no reenvio dos últimos eventos. Avisa que o cache do Jira mudou. |
 
 `job` pode ser o nome do componente (`Checkout`) ou o caminho no Jenkins (`E-commerce/Checkout`). A tela usa a última parte como nome do componente e guarda o caminho completo para disparar e parar builds. Componentes que ainda não existem são criados na pasta informada em `folder` (ou `Jenkins`).
 
+### GitHub Actions nos mesmos eventos
+
+O servidor traduz o GitHub Actions para o contrato do Jenkins, então a tela não tem código separado por fonte:
+
+| Jenkins | GitHub Actions |
+|---|---|
+| pasta (`folder`) | repositório (`dono/repo`) |
+| job (`job`) | workflow: `dono/repo/arquivo.yml`; o nome do componente vem em `name` |
+| build (`build`) | `run_number` do run |
+| estágio (`stage`) | job do workflow; `status` no formato do Jenkins (`IN_PROGRESS`, `SUCCESS`, `FAILED`, `ABORTED`, `NOT_EXECUTED`) |
+| cenário (`scenario`) | linha de resultado no log do job (mesmos formatos e `LOG_REGEX`; o carimbo de hora do GitHub é removido) |
+
+Diferenças que vêm da API do GitHub:
+
+- O log de um job só fica disponível **depois que o job termina**. Por isso os eventos `scenario` chegam por job concluído e não linha a linha. Enquanto isso, os estágios mostram o andamento.
+- Um *re-run* do mesmo run mantém o mesmo `run_number` e não aparece como execução nova na tela.
+- Sem linhas de resultado no log, `passed`, `failed` e `total` ficam em 0 (o status do run continua valendo).
+
 ## Rotas do servidor
 
 | Método | Rota | Uso |
 |---|---|---|
-| GET | `/api/health` | estado do servidor, inclusive `jiraSync` (`at`, `error`) e `slow` (fator de lentidão por 429 de `jenkins` e `jira`, 1 = normal) |
+| GET | `/api/health` | estado do servidor: `jenkins`, `github` e `jira` (configurados ou não), `workflows`, `githubRate` (`limit`, `remaining`, `reset`), `jiraSync` (`at`, `error`) e `slow` (fator de lentidão por limite de `jenkins`, `jira` e `github`, 1 = normal) |
 | GET | `/events` | eventos SSE |
 | GET | `/api/state` | builds em acompanhamento |
 | GET | `/api/jira/scenarios?jql=&field=` | cenários do Jira (consulta na hora, com a consulta informada) |
 | GET | `/api/jira/state` | cenários e ciclos em cache (não chama o Jira) |
 | POST | `/api/jira/sync` | atualização manual; no máximo 1 a cada `JIRA_MIN_MANUAL_MS`, antes disso devolve o cache com `throttled: true` |
-| POST | `/api/build` | `{ job, params? }` dispara build |
-| POST | `/api/stop` | `{ job, build }` para build |
+| POST | `/api/build` | `{ job, params? }` dispara build. No GitHub, o workflow precisa de `on: workflow_dispatch`; `params.ref` escolhe a branch (padrão: a do repositório) e os demais `params` viram `inputs` |
+| POST | `/api/stop` | `{ job, build }` para build (no GitHub, cancela o run; só funciona para runs em acompanhamento) |
 | POST | `/api/jira/bug` | `{ job, build, scenario, details? }` abre/comenta bug |
 
 ## Configuração da interface — `CFG` (`localStorage` `qa:cfg`)
@@ -140,4 +158,4 @@ O servidor sincroniza o Jira sozinho (a cada `JIRA_SYNC_MS`) e guarda tudo em ca
 
 ## Variáveis do servidor
 
-Todas estão em [`server/.env.example`](../server/.env.example). Jenkins: `JENKINS_URL`, `JENKINS_USER`, `JENKINS_TOKEN`, `JENKINS_JOBS`, `POLL_MS`, `DISCOVER_MS`, `LOG_REGEX`, `RESP_REGEX`. Jira: `JIRA_URL`, `JIRA_EMAIL`, `JIRA_TOKEN`, `JIRA_PROJECT`, `JIRA_API_VERSION`, `JIRA_SCENARIOS_JQL`, `JIRA_PIPELINE_FIELD`, `JIRA_AUTO_BUG`, `JIRA_ISSUE_TYPE`, `JIRA_LABELS`, `JIRA_AUTH`. Sincronização: `JIRA_SYNC_MS`, `JIRA_FULL_SYNC_MS`, `JIRA_AFTER_BUILD_MS`, `JIRA_GAP_MS`, `JIRA_MIN_MANUAL_MS`. Zephyr Scale: `ZEPHYR`, `ZEPHYR_API_PATH`, `ZEPHYR_TQL`, `ZEPHYR_CASE_FIELD`, `ZEPHYR_MAX_CYCLES`, `ZEPHYR_ACTIVE_DAYS`, `ZEPHYR_CLOSED_STATUS`, `ZEPHYR_CYCLE_URL`. Limite de requisições: `HTTP_RETRIES`, `HTTP_BACKOFF_MS`, `HTTP_MAX_WAIT_MS`, `STAGES_EVERY`, `TRACK_MAX_ERRORS`, `MAX_TRACKED_BUILDS`.
+Todas estão em [`server/.env.example`](../server/.env.example). Jenkins: `JENKINS_URL`, `JENKINS_USER`, `JENKINS_TOKEN`, `JENKINS_JOBS`, `POLL_MS`, `DISCOVER_MS`, `LOG_REGEX`, `RESP_REGEX`. GitHub Actions: `GITHUB_TOKEN`, `GITHUB_API_URL`, `GITHUB_WORKFLOWS`, `GITHUB_POLL_MS`, `GITHUB_DISCOVER_MS`, `GITHUB_LOG_JOBS`. Jira: `JIRA_URL`, `JIRA_EMAIL`, `JIRA_TOKEN`, `JIRA_PROJECT`, `JIRA_API_VERSION`, `JIRA_SCENARIOS_JQL`, `JIRA_PIPELINE_FIELD`, `JIRA_AUTO_BUG`, `JIRA_ISSUE_TYPE`, `JIRA_LABELS`, `JIRA_AUTH`. Sincronização: `JIRA_SYNC_MS`, `JIRA_FULL_SYNC_MS`, `JIRA_AFTER_BUILD_MS`, `JIRA_GAP_MS`, `JIRA_MIN_MANUAL_MS`. Zephyr Scale: `ZEPHYR`, `ZEPHYR_API_PATH`, `ZEPHYR_TQL`, `ZEPHYR_CASE_FIELD`, `ZEPHYR_MAX_CYCLES`, `ZEPHYR_ACTIVE_DAYS`, `ZEPHYR_CLOSED_STATUS`, `ZEPHYR_CYCLE_URL`. Limite de requisições: `HTTP_RETRIES`, `HTTP_BACKOFF_MS`, `HTTP_MAX_WAIT_MS`, `STAGES_EVERY`, `TRACK_MAX_ERRORS`, `MAX_TRACKED_BUILDS`.

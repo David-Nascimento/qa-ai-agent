@@ -37,7 +37,8 @@ async function triggerJenkins(job) {
       body: JSON.stringify({ job }),
     });
     const d = await r.json().catch(() => ({}));
-    toast(r.ok ? `Build de ${job} solicitado ao Jenkins` : `Jenkins recusou o build: ${d.error || r.status}`);
+    const via = (pp && pp.src) || 'Jenkins';
+    toast(r.ok ? `Execução de ${job} solicitada ao ${via}` : `${via} recusou a execução: ${d.error || r.status}`);
   } catch (e) {
     toast('Sem conexão com o servidor de tempo real.');
   }
@@ -283,7 +284,11 @@ document.addEventListener('click', e => {
       headers: { 'Content-Type': 'application/json', ...(API_KEY ? { 'x-api-key': API_KEY } : {}) },
       body: JSON.stringify({ job: (pipeOf(r.p) || {}).job || r.p, build: r.id }),
     })
-      .then(x => toast(x.ok ? `Parada de #${r.id} solicitada ao Jenkins` : 'O Jenkins recusou a parada'))
+      .then(x =>
+        toast(
+          x.ok ? `Parada de #${r.id} solicitada ao ${r.src || 'Jenkins'}` : `O ${r.src || 'Jenkins'} recusou a parada`
+        )
+      )
       .catch(() => toast('Sem conexão com o servidor de tempo real.'));
     return;
   }

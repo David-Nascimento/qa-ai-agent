@@ -3,7 +3,7 @@
 
 /* ---------- 8. Integrações ---------- */
 let INTS = store.get('ints', null);
-if (INTS && !INTS.find(i => i.k === 'jira')) INTS = null;
+if (INTS && !(INTS.find(i => i.k === 'jira') && INTS.find(i => i.k === 'github'))) INTS = null;
 INTS = INTS || [
   {
     k: 'azure',
@@ -31,6 +31,15 @@ INTS = INTS || [
     bg: '#fbeceb',
     fg: '#c0392b',
     ic: '<circle cx="12" cy="9" r="5"/><path d="M5 21c1-4 3.5-6 7-6s6 2 7 6M10 8.5h.01M14 8.5h.01"/>',
+  },
+  {
+    k: 'github',
+    name: 'GitHub Actions',
+    desc: 'Acompanhe as execuções dos workflows em tempo real, com estágios por job e cenários lidos do log.',
+    on: false,
+    bg: '#eceff3',
+    fg: '#24292f',
+    ic: '<circle cx="12" cy="12" r="9"/><path d="M10 8.5v7l6-3.5z"/>',
   },
   {
     k: 'jira',

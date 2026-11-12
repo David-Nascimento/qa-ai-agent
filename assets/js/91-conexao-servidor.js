@@ -1,4 +1,4 @@
-// QA AI Agent · Modo conectado (?api=): eventos SSE do servidor Jenkins/Jira
+// QA AI Agent · Modo conectado (?api=): eventos SSE do servidor (Jenkins, GitHub Actions e Jira)
 // Scripts clássicos carregados em ordem pelo index.html (escopo global compartilhado).
 
 /* Eventos reais vindos do servidor (Server-Sent Events) */
@@ -6,13 +6,15 @@ const extKey = {},
   extRun = d => extKey[d.job + '#' + d.build];
 function extStart(d) {
   if (extRun(d)) return extRun(d);
-  // job pode vir como caminho do Jenkins (Pasta/Job): o componente é a última parte
-  const short = String(d.job).split('/').pop();
+  // job pode vir como caminho do Jenkins (Pasta/Job) ou do GitHub (dono/repo/workflow.yml):
+  // o componente é o nome do workflow (d.name) ou, sem ele, a última parte do caminho
+  const short = d.name || String(d.job).split('/').pop();
+  const src = d.source || 'Jenkins';
   let p = pipeOf(d.job) || pipeOf(short);
   if (!p) {
     p = {
       name: short,
-      group: d.folder || 'Jenkins',
+      group: d.folder || src,
       ico: 'box',
       rate: 100,
       dur: Math.round((d.estimatedDuration || 300000) / 1000),
@@ -22,6 +24,7 @@ function extStart(d) {
     PIPES.push(p);
   }
   p.job = d.job;
+  p.src = src;
   const sc = (d.scenarios || []).map(n => ({ n, plan: 0, dur: 0, st: 'pend', resp: null }));
   const r = {
     id: +d.build,
@@ -36,7 +39,8 @@ function extStart(d) {
   RUNS.unshift(r);
   LIVE.unshift(r);
   extKey[d.job + '#' + d.build] = r;
-  logEvent(r, 'start', `#${r.id} iniciada no Jenkins`);
+  r.src = src;
+  logEvent(r, 'start', `#${r.id} iniciada no ${src}${d.branch ? ` (${d.branch})` : ''}`);
   return r;
 }
 function extScenario(d) {
@@ -76,8 +80,19 @@ if (API) {
   $('#lvAuto').checked = false;
   $('#lvAuto').parentElement.hidden = true;
   $$('.ptabs [data-go="aovivo"]').forEach(b => {
-    b.childNodes[1].textContent = 'Ao vivo · Jenkins';
+    b.childNodes[1].textContent = 'Ao vivo · CI';
   });
+  // marca como "Conectado" as integrações que o servidor tem configuradas (só na tela, não grava)
+  fetch(API + '/api/health')
+    .then(x => x.json())
+    .then(h => {
+      const on = { jenkins: h.jenkins, github: h.github, jira: h.jira };
+      INTS.forEach(i => {
+        if (i.k in on) i.on = !!on[i.k];
+      });
+      renderInts();
+    })
+    .catch(() => {});
   const es = new EventSource(API + '/events' + (API_KEY ? '?key=' + encodeURIComponent(API_KEY) : ''));
   const on = (t, f) =>
     es.addEventListener(t, e => {

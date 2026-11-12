@@ -4,7 +4,7 @@
 ![Front-end](https://img.shields.io/badge/front--end-HTML%20%2B%20JS%20puro-14142b)
 ![Servidor](https://img.shields.io/badge/servidor-Node.js%20%E2%89%A5%2020.6-16a34a)
 ![Dependências](https://img.shields.io/badge/depend%C3%AAncias-zero-3b82f6)
-![Integrações](https://img.shields.io/badge/integra%C3%A7%C3%B5es-Jenkins%20%7C%20Jira-f59e0b)
+![Integrações](https://img.shields.io/badge/integra%C3%A7%C3%B5es-Jenkins%20%7C%20GitHub%20Actions%20%7C%20Jira-f59e0b)
 
 Plataforma para acompanhar a **qualidade das pipelines de teste automatizado**. Ela reúne execuções, cenários, análises de qualidade, acompanhamento **em tempo real** das esteiras e um **agente de IA** que explica falhas e recomenda próximos passos.
 
@@ -13,7 +13,7 @@ O projeto tem duas partes:
 | Parte | O que é | Onde |
 |---|---|---|
 | **Plataforma** | Interface completa (dashboard, pipelines, execuções, tempo real, cenários, análises, agente, integrações e configurações), em um único arquivo HTML sem build | [`index.html`](index.html) |
-| **Servidor de tempo real** | Serviço Node.js sem dependências que lê o **Jenkins** e integra com o **Jira** usando apenas as **APIs REST**, e transmite os eventos para a plataforma por **Server-Sent Events (SSE)** | [`server/`](server) |
+| **Servidor de tempo real** | Serviço Node.js sem dependências que lê o **Jenkins** e o **GitHub Actions** e integra com o **Jira** usando apenas as **APIs REST**, e transmite os eventos para a plataforma por **Server-Sent Events (SSE)** | [`server/`](server) |
 
 ![Dashboard](docs/img/dashboard.png)
 
@@ -29,6 +29,7 @@ O projeto tem duas partes:
 - [Migração e agentes de código](#migração-e-agentes-de-código)
 - [Tempo real: arquitetura](#tempo-real-arquitetura)
 - [Servidor de tempo real](#servidor-de-tempo-real)
+- [Conexão com o GitHub Actions (API REST)](#conexão-com-o-github-actions-api-rest)
 - [Conexão com o Jenkins (API REST)](#conexão-com-o-jenkins-api-rest)
 - [Conexão com o Jira (API REST)](#conexão-com-o-jira-api-rest)
 - [Contrato de eventos (SSE)](#contrato-de-eventos-sse)
@@ -170,10 +171,10 @@ O **filtro de período** (7, 15, 30 ou 90 dias) fica no topo e vale para as trê
 ![Agente de QA](docs/img/agente.png)
 
 ### 8. Integrações
-- **Azure DevOps**, **GitLab CI**, **Jenkins**, **Jira** e **Importação de Arquivo (JSON)**.
+- **Azure DevOps**, **GitLab CI**, **Jenkins**, **GitHub Actions**, **Jira** e **Importação de Arquivo (JSON)**.
 - Cada uma tem uma tela de configuração (URL, projeto e token), o status *Conectado* e as opções de sincronizar e desconectar.
 
-> As telas de integração do front-end guardam só o estado da interface. **A conexão real com Jenkins e Jira é feita pelo [servidor](#servidor-de-tempo-real)**, que mantém os tokens fora do navegador.
+> As telas de integração do front-end guardam só o estado da interface. **A conexão real com Jenkins, GitHub Actions e Jira é feita pelo [servidor](#servidor-de-tempo-real)**, que mantém os tokens fora do navegador. No modo conectado (`?api=`), os cartões dessas três integrações aparecem como *Conectado* quando o servidor as tem configuradas. Azure DevOps e GitLab CI ainda são só cartões de interface, sem conexão no servidor.
 
 ### 9. Configurações
 - **Recursos de IA (Agente de QA):** interruptor em *Geral*, desligado por padrão. Mostra ou oculta tudo o que é de IA.
@@ -206,7 +207,7 @@ Sem servidor conectado, a aba **Execuções › Ao vivo** roda uma **simulação
 
 ```bash
 cd server
-cp .env.example .env       # preencha Jenkins e Jira
+cp .env.example .env       # preencha Jenkins e/ou GitHub Actions, e o Jira
 npm start                  # ou: node --env-file=.env server.js
 ```
 
@@ -219,10 +220,10 @@ http://localhost:8080/index.html?api=https://qa-api.suaempresa.com&key=SUA_API_K
 
 Com `?api=`:
 - a simulação é desligada;
-- a aba muda para **“Ao vivo · Jenkins”**;
+- a aba muda para **“Ao vivo · CI”**;
 - a tela **Cenários** passa a ler os cenários do Jira (botão **Atualizar do Jira**);
 - os cards passam a refletir os builds reais;
-- **Executar** dispara o build no Jenkins e **Parar** interrompe o build.
+- **Executar** dispara o build no Jenkins ou o workflow no GitHub Actions e **Parar** interrompe a execução.
 
 ### Testar sem Jenkins (modo demonstração)
 
@@ -279,10 +280,10 @@ qa-ai-agent/
 │       ├── 95-agente-ia.js      Agente de QA (opcional)
 │       └── 99-inicio.js         inicialização
 ├── server/
-│   ├── server.js              Jenkins + Jira via API REST, SSE e rotas /api
+│   ├── server.js              Jenkins + GitHub Actions + Jira via API REST, SSE e rotas /api
 │   ├── package.json           scripts start / demo / test (sem dependências)
 │   ├── .env.example           todas as variáveis de configuração
-│   └── test/                  testes com Jenkins e Jira falsos
+│   └── test/                  testes com Jenkins, GitHub e Jira falsos
 ├── docs/
 │   ├── CONTRATOS.md           formatos de dados, eventos e rotas
 │   ├── MAPA.md                guia do Mapa de funcionalidades e do Canvas de ligações
@@ -307,7 +308,7 @@ Dois documentos mostram **como a plataforma funciona por dentro**. Abra direto n
 
 | Documento | Responde | Abrir |
 |---|---|---|
-| **Mapa de funcionalidades** | *Qual é a regra?* Funcionalidades separadas por categoria, um diagrama da lógica de cada uma e **93 regras de negócio numeradas** (RN-DASH-01, RN-ANA-06…), com catálogo e filtro. | [`docs/mapa/mapa-funcionalidades.html`](docs/mapa/mapa-funcionalidades.html) |
+| **Mapa de funcionalidades** | *Qual é a regra?* Funcionalidades separadas por categoria, um diagrama da lógica de cada uma e **102 regras de negócio numeradas** (RN-DASH-01, RN-ANA-06…), com catálogo e filtro. | [`docs/mapa/mapa-funcionalidades.html`](docs/mapa/mapa-funcionalidades.html) |
 | **Canvas de ligações** | *De onde vem esse número?* Canvas de nós ligando fontes → servidor → dados → funções de cálculo → métricas → telas, com **fórmula, regras e código real** de cada função. | [`docs/mapa/canvas-ligacoes.html`](docs/mapa/canvas-ligacoes.html) |
 
 | Mapa de funcionalidades | Canvas de ligações |
@@ -363,7 +364,7 @@ O projeto está preparado para um agente (Antigravity, Claude Code, Copilot…) 
 
 ## Tempo real: arquitetura
 
-A conexão com o Jenkins e o Jira é feita **toda por API REST (polling)**. Você não precisa de plugin de webhook, nem de mudança no Jenkinsfile, nem de reporter especial nos testes.
+A conexão com o Jenkins, o GitHub Actions e o Jira é feita **toda por API REST (polling)**. Você não precisa de plugin de webhook, nem de mudança no Jenkinsfile, nem de reporter especial nos testes.
 
 ```mermaid
 flowchart LR
@@ -442,7 +443,8 @@ Os comandos da tela, como executar e parar, vão por `POST` normal.
 
 Como a leitura é por polling, o servidor se protege para não esgotar o limite do Jenkins, do Jira ou do Zephyr:
 
-- **Espera e nova tentativa:** respostas `429`, `502`, `503` e `504` e quedas de rede são repetidas até 3 vezes (`HTTP_RETRIES`), com espera crescente. Se o servidor mandar `Retry-After`, ele vale. Chamadas que criam algo (`POST`) só repetem no `429`, para não duplicar.
+- **Espera e nova tentativa:** respostas `429`, `502`, `503` e `504` e quedas de rede são repetidas até 3 vezes (`HTTP_RETRIES`), com espera crescente. Se o servidor mandar `Retry-After`, ele vale. Chamadas que criam algo (`POST`) só repetem quando o servidor recusou por limite, para não duplicar.
+- **GitHub:** o limite do GitHub vem como `403` (ou `429`) com `x-ratelimit-remaining: 0` ou `Retry-After`; o servidor reconhece, espera até o `x-ratelimit-reset` (no máximo 5 min por vez) e **não faz nenhuma chamada enquanto o limite estiver esgotado**. Um `403` comum, de permissão, continua sendo erro. Respostas `304` (ETag) não gastam limite, e o intervalo de leitura quadruplica quando restam menos de 200 chamadas.
 - **Erro passageiro não vira Falha:** se a leitura do log falhar por limite ou queda, o build **não** é marcado como Falha; o servidor adia a leitura e tenta de novo (até `TRACK_MAX_ERRORS`).
 - **Menos chamadas:** os estágios são lidos a cada 3 leituras do log (`STAGES_EVERY`).
 - **Intervalo adaptativo:** cada `429` dobra o intervalo de leitura (até 8 vezes) e ele volta ao normal aos poucos. Acima de 5 builds simultâneos o intervalo também aumenta, e no máximo 10 são acompanhados (`MAX_TRACKED_BUILDS`).
@@ -470,6 +472,11 @@ O fator de lentidão aparece em `GET /api/health` (`slow`; `1` = normal).
 | `DISCOVER_MS` | `30000` | Intervalo para descobrir builds novos |
 | `LOG_REGEX` | embutida | Regex própria para as linhas de resultado (grupos `status`, `name`, `dur`, `unit`) |
 | `RESP_REGEX` | `\[resp\]\s+(?<name>.+?)\s+(?<ms>\d+)\s*ms` | Regex do tempo de resposta (grupos `name`, `ms`) |
+| `GITHUB_TOKEN` | — | Token com permissão de leitura em Actions e Metadata |
+| `GITHUB_WORKFLOWS` | — | `dono/repo/arquivo.yml` (um workflow) ou `dono/repo` (todos do repositório), separados por vírgula |
+| `GITHUB_API_URL` | `https://api.github.com` | GitHub Enterprise Server: `https://github.suaempresa.com/api/v3` |
+| `GITHUB_POLL_MS` / `GITHUB_DISCOVER_MS` | `10000` / `30000` | Leitura de um run em andamento · busca de runs novos |
+| `GITHUB_LOG_JOBS` | todos | Expressão: só baixa o log dos jobs cujo nome casa (cada log custa 1 chamada) |
 | `JIRA_URL` | — | Por exemplo `https://suaempresa.atlassian.net` |
 | `JIRA_EMAIL` / `JIRA_TOKEN` | — | E-mail e API token (Cloud) ou usuário e token pessoal (Server/DC) |
 | `JIRA_PROJECT` | — | Chave do projeto (por exemplo `QA`) |
@@ -491,6 +498,44 @@ O fator de lentidão aparece em `GET /api/health` (`slow`; `1` = normal).
 | `ZEPHYR_MAX_CYCLES` / `ZEPHYR_ACTIVE_DAYS` / `ZEPHYR_CLOSED_STATUS` | `100` / `30` / `Done` | Quantos ciclos · por quantos dias um ciclo é "ativo" · status que encerram o ciclo |
 | `HTTP_RETRIES` / `HTTP_BACKOFF_MS` / `HTTP_MAX_WAIT_MS` | `3` / `1000` / `60000` | Repetições, espera inicial e espera máxima em 429/503 |
 | `STAGES_EVERY` / `TRACK_MAX_ERRORS` / `MAX_TRACKED_BUILDS` | `3` / `5` / `10` | Estágios a cada N leituras · erros seguidos antes de dar Falha · builds acompanhados ao mesmo tempo |
+
+---
+
+## Conexão com o GitHub Actions (API REST)
+
+O GitHub Actions entra pelo mesmo caminho do Jenkins e aparece na mesma tela **Execuções › Ao vivo**. Os dois podem rodar juntos no mesmo servidor.
+
+### Autenticação
+1. No GitHub: **Settings › Developer settings › Personal access tokens › Fine-grained tokens**, com acesso aos repositórios acompanhados.
+2. Permissões: **Actions: Read** e **Metadata: Read**. Para os botões Executar e Parar, **Actions: Read and write**.
+3. Informe `GITHUB_TOKEN` e `GITHUB_WORKFLOWS` (por exemplo `suaempresa/loja/e2e.yml`). O servidor envia `Authorization: Bearer <token>`. No GitHub Enterprise Server, ajuste `GITHUB_API_URL`.
+
+### Como cada conceito do Jenkins aparece
+
+| Jenkins | GitHub Actions |
+|---|---|
+| pasta | repositório |
+| job | workflow (`dono/repo/arquivo.yml`) |
+| build | run (`run_number`) |
+| estágio | job do workflow |
+| linha de resultado no log | linha de resultado no log do job (mesmos formatos e `LOG_REGEX`) |
+
+### Endpoints usados
+
+| Para quê | Endpoint |
+|---|---|
+| Descobrir runs em andamento | `GET /repos/{dono}/{repo}/actions/workflows/{arquivo}/runs?per_page=5` (ou `/actions/runs` para o repositório todo) |
+| Andamento do run | `GET /repos/{dono}/{repo}/actions/runs/{id}` |
+| Jobs (estágios) | `GET /repos/{dono}/{repo}/actions/runs/{id}/jobs` |
+| **Cenários** | `GET /repos/{dono}/{repo}/actions/jobs/{id}/logs`, lido uma vez quando o job termina |
+| Disparar | `POST /repos/{dono}/{repo}/actions/workflows/{arquivo}/dispatches` (o workflow precisa de `on: workflow_dispatch`) |
+| Parar | `POST /repos/{dono}/{repo}/actions/runs/{id}/cancel` |
+
+### O que é diferente do Jenkins
+- **Os cenários chegam por job, não linha a linha.** A API do GitHub só libera o log de um job depois que ele termina. Durante a execução a tela mostra o andamento pelos jobs (estágios); quando um job acaba, todos os seus cenários aparecem de uma vez.
+- **Custo:** a cada 10 s, 2 chamadas por run em andamento (run e jobs) mais 1 por job concluído (log). As respostas `304` por ETag não contam no limite de 5.000 chamadas por hora do token.
+- Um *re-run* mantém o mesmo número de execução e não aparece como execução nova.
+- O formato do log depende do seu framework de testes: confira se as linhas de resultado batem com o padrão embutido ou ajuste `LOG_REGEX`.
 
 ---
 
@@ -651,9 +696,9 @@ Ao conectar, o cliente recebe os **últimos 300 eventos**, para montar o estado 
 
 | Evento | Quando | Campos |
 |---|---|---|
-| `build_start` | Build descoberto em andamento | `job`, `build`, `timestamp`, `estimatedDuration`, `folder?`, `url`, `total?`, `scenarios?` |
+| `build_start` | Build descoberto em andamento | `job`, `build`, `timestamp`, `estimatedDuration?`, `folder?`, `url`, `total?`, `scenarios?`, `name?`, `source?` (`Jenkins`/`GitHub Actions`), `branch?` |
 | `scenario` | Uma linha de resultado no log | `job`, `build`, `name`, `status` (`pass`/`fail`/`run`), `duration` (s), `resp` (ms ou `null`), `elapsed` (s) |
-| `stage` | Estágio do Jenkins mudou de status | `job`, `build`, `stage`, `status`, `duration` (ms) |
+| `stage` | Estágio do Jenkins (ou job do GitHub Actions) mudou de status | `job`, `build`, `stage`, `status`, `duration` (ms) |
 | `build_end` | Build terminou | `job`, `build`, `status` (`Sucesso`/`Falha`/`Cancelada`), `duration` (ms), `passed`, `failed`, `total`, `result` |
 | `jira` | Bug criado ou comentado | `job`, `build`, `scenario`, `key`, `action` (`create`/`comment`), `url` |
 
@@ -676,7 +721,7 @@ es.addEventListener('scenario', e => console.log(JSON.parse(e.data)));
 
 | Método | Rota | Autenticação | Descrição |
 |---|---|---|---|
-| `GET` | `/api/health` | livre | Estado do servidor: modo demo, Jenkins/Jira/Zephyr configurados, última sincronização do Jira, fator de lentidão (`slow`), clientes conectados, builds ativos |
+| `GET` | `/api/health` | livre | Estado do servidor: modo demo, Jenkins/GitHub/Jira/Zephyr configurados, limite restante do GitHub (`githubRate`), última sincronização do Jira, fator de lentidão (`slow`), clientes conectados, builds ativos |
 | `GET` | `/events` | `?key=` | Fluxo SSE de eventos |
 | `GET` | `/api/state` | `x-api-key` ou `?key=` | Builds em acompanhamento, com cenários e estágios |
 | `POST` | `/api/build` | `x-api-key` | `{ "job": "E-commerce/Checkout", "params": { "AMBIENTE": "hml" } }` dispara o build |

@@ -5,7 +5,7 @@ Dois documentos explicam **como a plataforma funciona por dentro**. Ambos são H
 | Documento | Para que serve | Arquivo |
 |---|---|---|
 | **Mapa de funcionalidades** | Visão por **categoria**: o que cada parte faz, o diagrama da lógica e as **regras de negócio numeradas** (RN-…). Tem um catálogo único com todas as regras e filtro. | [`docs/mapa/mapa-funcionalidades.html`](mapa/mapa-funcionalidades.html) |
-| **Canvas de ligações** | Visão de **fluxo**: como os dados saem do Jenkins e do Jira, passam pelo servidor, viram dados no portal, são calculados e chegam a cada métrica e tela. Cada nó mostra a **fórmula**, as **regras** e o **código real** da função. | [`docs/mapa/canvas-ligacoes.html`](mapa/canvas-ligacoes.html) |
+| **Canvas de ligações** | Visão de **fluxo**: como os dados saem do Jenkins, do GitHub Actions e do Jira, passam pelo servidor, viram dados no portal, são calculados e chegam a cada métrica e tela. Cada nó mostra a **fórmula**, as **regras** e o **código real** da função. | [`docs/mapa/canvas-ligacoes.html`](mapa/canvas-ligacoes.html) |
 
 Os dois se completam: o Mapa responde **"qual é a regra?"** e o Canvas responde **"de onde vem esse número e qual função o calcula?"**. As regras usam a mesma numeração nos dois, e o Canvas tem um link para o Mapa.
 
@@ -13,7 +13,7 @@ Os dois se completam: o Mapa responde **"qual é a regra?"** e o Canvas responde
 
 ![Mapa de funcionalidades](img/mapa-categoria.png)
 
-- **13 seções:** visão geral, navegação e acesso, Dashboard, Pipelines, Execuções e Ao vivo, Cenários (Jira), Análises, Servidor: Jenkins, Servidor: Jira, Servidor: sincronização do Jira e ciclos de teste, Configurações e dados, Agente de QA e Login e permissões.
+- **14 seções:** visão geral, navegação e acesso, Dashboard, Pipelines, Execuções e Ao vivo, Cenários (Jira), Análises, Servidor: Jenkins, Servidor: GitHub Actions, Servidor: Jira, Servidor: sincronização do Jira e ciclos de teste, Configurações e dados, Agente de QA e Login e permissões.
 - Cada seção tem um **status** (Implementado, Opcional ou Proposta), os arquivos de código, um **diagrama Mermaid** da lógica, as funcionalidades e as **regras de negócio**.
 - **Todas as regras:** tabela no fim com busca e filtro por categoria. Ela é montada a partir das regras escritas em cada seção, que são a única fonte.
 - Os diagramas usam o Mermaid, carregado do CDN jsDelivr. Sem internet, a página abre normalmente, mas os diagramas aparecem como texto.
@@ -24,7 +24,7 @@ Os dois se completam: o Mapa responde **"qual é a regra?"** e o Canvas responde
 
 Os dados correm **da esquerda para a direita**, em 10 colunas:
 
-1. **Fontes e gatilhos:** Jenkins, Jira, Zephyr Scale, ações da pessoa, JSON importado, dados de exemplo e o relógio do portal.
+1. **Fontes e gatilhos:** Jenkins, GitHub Actions, Jira, Zephyr Scale, ações da pessoa, JSON importado, dados de exemplo e o relógio do portal.
 2. **Servidor · entrada:** chave da API e CORS, descoberta de builds, executar e parar, cenários do Jira, espera e nova tentativa (429/503).
 3. **Servidor · acompanhamento:** o laço `track()` de cada build.
 4. **Servidor · leitura do build:** log (`parseLines`), estágios (`pollStages`) e resultado (`finish`).
@@ -35,7 +35,7 @@ Os dados correm **da esquerda para a direita**, em 10 colunas:
 9. **Métricas:** cada número com a sua fórmula (taxa de sucesso, MTTR, média por plataforma, tempo total atual, projeção, flaky…).
 10. **Telas:** onde cada métrica aparece.
 
-São **74 nós, 131 ligações e 56 trechos de código**.
+São **76 nós, 132 ligações e 57 trechos de código**.
 
 ![Detalhe de um nó](img/canvas-detalhe.png)
 
