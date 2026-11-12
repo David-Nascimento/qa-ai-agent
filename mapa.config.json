@@ -282,6 +282,14 @@
     [
      "RN-EXE-11",
      "Execuções vindas do servidor mostram o número real do build/run (#87), que pode se repetir entre jobs e workflows. Internamente cada execução tem um id único, e Parar envia ao servidor o número real do build."
+    ],
+    [
+     "RN-EXE-12",
+     "No modo conectado a tela usa só dados reais: o histórico vem de `GET /api/history`, gravado pelo servidor em arquivo; os dados de exemplo não entram."
+    ],
+    [
+     "RN-EXE-13",
+     "O servidor arquiva a execução ao terminar (com o último estado de cada cenário); um re-run com o mesmo número substitui a antiga, e passando de `HISTORY_MAX` saem as mais antigas."
     ]
    ]
   },
@@ -426,7 +434,7 @@
    "status": "Implementado",
    "status_tipo": "real",
    "descricao": "O servidor acompanha os builds pela API REST do Jenkins e transforma o log em eventos por cenário.",
-   "codigo": "`server/server.js` (`discover`, `track`, `parseLines`, `finish`, `pollWait`)",
+   "codigo": "`server/jenkins.js` (`discover`, `track`, `parseLines`, `finish`, `pollWait`)",
    "diagrama": "sequenceDiagram\n  participant S as Servidor\n  participant J as Jenkins\n  participant P as Portal\n  loop a cada 30 s\n    S->>J: builds em andamento dos jobs configurados\n  end\n  S-->>P: build_start\n  loop a cada 3 s enquanto houver log novo\n    S->>J: trecho novo do log\n    S-->>P: scenario (uma por linha de resultado)\n    S->>J: estágios da pipeline\n    S-->>P: stage (quando muda)\n  end\n  S->>J: resultado e relatório de testes\n  S-->>P: build_end",
    "funcionalidades": [
     [
@@ -511,7 +519,7 @@
    "status": "Implementado",
    "status_tipo": "real",
    "descricao": "O servidor acompanha os runs dos workflows pela API REST do GitHub e os traduz para os mesmos eventos do Jenkins: workflow = job, run = build, job do workflow = estágio.",
-   "codigo": "`server/server.js` (`ghDiscover`, `ghTrack`, `ghJobLog`, `ghFinish`, `ghJson`, `ghWait`)",
+   "codigo": "`server/github.js` (`ghDiscover`, `ghTrack`, `ghJobLog`, `ghFinish`, `ghJson`, `ghWait`)",
    "diagrama": "sequenceDiagram\n  participant S as Servidor\n  participant G as GitHub\n  participant P as Portal\n  loop a cada 30 s\n    S->>G: runs em andamento dos workflows configurados\n  end\n  S-->>P: build_start\n  loop a cada 10 s enquanto o run não termina\n    S->>G: run e jobs (ETag: 304 não gasta limite)\n    S-->>P: stage (quando um job muda)\n    S->>G: log do job concluído\n    S-->>P: scenario (uma por linha de resultado)\n  end\n  S-->>P: build_end",
    "funcionalidades": [
     [
@@ -580,7 +588,7 @@
    "status": "Implementado",
    "status_tipo": "real",
    "descricao": "Lê os cenários de teste e, se ligado, abre bugs para cenários que falharam sem duplicar.",
-   "codigo": "`server/server.js` (`jiraScenarios`, `reportBug`, `findOpenBug`)",
+   "codigo": "`server/jira.js` (`jiraScenarios`, `reportBug`, `findOpenBug`)",
    "diagrama": "flowchart LR\n  A[\"Build terminou<br/>com falhas\"] --> B{\"Abertura automática<br/>de bugs ligada?\"}\n  B -- \"não\" --> Z[\"Nada a fazer\"]\n  B -- \"sim\" --> C[\"Para cada cenário que falhou\"]\n  C --> D{\"Existe bug aberto<br/>com o mesmo CT-xxx?\"}\n  D -- \"sim\" --> E[\"Comenta no bug existente\"]\n  D -- \"não\" --> F[\"Cria bug<br/>[QA] componente – cenário\"]\n  E --> G[\"Evento jira no feed\"]\n  F --> G",
    "funcionalidades": [
     [
@@ -625,7 +633,7 @@
    "status": "Implementado",
    "status_tipo": "real",
    "descricao": "O servidor consulta o Jira de tempos em tempos, guarda o resultado em cache e a tela lê desse cache. Com o Zephyr Scale ligado, traz também os ciclos de teste e o resultado de cada caso. Toda chamada externa é protegida contra limite de requisições.",
-   "codigo": "`server/server.js` (`syncJira`, `syncCycles`, `zephyrList`, `zephyrItems`, `jiraState`, `fetchRetry`) · `40-cenarios.js` (`applyJiraState`, `loadJiraState`)",
+   "codigo": "`server/jira.js` (`syncJira`, `syncCycles`, `zephyrList`, `zephyrItems`, `jiraState`, `fetchRetry`) · `40-cenarios.js` (`applyJiraState`, `loadJiraState`)",
    "funcionalidades": [
     [
      "Sincronização periódica",
@@ -710,7 +718,7 @@
    "status": "Implementado",
    "status_tipo": "real",
    "descricao": "Como o servidor protege senhas, tokens e a própria API: segredos cifrados em repouso, chave da API com hash, tíquete de uso único no tempo real, bloqueio de tentativas, HTTPS e logs sem segredos.",
-   "codigo": "`server/cripto.js` · `server/segredos.js` · `server/server.js` (`sec`, `keyOk`, `newTicket`, `registerFail`, `redact`) · `server/scripts/verificar-segredos.mjs`",
+   "codigo": "`server/cripto.js` · `server/segredos.js` · `server/config.js` (`sec`, `redact`) · `server/web.js` (`keyOk`, `newTicket`, `registerFail`) · `server/scripts/verificar-segredos.mjs`",
    "diagrama": "flowchart LR\n  A[\".env com<br/>enc:v1:… e hash\"] --> B[\"Decifra só na memória<br/>(chave-mestra)\"]\n  B --> C[\"Tokens usados nas<br/>chamadas HTTPS\"]\n  D[\"Navegador\"] -- \"x-api-key\" --> E{\"Chave confere?<br/>IP bloqueado?\"}\n  E -- \"não\" --> F[\"401 / 429\"]\n  E -- \"sim\" --> G[\"Tíquete de uso único\"]\n  G --> H[\"/events (SSE)\"]",
    "funcionalidades": [
     [
@@ -1158,7 +1166,7 @@
     "col": 1,
     "cat": "servidor",
     "titulo": "Chave da API, tíquete e bloqueio",
-    "onde": "server.js · authorized() · newTicket() · registerFail()",
+    "onde": "web.js · authorized() · newTicket() · registerFail()",
     "descricao": "Protege as rotas: com chave definida, /api/* exige x-api-key e o /events aceita a chave ou um tíquete de uso único. Chaves inválidas repetidas bloqueiam o IP.",
     "formula": "x-api-key confere com API_KEY / API_KEY_HASH  ou  ?ticket válido (1 uso, 30 s)",
     "passos": [
@@ -1176,11 +1184,11 @@
     ],
     "codigo": [
      {
-      "arquivo": "server/server.js",
+      "arquivo": "server/web.js",
       "funcao": "authorized"
      },
      {
-      "arquivo": "server/server.js",
+      "arquivo": "server/web.js",
       "funcao": "newTicket"
      }
     ]
@@ -1190,7 +1198,7 @@
     "col": 1,
     "cat": "servidor",
     "titulo": "Descoberta de builds",
-    "onde": "server.js · discover()",
+    "onde": "jenkins.js · discover()",
     "descricao": "A cada 30 s consulta os jobs configurados e começa a acompanhar cada build em andamento ainda não acompanhado.",
     "formula": "GET /job/{job}/api/json?tree=builds[number,building,timestamp,estimatedDuration]{0,5}",
     "regras": [
@@ -1198,7 +1206,7 @@
     ],
     "codigo": [
      {
-      "arquivo": "server/server.js",
+      "arquivo": "server/jenkins.js",
       "funcao": "discover"
      }
     ]
@@ -1208,7 +1216,7 @@
     "col": 1,
     "cat": "servidor",
     "titulo": "Executar e parar build",
-    "onde": "server.js · triggerBuild() · stopBuild()",
+    "onde": "jenkins.js · triggerBuild() · stopBuild()",
     "descricao": "Recebe os comandos do portal e repassa ao Jenkins.",
     "formula": "POST /api/build {job, params?} → /job/{job}/build(WithParameters)\nPOST /api/stop {job, build} → /job/{job}/{build}/stop",
     "passos": [
@@ -1216,11 +1224,11 @@
     ],
     "codigo": [
      {
-      "arquivo": "server/server.js",
+      "arquivo": "server/jenkins.js",
       "funcao": "triggerBuild"
      },
      {
-      "arquivo": "server/server.js",
+      "arquivo": "server/jenkins.js",
       "funcao": "stopBuild"
      }
     ]
@@ -1230,7 +1238,7 @@
     "col": 1,
     "cat": "servidor",
     "titulo": "Cenários do Jira",
-    "onde": "server.js · jiraScenarios() · GET /api/jira/scenarios",
+    "onde": "jira.js · jiraScenarios() · GET /api/jira/scenarios",
     "descricao": "Busca as issues de teste pela consulta e devolve chave, nome, status, componente e link.",
     "formula": "componente = campo JIRA_PIPELINE_FIELD (components · labels · customfield)",
     "passos": [
@@ -1244,7 +1252,7 @@
     ],
     "codigo": [
      {
-      "arquivo": "server/server.js",
+      "arquivo": "server/jira.js",
       "funcao": "jiraScenarios"
      }
     ]
@@ -1254,7 +1262,7 @@
     "col": 2,
     "cat": "servidor",
     "titulo": "Acompanhamento do build",
-    "onde": "server.js · track()",
+    "onde": "jenkins.js · track()",
     "descricao": "Para cada build em andamento: emite o início e lê o log em laço até o Jenkins dizer que acabou.",
     "formula": "repetir a cada 3 s enquanto X-More-Data = true",
     "passos": [
@@ -1272,7 +1280,7 @@
     ],
     "codigo": [
      {
-      "arquivo": "server/server.js",
+      "arquivo": "server/jenkins.js",
       "funcao": "track"
      }
     ]
@@ -1282,7 +1290,7 @@
     "col": 2,
     "cat": "servidor",
     "titulo": "Acompanhamento do run",
-    "onde": "server.js · ghTrack()",
+    "onde": "github.js · ghTrack()",
     "descricao": "Para cada run em andamento: emite o início, lê run e jobs em laço e baixa o log de cada job quando ele termina.",
     "formula": "repetir a cada 10 s até o run ficar completed",
     "passos": [
@@ -1301,7 +1309,7 @@
     ],
     "codigo": [
      {
-      "arquivo": "server/server.js",
+      "arquivo": "server/github.js",
       "funcao": "ghTrack"
      }
     ]
@@ -1311,7 +1319,7 @@
     "col": 3,
     "cat": "servidor",
     "titulo": "Leitura do log",
-    "onde": "server.js · parseLines()",
+    "onde": "jenkins.js · parseLines()",
     "descricao": "Transforma cada linha de resultado do log num evento de cenário, com status, duração e tempo de resposta.",
     "formula": "linha ✓/✘ nome (1.2s) → {name, status, duration}\n[resp] CT-001 412ms → resp = 412",
     "passos": [
@@ -1327,19 +1335,19 @@
     ],
     "codigo": [
      {
-      "arquivo": "server/server.js",
+      "arquivo": "server/jenkins.js",
       "funcao": "parseLines"
      },
      {
-      "arquivo": "server/server.js",
+      "arquivo": "server/jenkins.js",
       "funcao": "toSeconds"
      },
      {
-      "arquivo": "server/server.js",
+      "arquivo": "server/jenkins.js",
       "funcao": "cleanName"
      },
      {
-      "arquivo": "server/server.js",
+      "arquivo": "server/jenkins.js",
       "funcao": "respFor"
      }
     ]
@@ -1349,7 +1357,7 @@
     "col": 3,
     "cat": "servidor",
     "titulo": "Estágios da pipeline",
-    "onde": "server.js · pollStages()",
+    "onde": "jenkins.js · pollStages()",
     "descricao": "Emite um evento sempre que um estágio do Jenkins muda de status.",
     "formula": "GET /job/{job}/{n}/wfapi/describe",
     "regras": [
@@ -1357,7 +1365,7 @@
     ],
     "codigo": [
      {
-      "arquivo": "server/server.js",
+      "arquivo": "server/jenkins.js",
       "funcao": "pollStages"
      }
     ]
@@ -1367,7 +1375,7 @@
     "col": 3,
     "cat": "servidor",
     "titulo": "Resultado final",
-    "onde": "server.js · finish()",
+    "onde": "jenkins.js · finish()",
     "descricao": "Fecha o build: status, duração e totais. Dispara os bugs no Jira se estiver ligado.",
     "formula": "ABORTED → Cancelada\nSUCCESS e falhas = 0 → Sucesso\nsenão → Falha\ntotal = aprovados + falhas + ignorados",
     "passos": [
@@ -1379,7 +1387,7 @@
     ],
     "codigo": [
      {
-      "arquivo": "server/server.js",
+      "arquivo": "server/jenkins.js",
       "funcao": "finish"
      }
     ]
@@ -1389,7 +1397,7 @@
     "col": 4,
     "cat": "servidor",
     "titulo": "Bugs no Jira",
-    "onde": "server.js · reportBug() · findOpenBug()",
+    "onde": "jira.js · reportBug() · findOpenBug()",
     "descricao": "Para cada cenário que falhou: comenta no bug aberto do mesmo cenário ou cria um novo.",
     "formula": "JQL: project = X AND summary ~ \"CT-xxx\" AND statusCategory != Done",
     "passos": [
@@ -1404,11 +1412,11 @@
     ],
     "codigo": [
      {
-      "arquivo": "server/server.js",
+      "arquivo": "server/jira.js",
       "funcao": "findOpenBug"
      },
      {
-      "arquivo": "server/server.js",
+      "arquivo": "server/jira.js",
       "funcao": "reportBug"
      }
     ]
@@ -1418,7 +1426,7 @@
     "col": 4,
     "cat": "servidor",
     "titulo": "Eventos em tempo real (SSE)",
-    "onde": "server.js · emit() · GET /events",
+    "onde": "eventos.js · emit() · GET /events",
     "descricao": "Envia cada evento a todos os portais conectados e guarda os últimos 300 para quem chega depois.",
     "formula": "eventos: build_start · scenario · stage · build_end · jira · jira_sync",
     "passos": [
@@ -1430,7 +1438,7 @@
     ],
     "codigo": [
      {
-      "arquivo": "server/server.js",
+      "arquivo": "server/eventos.js",
       "funcao": "emit"
      }
     ]
@@ -2219,7 +2227,7 @@
     "col": 1,
     "cat": "servidor",
     "titulo": "Espera e nova tentativa",
-    "onde": "server.js · fetchRetry()",
+    "onde": "http.js · fetchRetry()",
     "descricao": "Toda chamada ao Jenkins, ao GitHub, ao Jira e ao Zephyr passa por aqui: em 429, 502, 503, 504 ou no limite do GitHub o servidor espera e tenta de novo.",
     "formula": "espera = maior entre Retry-After e 1 s × 2^tentativa (±20%)\nmáximo 60 s · até 3 repetições",
     "passos": [
@@ -2234,7 +2242,7 @@
     ],
     "codigo": [
      {
-      "arquivo": "server/server.js",
+      "arquivo": "server/http.js",
       "funcao": "fetchRetry"
      }
     ]
@@ -2244,7 +2252,7 @@
     "col": 4,
     "cat": "servidor",
     "titulo": "Sincronização do Jira",
-    "onde": "server.js · syncJira() · syncCycles() · jiraState()",
+    "onde": "jira.js · syncJira() · syncCycles() · jiraState()",
     "descricao": "A cada 5 minutos traz só o que mudou (cenários e ciclos), guarda em cache e avisa a tela com o evento jira_sync.",
     "formula": "issues: updated >= -Nm (N = minutos desde a última rodada + 2)\nciclo ativo = não encerrado e atualizado nos últimos 30 dias",
     "passos": [
@@ -2264,15 +2272,15 @@
     ],
     "codigo": [
      {
-      "arquivo": "server/server.js",
+      "arquivo": "server/jira.js",
       "funcao": "syncJira"
      },
      {
-      "arquivo": "server/server.js",
+      "arquivo": "server/jira.js",
       "funcao": "syncCycles"
      },
      {
-      "arquivo": "server/server.js",
+      "arquivo": "server/jira.js",
       "funcao": "jiraState"
      }
     ]

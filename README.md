@@ -262,7 +262,7 @@ O teste sobe um **Jenkins falso** e verifica:
 qa-ai-agent/
 ├── index.html                 marcação das telas e ordem de carga dos scripts
 ├── assets/
-│   ├── css/app.css            estilos (tokens de cor e fonte no :root)
+│   ├── css/*.css              estilos por área, carregados em ordem (tokens de cor e fonte em 00-base.css)
 │   └── js/                    um módulo por tela, carregados em ordem
 │       ├── 00-base.js           utilitários, ícones e menu
 │       ├── 01-dados.js          dados de exemplo (PIPES, RUNS, SCENS)
@@ -282,7 +282,17 @@ qa-ai-agent/
 │       ├── 95-agente-ia.js      Agente de QA (opcional)
 │       └── 99-inicio.js         inicialização
 ├── server/
-│   ├── server.js              Jenkins + GitHub Actions + Jira via API REST, SSE e rotas /api
+│   ├── server.js              ponto de entrada: rotas /api, SSE, TLS e encerramento
+│   ├── config.js              variáveis de ambiente (CFG), segredos, log com máscara
+│   ├── http.js                fetch com espera, nova tentativa e proteção de limite
+│   ├── eventos.js             emissão de eventos SSE
+│   ├── jenkins.js             Jenkins: acompanhamento, estágios, cenários, comandos
+│   ├── github.js              GitHub Actions: runs, jobs, logs, comandos, limite/ETag
+│   ├── jira.js                Jira, Zephyr Scale e sincronização com cache
+│   ├── demo.js                modo DEMO (execuções fictícias)
+│   ├── web.js                 cabeçalhos, autenticação, bloqueio de tentativas, tíquetes
+│   ├── historico.js           histórico de execuções em arquivo JSON (data/historico.json)
+│   ├── cripto.js · segredos.js  AES-256-GCM, hash da chave e a CLI de segredos
 │   ├── package.json           scripts start / demo / test (sem dependências)
 │   ├── .env.example           todas as variáveis de configuração
 │   └── test/                  testes com Jenkins, GitHub e Jira falsos
@@ -310,7 +320,7 @@ Dois documentos mostram **como a plataforma funciona por dentro**. Abra direto n
 
 | Documento | Responde | Abrir |
 |---|---|---|
-| **Mapa de funcionalidades** | *Qual é a regra?* Funcionalidades separadas por categoria, um diagrama da lógica de cada uma e **118 regras de negócio numeradas** (RN-DASH-01, RN-ANA-06…), com catálogo e filtro. | [`docs/mapa/mapa-funcionalidades.html`](docs/mapa/mapa-funcionalidades.html) |
+| **Mapa de funcionalidades** | *Qual é a regra?* Funcionalidades separadas por categoria, um diagrama da lógica de cada uma e **120 regras de negócio numeradas** (RN-DASH-01, RN-ANA-06…), com catálogo e filtro. | [`docs/mapa/mapa-funcionalidades.html`](docs/mapa/mapa-funcionalidades.html) |
 | **Canvas de ligações** | *De onde vem esse número?* Canvas de nós ligando fontes → servidor → dados → funções de cálculo → métricas → telas, com **fórmula, regras e código real** de cada função. | [`docs/mapa/canvas-ligacoes.html`](docs/mapa/canvas-ligacoes.html) |
 
 | Mapa de funcionalidades | Canvas de ligações |
@@ -799,7 +809,7 @@ npm run segredos -- verificar .env                        # confere se tudo abre
 
 - Sem servidor, a plataforma usa **dados de exemplo**: 13 componentes em 4 pastas, cerca de 7.600 execuções distribuídas em 6 meses (para o filtro de período e a comparação com o período anterior funcionarem) e cenários `CT-001…`.
 - Pipelines, cenários, integrações e configurações criados na interface ficam no **`localStorage` do navegador**. Eles não são compartilhados entre pessoas ou máquinas. *Configurações → Dados → Restaurar dados de exemplo* limpa tudo.
-- No modo conectado, as execuções reais aparecem em **Execuções** (Histórico e Ao vivo), no **Detalhe**, nas **Últimas execuções** e em **Análises › Tempo de execução**, e os cenários vêm do **Jira**. O histórico de longo prazo e os indicadores de **Análises** ainda vêm dos dados de exemplo, até que exista um banco (veja o roadmap).
+- No modo conectado, a plataforma usa **só dados reais**: os de exemplo saem e as execuções finalizadas são gravadas pelo servidor em `server/data/historico.json` (permissão 600, escrita atômica, `HISTORY_FILE` e `HISTORY_MAX` — padrão 5.000 — ajustam; `HISTORY_FILE=off` desliga). Ao abrir a tela, ela reconstrói o histórico por `GET /api/history`. Os cenários vêm do **Jira**. O arquivo basta para uma equipe; um banco de dados continua no roadmap para volumes maiores ou vários servidores.
 - O **agente de IA** responde por regras. As **Configurações → IA e Prompts** já guardam provedor, modelo, prompt e temperatura para a integração real.
 - As telas de **Integrações** do front-end são visuais. A conexão de fato é feita pelo servidor.
 
@@ -827,7 +837,7 @@ Também é aceito um objeto `{ "executions": [...] }`.
 
 ## Personalização
 
-- **Cores e tipografia:** tokens CSS no `:root` de `assets/css/app.css`, por exemplo `--sidebar`, `--primary`, `--green`, `--red` e `--font` (Inter).
+- **Cores e tipografia:** tokens CSS no `:root` de `assets/css/00-base.css`, por exemplo `--sidebar`, `--primary`, `--green`, `--red` e `--font` (Inter).
 - **Tecnologias:** a constante `TECHS = ['API','Mobile','Web']` e os mapas `techCls` e `TECH_IC`, em `assets/js/01-dados.js`.
 - **Pastas e componentes:** o array `PIPES` em `assets/js/01-dados.js` (formato em [docs/CONTRATOS.md](docs/CONTRATOS.md)).
 - **Velocidade da simulação:** `SPEED` (padrão 10×).

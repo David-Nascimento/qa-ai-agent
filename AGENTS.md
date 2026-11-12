@@ -7,7 +7,7 @@ Instruções para agentes de código (Antigravity, Claude Code, Copilot e outros
 Plataforma para acompanhar **pipelines e cenários de teste** com dados do **Jenkins**, do **GitHub Actions** e do **Jira**, todos lidos **pela API REST**. Ela tem métricas, análises e acompanhamento em tempo real.
 
 - **Interface:** HTML, CSS e JavaScript puros, **sem build e sem framework**. Os scripts são clássicos e carregados em ordem pelo `index.html`.
-- **Servidor:** Node.js 20.6+ **sem dependências** (`server/server.js`). Ele consulta o Jenkins, o GitHub Actions e o Jira e envia eventos para a tela por **Server-Sent Events**.
+- **Servidor:** Node.js 20.6+ **sem dependências** (`server/*.js`, entrada em `server/server.js`). Ele consulta o Jenkins, o GitHub Actions e o Jira e envia eventos para a tela por **Server-Sent Events**.
 - **Idioma:** todo texto visível ao usuário é em **português do Brasil**.
 - **IA:** existe um Agente de QA, mas ele fica **desligado por padrão** (Configurações › Geral › *Recursos de IA*). A fase atual é **só Jenkins, GitHub Actions e Jira**. Não adicione integrações com modelos de IA.
 
@@ -15,7 +15,7 @@ Plataforma para acompanhar **pipelines e cenários de teste** com dados do **Jen
 
 ```
 index.html                    marcação das telas + ordem de carga dos scripts
-assets/css/app.css            estilos; cores e fontes nos tokens do :root
+assets/css/NN-*.css            estilos por área (a ordem dos <link> no index.html importa); tokens em 00-base.css
 assets/js/00-base.js          utilitários ($, esc, fmtDur, store), ícones, menu
 assets/js/01-dados.js         dados de exemplo: PIPES, RUNS, SCENS, SUITE
 assets/js/10-dashboard.js     Dashboard (sempre os últimos 7 dias)
@@ -33,7 +33,10 @@ assets/js/90-tempo-real.js    Execuções › Ao vivo (simulação e cards)
 assets/js/91-conexao-servidor.js modo conectado (?api=): eventos SSE
 assets/js/95-agente-ia.js     Agente de QA (só com IA ligada)
 assets/js/99-inicio.js        inicialização
-server/server.js              Jenkins + GitHub Actions + Jira via API REST, SSE, rotas /api
+server/server.js              entrada: rotas /api, SSE, TLS
+server/config.js · http.js · eventos.js · web.js    configuração, HTTP com retentativa, SSE, autenticação
+server/jenkins.js · github.js · jira.js · demo.js   uma fonte por arquivo
+server/historico.js           histórico de execuções em arquivo (server/data, fora do git)
 server/test/*.test.js         testes com Jenkins, GitHub e Jira falsos
 server/cripto.js              AES-256-GCM + scrypt (segredos cifrados, hash da chave da API)
 server/segredos.js            CLI: gerar-chave, cifrar, hash-chave, verificar
@@ -51,7 +54,7 @@ docs/prototipos/sso/          protótipos HTML estáticos das telas de login e p
 
 1. **Os scripts compartilham o escopo global e a ordem importa.** Um arquivo só pode *executar na carga* funções e variáveis de arquivos com número menor. Dentro de funções (executadas depois), qualquer módulo pode ser usado.
 2. **Um lugar para cada informação.** Antes de criar algo novo, veja em `docs/CONTRATOS.md` › *Onde cada informação aparece*. Não crie telas nem blocos que repitam métricas existentes; amplie o módulo dono da informação.
-3. **Credenciais só no servidor.** O navegador nunca chama o Jenkins, o GitHub nem o Jira diretamente. Chamadas novas entram em `server/server.js`, perto de `jenkinsJson()`, `ghJson()`, `jira()` e `jiraScenarios()`, e chegam à tela pelas rotas `/api/*` ou pelos eventos SSE.
+3. **Credenciais só no servidor.** O navegador nunca chama o Jenkins, o GitHub nem o Jira diretamente. Chamadas novas entram no módulo da fonte (`server/jenkins.js`, `github.js` ou `jira.js`), perto de `jenkinsJson()`, `ghJson()`, `jira()` e `jiraScenarios()`; as rotas ficam em `server/server.js`, e chegam à tela pelas rotas `/api/*` ou pelos eventos SSE.
 4. **Segurança é requisito.** Nenhum segredo em texto puro no código, no front, em log ou em teste (use valores fictícios). Tokens novos entram pelo helper `sec()` (aceita `enc:v1:`), URLs com credencial passam por `requireHttps()`, e qualquer texto que possa conter segredo vai por `redact()`/`log()`. O front não tem script inline (CSP) e não guarda credenciais. Rode `npm run check:secrets` e `npm test` antes de commitar. Veja README › Segurança.
 5. **Respeite os contratos** de `docs/CONTRATOS.md`: formato de pipeline, execução, cenário, eventos SSE e respostas das rotas. Se um dado do projeto antigo tiver outro formato, **converta no servidor** para o formato do contrato. Não mude a tela para aceitar o formato antigo.
 6. **Não renomeie** IDs de elementos, nomes de funções nem chaves do `localStorage` (`qa:pipes2`, `qa:scens`, `qa:ints`, `qa:cfg`, `qa:jiraSync`) sem atualizar todos os usos.

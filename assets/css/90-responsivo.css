@@ -1,0 +1,115 @@
+/* Responsivo */
+@media (max-width: 1400px) {
+  .dash {
+    grid-template-columns: minmax(0, 1fr) 380px;
+  }
+}
+@media (max-width: 1200px) {
+  .dash {
+    grid-template-columns: 1fr;
+  }
+  .kpis,
+  .kpis.k4 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+@media (max-width: 900px) {
+  .app {
+    grid-template-columns: 1fr;
+  }
+  .sidebar {
+    position: sticky;
+    top: env(safe-area-inset-top, 0px);
+    height: auto;
+    flex-direction: row;
+    align-items: center;
+    padding-block: 10px;
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+    z-index: 20;
+  }
+  .brand {
+    padding: 0 8px 0 0;
+  }
+  .brand-name,
+  .brand .mvp {
+    display: none;
+  }
+  .nav {
+    flex-direction: row;
+  }
+  .nav button {
+    padding: 10px;
+    font-size: 0;
+    gap: 0;
+  }
+  .nav-sep {
+    width: 1px;
+    height: 28px;
+    margin: 0 4px;
+  }
+  .main {
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+    padding-block: 20px;
+  }
+  .row2,
+  .cfg,
+  .f2 {
+    grid-template-columns: 1fr;
+  }
+  .subnav {
+    flex-direction: row;
+    overflow-x: auto;
+  }
+  .chart-row {
+    flex-direction: column;
+  }
+  .det-h .right {
+    text-align: left;
+  }
+}
+@media (max-width: 520px) {
+  .kpis,
+  .kpis.k4 {
+    gap: 12px;
+  }
+  .kpi {
+    padding: 16px;
+  }
+  .kpi-v {
+    font-size: 28px;
+  }
+  .kpi-h {
+    font-size: 14px;
+  }
+  .kpi-h svg {
+    width: 22px;
+    height: 22px;
+  }
+  .sel.big select {
+    min-width: 0;
+  }
+  .ph h1 {
+    font-size: 24px;
+  }
+  .ph p {
+    font-size: 15px;
+  }
+  .top-actions {
+    gap: 12px;
+  }
+  .search {
+    max-width: none;
+  }
+  .toolbar .sel,
+  .toolbar .sel select {
+    width: 100%;
+    min-width: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .typing i {
+    animation: none;
+  }
+}

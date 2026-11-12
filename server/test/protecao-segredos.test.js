@@ -68,7 +68,8 @@ test('tokens cifrados são decifrados na memória e chegam corretos ao Jenkins, 
     res.end();
   });
   await new Promise(r => jenkins.listen(0, r));
-  const job = 'Loja/ghp_abcdefghijklmnopqrstuvwxyz0123';
+  const FALSO = 'ghp_' + 'abcdefghijklmnopqrstuvwxyz0123'; // montado em tempo de execução: não é um token de verdade
+  const job = `Loja/${FALSO}`;
   const s = await subir({
     SECRETS_KEY: MESTRA,
     JENKINS_URL: `http://127.0.0.1:${jenkins.address().port}`,
@@ -81,7 +82,7 @@ test('tokens cifrados são decifrados na memória e chegam corretos ao Jenkins, 
     assert.equal(auth[0], 'Basic ' + Buffer.from('qa:tok-super-secreto').toString('base64'));
     await new Promise(r => setTimeout(r, 300));
     assert.ok(!s.out.text.includes('tok-super-secreto'), 'token não aparece no log');
-    assert.ok(!s.out.text.includes('ghp_abcdefghijklmnopqrstuvwxyz0123'), 'padrão de token é mascarado no log');
+    assert.ok(!s.out.text.includes(FALSO), 'padrão de token é mascarado no log');
   } finally {
     s.proc.kill();
     jenkins.close();

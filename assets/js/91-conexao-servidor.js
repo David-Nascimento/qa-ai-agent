@@ -83,6 +83,25 @@ if (API) {
   $$('.ptabs [data-go="aovivo"]').forEach(b => {
     b.childNodes[1].textContent = 'Ao vivo · CI';
   });
+  // Modo conectado usa só dados reais: os de exemplo saem, e o histórico gravado pelo servidor
+  // (GET /api/history) é reconstruído pelo mesmo caminho dos eventos em tempo real.
+  RUNS = [];
+  fetch(API + '/api/history', { headers: API_KEY ? { 'x-api-key': API_KEY } : {} })
+    .then(r => (r.ok ? r.json() : { runs: [] }))
+    .then(({ runs = [] }) => {
+      runs.forEach(h => {
+        try {
+          extStart(h.start);
+          (h.scenarios || []).forEach(extScenario);
+          extEnd(h.end);
+        } catch (err) {
+          console.error('histórico: registro ignorado', err);
+        }
+      });
+      EVENTS.length = 0; // o que já terminou não entra no feed "Eventos"
+      liveRefresh(true, true);
+    })
+    .catch(() => {});
   // marca como "Conectado" as integrações que o servidor tem configuradas (só na tela, não grava)
   fetch(API + '/api/health', { headers: API_KEY ? { 'x-api-key': API_KEY } : {} })
     .then(x => x.json())
