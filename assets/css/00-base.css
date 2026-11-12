@@ -1,0 +1,79 @@
+/* QA AI Agent · estilos. Cores e fontes ficam nos tokens do :root. */
+/* Layout: sidebar escura fixa à esquerda · área de conteúdo clara com cards brancos · dashboard com painel do agente à direita (cópia fiel dos esboços) */
+:root {
+  --sidebar: #1d1a40;
+  --sidebar-fg: #e9e8f7;
+  --sidebar-muted: #a9a6d0;
+  --sidebar-line: #3a3766;
+  --sidebar-hover: #2a2758;
+  --primary: #5b4bdb;
+  --primary-2: #6d5ef0;
+  --primary-soft: #ebe8fd;
+  --primary-softer: #f4f2ff;
+  --bg: #f4f5f9;
+  --card: #ffffff;
+  --line: #e7e8ef;
+  --head: #f6f7fa;
+  --fg: #14142b;
+  --fg-2: #2a2b3f;
+  --muted: #55576b;
+  --green: #16a34a;
+  --green-2: #22c55e;
+  --green-soft: #dcf5e3;
+  --green-ink: #157a39;
+  --red: #dc2626;
+  --red-2: #ef4444;
+  --red-soft: #fde2e2;
+  --red-ink: #c81e1e;
+  --blue: #3b82f6;
+  --orange: #f59e0b;
+  --tip: #fffaf0;
+  --tip-line: #f8ecd2;
+  --code: #1d1a40;
+  --code-fg: #dcdaf5;
+  --font: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --mono: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  --radius: 14px;
+  color-scheme: light;
+}
+* {
+  box-sizing: border-box;
+}
+html,
+body {
+  height: 100%;
+}
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font);
+  font-size: 14px;
+  -webkit-font-smoothing: antialiased;
+}
+button,
+input,
+select,
+textarea {
+  font-family: inherit;
+  font-size: inherit;
+}
+button {
+  cursor: pointer;
+}
+:focus-visible {
+  outline: 2px solid var(--primary-2);
+  outline-offset: 2px;
+}
+a {
+  color: var(--primary);
+  font-weight: 600;
+  text-decoration: none;
+}
+a:hover {
+  text-decoration: underline;
+}
+.app {
+  display: grid;
+  grid-template-columns: 285px minmax(0, 1fr);
+  min-height: 100%;
+}

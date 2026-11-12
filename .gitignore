@@ -9,3 +9,6 @@ __pycache__/
 !.env.example
 !server/.env.example
 segredos*.txt
+
+# histórico de execuções gerado pelo servidor
+server/data/

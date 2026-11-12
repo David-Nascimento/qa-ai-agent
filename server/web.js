@@ -1,0 +1,109 @@
+import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
+import { conferirChave } from './cripto.js';
+import { CFG } from './config.js';
+
+/* ------------------------------------------------------------------ */
+/* HTTP                                                                */
+/* ------------------------------------------------------------------ */
+// Cabeçalhos de segurança em toda resposta (a API só devolve JSON/SSE, então a CSP é a mais restritiva possível)
+export const TLS_ON = !!(CFG.security.tlsCert && CFG.security.tlsKey);
+export const SEC_HEADERS = {
+  'X-Content-Type-Options': 'nosniff',
+  'Cache-Control': 'no-store',
+  'Referrer-Policy': 'no-referrer',
+  'Content-Security-Policy': "default-src 'none'; frame-ancestors 'none'",
+  'X-Frame-Options': 'DENY',
+  'Cross-Origin-Resource-Policy': 'cross-origin',
+  Vary: 'Origin',
+  ...(TLS_ON && { 'Strict-Transport-Security': 'max-age=31536000; includeSubDomains' }),
+};
+export function send(res, code, data, extra = {}) {
+  res.writeHead(code, {
+    'Content-Type': 'application/json; charset=utf-8',
+    'Access-Control-Allow-Origin': CFG.cors,
+    ...extra,
+  });
+  res.end(JSON.stringify(data));
+}
+// Erro do cliente (corpo inválido, job fora da lista): responde 4xx em vez de 502
+export const clientError = (status, msg) => Object.assign(new Error(msg), { client: status });
+export async function readJson(req) {
+  let raw = '';
+  for await (const c of req) {
+    raw += c;
+    if (raw.length > 1e6) throw clientError(413, 'Corpo muito grande');
+  }
+  try {
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    throw clientError(400, 'JSON inválido');
+  }
+}
+// Comparação em tempo constante: a chave não vaza pelo tempo de resposta
+export const sameKey = (a, b) => {
+  const x = Buffer.from(String(a ?? '')),
+    y = Buffer.from(b);
+  return x.length === y.length && timingSafeEqual(x, y);
+};
+export const authRequired = () => !!(CFG.apiKey || CFG.apiKeyHash);
+// Chave apresentada: sempre o cabeçalho; "?key=" só com ALLOW_URL_KEY=true (compatibilidade), pois a URL vai para logs e histórico
+export const presentedKey = (req, url) =>
+  (req.headers['x-api-key'] || (CFG.security.allowUrlKey ? url.searchParams.get('key') : '') || '').toString();
+// Com API_KEY_HASH, o scrypt é caro: depois de uma conferência válida guardamos só o SHA-256 da chave
+let verifiedDigest = null;
+export const digest = k => createHash('sha256').update(k).digest();
+export function keyOk(k) {
+  if (!k) return false;
+  if (CFG.apiKey) return sameKey(k, CFG.apiKey);
+  const d = digest(k);
+  if (verifiedDigest && timingSafeEqual(d, verifiedDigest)) return true;
+  if (!conferirChave(k, CFG.apiKeyHash)) return false;
+  verifiedDigest = d;
+  return true;
+}
+export const authorized = (req, url) => !authRequired() || keyOk(presentedKey(req, url));
+
+// Bloqueio de tentativas: N falhas de autenticação por IP numa janela => 429 (freia adivinhação de chave)
+export const fails = new Map();
+export const clientIp = req =>
+  (CFG.security.trustProxy &&
+    String(req.headers['x-forwarded-for'] || '')
+      .split(',')[0]
+      .trim()) ||
+  req.socket.remoteAddress ||
+  '?';
+export const blockedMs = ip => {
+  const f = fails.get(ip);
+  if (!f) return 0;
+  if (Date.now() - f.first > CFG.security.failWindowMs) {
+    fails.delete(ip);
+    return 0;
+  }
+  return f.n >= CFG.security.maxFails ? CFG.security.failWindowMs - (Date.now() - f.first) : 0;
+};
+export function registerFail(ip) {
+  const f = fails.get(ip);
+  if (!f || Date.now() - f.first > CFG.security.failWindowMs) fails.set(ip, { n: 1, first: Date.now() });
+  else f.n++;
+  if (fails.size > 10000) fails.clear(); // teto de memória
+}
+export const tooMany = (res, ms) =>
+  send(res, 429, { error: 'Muitas tentativas inválidas; aguarde' }, { 'Retry-After': String(Math.ceil(ms / 1000)) });
+
+// Tíquetes de uso único para o SSE: o EventSource não envia cabeçalhos, então em vez de pôr a chave na URL
+// o navegador pede um tíquete (POST /api/ticket, com a chave no cabeçalho) que vale uma conexão e expira em segundos.
+export const tickets = new Map();
+export function newTicket() {
+  const now = Date.now();
+  for (const [t, exp] of tickets) if (exp < now) tickets.delete(t);
+  if (tickets.size > 1000) tickets.clear();
+  const t = randomBytes(24).toString('base64url');
+  tickets.set(t, now + CFG.security.ticketMs);
+  return t;
+}
+export function useTicket(t) {
+  if (!t) return false;
+  const exp = tickets.get(t);
+  tickets.delete(t); // uso único, válido ou não
+  return !!exp && exp >= Date.now();
+}

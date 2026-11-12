@@ -1,0 +1,80 @@
+/* Popover, modal, toast */
+.menu {
+  position: fixed;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  box-shadow: 0 10px 30px rgba(20, 20, 60, 0.14);
+  padding: 6px;
+  z-index: 40;
+  min-width: 190px;
+}
+.menu button {
+  all: unset;
+  cursor: pointer;
+  display: block;
+  padding: 9px 12px;
+  border-radius: 7px;
+  font-size: 14.5px;
+  width: calc(100% - 24px);
+}
+.menu button:hover {
+  background: var(--head);
+}
+.menu button.danger {
+  color: var(--red);
+}
+.modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(20, 18, 50, 0.45);
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  z-index: 50;
+}
+.modal-box {
+  background: var(--card);
+  border-radius: 16px;
+  width: min(560px, 100%);
+  max-height: 90vh;
+  overflow: auto;
+  padding: 24px;
+}
+.mrow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+.mrow h3 {
+  margin: 0;
+  font-size: 20px;
+}
+.close {
+  border: 0;
+  background: #f1f2f6;
+  border-radius: 8px;
+  width: 34px;
+  height: 34px;
+  font-size: 18px;
+}
+.toast {
+  position: fixed;
+  bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--sidebar);
+  color: #fff;
+  padding: 12px 18px;
+  border-radius: 10px;
+  font-weight: 500;
+  z-index: 60;
+  max-width: calc(100% - 32px);
+}
+.empty {
+  color: var(--muted);
+  text-align: center;
+  padding: 28px;
+}

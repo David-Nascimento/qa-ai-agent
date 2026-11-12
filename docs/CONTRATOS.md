@@ -1,6 +1,6 @@
 # Contratos de dados
 
-Estes são os formatos que a plataforma espera. Ao trazer dados de outro projeto, **converta para estes formatos** no servidor (`server/server.js`) ou na importação. Não mude as telas para aceitar formatos diferentes.
+Estes são os formatos que a plataforma espera. Ao trazer dados de outro projeto, **converta para estes formatos** no servidor (módulo da fonte em `server/`) ou na importação. Não mude as telas para aceitar formatos diferentes.
 
 ## Onde cada informação aparece
 
@@ -139,6 +139,7 @@ Diferenças que vêm da API do GitHub:
 | GET | `/api/health` | estado do servidor: `jenkins`, `github` e `jira` (configurados ou não), `workflows`, `githubRate` (`limit`, `remaining`, `reset`), `jiraSync` (`at`, `error`) e `slow` (fator de lentidão por limite de `jenkins`, `jira` e `github`, 1 = normal) |
 | POST | `/api/ticket` | gera um **tíquete de uso único** (`{ ticket, expiresInMs }`, padrão 30 s) para abrir o SSE sem pôr a chave na URL; exige a chave no cabeçalho |
 | GET | `/events` | eventos SSE; autentica com `x-api-key` ou `?ticket=` (o `?key=` só com `ALLOW_URL_KEY=true`) |
+| GET | `/api/history?limit=` | execuções finalizadas gravadas pelo servidor (mais antigas primeiro, até `HISTORY_MAX`). Cada item: `{ start, scenarios[], end }`, com os mesmos campos dos eventos `build_start`, `scenario` e `build_end` |
 | GET | `/api/state` | builds em acompanhamento |
 | GET | `/api/jira/scenarios?jql=&field=` | cenários do Jira (consulta na hora, com a consulta informada) |
 | GET | `/api/jira/state` | cenários e ciclos em cache (não chama o Jira) |
