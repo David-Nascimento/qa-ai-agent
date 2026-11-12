@@ -116,6 +116,33 @@ let SCENS =
     ['CT-015', 'Recuperação de senha', 'Autenticação', 'Ativo'],
     ['CT-016', 'Checkout como visitante', 'Checkout', 'Inativo'],
   ].map(r => ({ id: r[0], name: r[1], p: r[2], s: r[3] }));
+// Ciclos de exemplo (Zephyr Scale): resultado de cada cenário em cada ciclo.
+// Com o servidor conectado, os ciclos reais vêm de /api/jira/state.
+const CYCLES_DEMO = [
+  {
+    key: 'QA-R1',
+    name: 'Regressão Sprint 42',
+    status: 'In Progress',
+    folder: '/Regressão',
+    items: {
+      'CT-001': 'pass',
+      'CT-002': 'pass',
+      'CT-003': 'fail',
+      'CT-004': 'fail',
+      'CT-005': 'pend',
+      'CT-006': 'run',
+      'CT-007': 'pass',
+      'CT-008': 'blocked',
+    },
+  },
+  {
+    key: 'QA-R2',
+    name: 'Smoke da release 3.8',
+    status: 'Done',
+    folder: '/Smoke',
+    items: { 'CT-001': 'pass', 'CT-002': 'pass', 'CT-011': 'pass', 'CT-014': 'pass' },
+  },
+];
 const saveData = () => {
   store.set('pipes2', PIPES);
   store.set('scens', SCENS);

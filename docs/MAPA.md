@@ -13,7 +13,7 @@ Os dois se completam: o Mapa responde **"qual é a regra?"** e o Canvas responde
 
 ![Mapa de funcionalidades](img/mapa-categoria.png)
 
-- **12 seções:** visão geral, navegação e acesso, Dashboard, Pipelines, Execuções e Ao vivo, Cenários (Jira), Análises, Servidor: Jenkins, Servidor: Jira, Configurações e dados, Agente de QA e Login e permissões.
+- **13 seções:** visão geral, navegação e acesso, Dashboard, Pipelines, Execuções e Ao vivo, Cenários (Jira), Análises, Servidor: Jenkins, Servidor: Jira, Servidor: sincronização do Jira e ciclos de teste, Configurações e dados, Agente de QA e Login e permissões.
 - Cada seção tem um **status** (Implementado, Opcional ou Proposta), os arquivos de código, um **diagrama Mermaid** da lógica, as funcionalidades e as **regras de negócio**.
 - **Todas as regras:** tabela no fim com busca e filtro por categoria. Ela é montada a partir das regras escritas em cada seção, que são a única fonte.
 - Os diagramas usam o Mermaid, carregado do CDN jsDelivr. Sem internet, a página abre normalmente, mas os diagramas aparecem como texto.
@@ -24,18 +24,18 @@ Os dois se completam: o Mapa responde **"qual é a regra?"** e o Canvas responde
 
 Os dados correm **da esquerda para a direita**, em 10 colunas:
 
-1. **Fontes e gatilhos:** Jenkins, Jira, ações da pessoa, JSON importado, dados de exemplo e o relógio do portal.
-2. **Servidor · entrada:** chave da API e CORS, descoberta de builds, executar e parar, cenários do Jira.
+1. **Fontes e gatilhos:** Jenkins, Jira, Zephyr Scale, ações da pessoa, JSON importado, dados de exemplo e o relógio do portal.
+2. **Servidor · entrada:** chave da API e CORS, descoberta de builds, executar e parar, cenários do Jira, espera e nova tentativa (429/503).
 3. **Servidor · acompanhamento:** o laço `track()` de cada build.
 4. **Servidor · leitura do build:** log (`parseLines`), estágios (`pollStages`) e resultado (`finish`).
-5. **Servidor · saída:** eventos SSE (`emit`) e bugs no Jira (`reportBug`).
+5. **Servidor · saída:** eventos SSE (`emit`), bugs no Jira (`reportBug`) e sincronização do Jira e dos ciclos (`syncJira`).
 6. **Portal · entrada:** conexão SSE, simulação, importação, atualizar do Jira e armazenamento do navegador.
 7. **Dados em memória:** `RUNS`, `LIVE`, `PIPES`, `SCENS`, `CFG` e `EVENTS`.
 8. **Funções de cálculo:** `periodRange`, `metrics`, `mttr`, `scenarioStats`, `failCause`, `buckets`, `dashData`, `durByTech`, `auditData`, `tempoCard`, `updateCard` e outras.
 9. **Métricas:** cada número com a sua fórmula (taxa de sucesso, MTTR, média por plataforma, tempo total atual, projeção, flaky…).
 10. **Telas:** onde cada métrica aparece.
 
-São **68 nós, 117 ligações e 48 trechos de código**.
+São **74 nós, 131 ligações e 56 trechos de código**.
 
 ![Detalhe de um nó](img/canvas-detalhe.png)
 

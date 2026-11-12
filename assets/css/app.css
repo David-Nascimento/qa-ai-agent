@@ -838,6 +838,18 @@ a:hover {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.jsrc[hidden],
+.sel[hidden],
+th[hidden] {
+  display: none;
+}
+.cyc {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-right: 8px;
+  white-space: nowrap;
+}
 .link-btn {
   border: 0;
   background: none;
@@ -1134,6 +1146,15 @@ tbody tr.click:hover td {
 }
 .toolbar .sel select {
   min-width: 190px;
+}
+#v-cenarios .toolbar .sel select {
+  min-width: 170px;
+}
+#v-cenarios .search {
+  max-width: 260px;
+}
+#v-cenarios #cCycle {
+  max-width: 220px;
 }
 .pager {
   display: flex;
