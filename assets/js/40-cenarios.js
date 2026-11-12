@@ -31,7 +31,7 @@ function lastResult(sc) {
   const list = run.live
     ? run.live.sc.map(x => ({ n: x.n, st: x.st }))
     : suiteFor(run).map(x => ({ n: x.n, st: x.f ? 'fail' : 'pass' }));
-  const hit = list.find(x => (id && x.n.includes(id)) || x.n.includes(sc.name));
+  const hit = list.find(x => (id && x.n.includes(id)) || (sc.name && x.n.includes(sc.name)));
   if (!hit) return null;
   return { run, st: hit.st };
 }
@@ -92,7 +92,15 @@ function renderScens() {
   cycleSummary(cycleList().find(c => c.key === cy));
   const list = SCENS.map(s => ({ s, res: lastResult(s) })).filter(({ s, res }) => {
     const txt = (scKey(s) + ' ' + s.id + ' ' + s.name).toLowerCase();
-    const r = !res ? 'Sem execução' : res.st === 'fail' ? 'Falha' : res.st === 'pass' ? 'Sucesso' : 'Executando';
+    const r = !res
+      ? 'Sem execução'
+      : res.st === 'fail'
+        ? 'Falha'
+        : res.st === 'pass'
+          ? 'Sucesso'
+          : res.st === 'run'
+            ? 'Executando'
+            : 'Pendente';
     return (
       txt.includes(q) &&
       (!pp || s.p === pp) &&
@@ -124,7 +132,7 @@ function renderScens() {
         }) => `<tr><td>${s.url || jUrl ? `<a class="key" href="${esc(s.url || jUrl.replace(/\/$/, '') + '/browse/' + scKey(s))}" target="_blank" rel="noopener">${esc(scKey(s))}</a>` : `<span class="key">${esc(scKey(s))}</span>`}</td>
     <td><span class="muted">${esc(s.id || '')}</span> ${esc(s.name)}</td><td>${esc(s.p || '—')}</td>
     <td><span class="jst ${scJira(s) === 'Obsoleto' ? 'off' : scJira(s) === 'Pronto' ? 'ok' : 'wip'}">${esc(scJira(s))}</span></td>
-    <td>${!res ? '<span class="muted">Sem execução</span>' : `${pill(res.st === 'fail' ? 'Falha' : res.st === 'pass' ? 'Sucesso' : res.st === 'run' ? 'Executando' : 'Pendente')} <a class="muted" href="#exec-${res.run.id}">#${res.run.id}</a>`}</td>
+    <td>${!res ? '<span class="muted">Sem execução</span>' : `${pill(res.st === 'fail' ? 'Falha' : res.st === 'pass' ? 'Sucesso' : res.st === 'run' ? 'Executando' : 'Pendente')} <a class="muted" href="#exec-${res.run.id}">#${runNo(res.run)}</a>`}</td>
     ${cycleList().length ? `<td>${cycCell(s)}</td>` : ''}</tr>`
       )
       .join('') || `<tr><td colspan="${cols}" class="empty">Nenhum cenário encontrado.</td></tr>`;

@@ -108,9 +108,7 @@ function updateTempo() {
   const dcell = d =>
     d === null ? '—' : `<span class="delta ${d > 0 ? 'up' : 'dn'}">${d > 0 ? '+' : ''}${Math.round(d)}%</span>`;
   const sumRow = (rs, label, cls) => {
-    const n = rs.reduce((a, r) => a + r.n, 0),
-      s = rs.reduce((a, r) => a + r.sum, 0),
-      done = rs.filter(r => r.last),
+    const done = rs.filter(r => r.last),
       cur = done.reduce((a, r) => a + r.last.d, 0),
       ref = done.reduce((a, r) => a + r.avg, 0);
     return `<tr class="${cls}"><td colspan="4">${label}</td><td>${fmtDur(Math.round(cur))}<small class="calc">soma dos mais recentes</small></td><td>${fmtDur(Math.round(ref))}<small class="calc">soma das médias</small></td><td>${ref ? dcell((cur / ref - 1) * 100) : '—'}</td></tr>`;
@@ -125,7 +123,7 @@ function updateTempo() {
             .map(
               r => `<tr${r.live ? ' class="is-live"' : ''}><td><b style="color:var(--fg)">${esc(r.p.name)}</b>${r.p.active === false ? ' <span class="muted">(inativo)</span>' : ''}</td><td>${techBadge(r.p.tech)}</td>
       <td>${r.live ? `<span class="pill run"><span class="live-dot"></span> ${fmtDur(Math.round(r.el))}</span>` : '<span class="muted">—</span>'}</td>
-      <td>${r.last ? `<span class="muted">#${r.last.id} · ${fmtDate(r.last.at)}</span>` : '<span class="muted">sem execução</span>'}</td>
+      <td>${r.last ? `<span class="muted">#${runNo(r.last)} · ${fmtDate(r.last.at)}</span>` : '<span class="muted">sem execução</span>'}</td>
       <td><b>${r.last ? fmtDur(r.last.d) : '—'}</b></td>
       <td>${fmtDur(Math.round(r.avg))}<small class="calc">${r.n ? `${secs(r.sum)} ÷ ${r.n}` : 'referência'}</small></td><td>${dcell(r.delta)}</td></tr>`
             )
@@ -138,8 +136,6 @@ function updateTempo() {
       ? sumRow(rows, `Total · ${rows.length} componente${rows.length === 1 ? '' : 's'}`, 'total')
       : '<tr><td colspan="7" class="empty">Nenhum componente para os filtros escolhidos.</td></tr>');
 }
-const updateTech = updateTempo,
-  updateAudit = updateTempo;
 function auditCsv() {
   const rows = auditData(),
     q = v => `"${String(v).replace(/"/g, '""')}"`;

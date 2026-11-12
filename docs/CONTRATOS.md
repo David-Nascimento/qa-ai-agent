@@ -112,7 +112,7 @@ O servidor sincroniza o Jira sozinho (a cada `JIRA_SYNC_MS`) e guarda tudo em ca
 | `jira` | `job`, `build`, `scenario`, `key`, `action` (`create`/`comment`), `url` |
 | `jira_sync` | `at` (ms), `error` (texto ou `null`), `changed` (quantidade). Só para quem está conectado, não entra no reenvio dos últimos eventos. Avisa que o cache do Jira mudou. |
 
-`job` pode ser o nome do componente (`Checkout`) ou o caminho no Jenkins (`E-commerce/Checkout`). A tela usa a última parte como nome do componente e guarda o caminho completo para disparar e parar builds. Componentes que ainda não existem são criados na pasta informada em `folder` (ou `Jenkins`).
+`job` pode ser o nome do componente (`Checkout`) ou o caminho no Jenkins (`E-commerce/Checkout`). Para disparar e parar, o job precisa estar em `JENKINS_JOBS`. A tela usa a última parte como nome do componente e guarda o caminho completo para disparar e parar builds. Componentes que ainda não existem são criados na pasta informada em `folder` (ou `Jenkins`).
 
 ### GitHub Actions nos mesmos eventos
 
@@ -145,6 +145,8 @@ Diferenças que vêm da API do GitHub:
 | POST | `/api/build` | `{ job, params? }` dispara build. No GitHub, o workflow precisa de `on: workflow_dispatch`; `params.ref` escolhe a branch (padrão: a do repositório) e os demais `params` viram `inputs` |
 | POST | `/api/stop` | `{ job, build }` para build (no GitHub, cancela o run; só funciona para runs em acompanhamento) |
 | POST | `/api/jira/bug` | `{ job, build, scenario, details? }` abre/comenta bug |
+
+Erros das rotas: `400` corpo inválido ou `build` não numérico, `401` chave da API ausente ou errada, `403` job fora de `JENKINS_JOBS`, `413` corpo grande demais e `502` falha ao falar com Jenkins, GitHub ou Jira.
 
 ## Configuração da interface — `CFG` (`localStorage` `qa:cfg`)
 

@@ -29,7 +29,7 @@ function renderExecs() {
       .slice((page - 1) * PER, page * PER)
       .map(
         r =>
-          `<tr class="click" data-go="exec-${r.id}"><td><a href="#exec-${r.id}">#${r.id}</a></td><td>${esc(r.p)}</td><td>${pill(r.s)}</td><td>${r.ok} / ${r.t}</td><td>${r.s === 'Executando' ? '—' : fmtDur(r.d)}</td><td>${r.s === 'Executando' ? 'agora' : fmtDate(r.at)}</td></tr>`
+          `<tr class="click" data-go="exec-${r.id}"><td><a href="#exec-${r.id}">#${runNo(r)}</a></td><td>${esc(r.p)}</td><td>${pill(r.s)}</td><td>${r.ok} / ${r.t}</td><td>${r.s === 'Executando' ? '—' : fmtDur(r.d)}</td><td>${r.s === 'Executando' ? 'agora' : fmtDate(r.at)}</td></tr>`
       )
       .join('') || '<tr><td colspan="6" class="empty">Nenhuma execução encontrada.</td></tr>';
   let pg = `<button data-page="${page - 1}" ${page === 1 ? 'disabled' : ''} aria-label="Página anterior">‹</button>`;
@@ -81,13 +81,13 @@ $('#importJson').addEventListener('change', async e => {
           tech: /mob/i.test(x.tecnologia || x.tech || '') ? 'Mobile' : 'API',
         });
       RUNS.unshift({
-        id: RUNS[0].id + 1,
+        id: Math.max(0, ...RUNS.map(r => r.id)) + 1,
         p,
         s: ok === t ? 'Sucesso' : 'Falha',
         ok,
         t,
         d: +(x.duration ?? x.duracao ?? 60),
-        at: x.inicio || x.start ? new Date(x.inicio || x.start) : new Date(BASE),
+        at: x.inicio || x.start ? new Date(x.inicio || x.start) : new Date(today()),
       });
       n++;
     });

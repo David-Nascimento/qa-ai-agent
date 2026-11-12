@@ -3,9 +3,13 @@
 
 const $ = s => document.querySelector(s),
   $$ = s => [...document.querySelectorAll(s)];
-const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+const esc = s =>
+  String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 const pct = n => n.toFixed(1).replace('.', ',') + '%';
-const fmtDur = s => `${Math.floor(s / 60)}m ${String(s % 60).padStart(2, '0')}s`;
+const fmtDur = s => {
+  s = Math.round(+s || 0);
+  return `${Math.floor(s / 60)}m ${String(s % 60).padStart(2, '0')}s`;
+};
 const store = {
   get(k, d) {
     try {

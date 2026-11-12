@@ -308,7 +308,7 @@ Dois documentos mostram **como a plataforma funciona por dentro**. Abra direto n
 
 | Documento | Responde | Abrir |
 |---|---|---|
-| **Mapa de funcionalidades** | *Qual é a regra?* Funcionalidades separadas por categoria, um diagrama da lógica de cada uma e **102 regras de negócio numeradas** (RN-DASH-01, RN-ANA-06…), com catálogo e filtro. | [`docs/mapa/mapa-funcionalidades.html`](docs/mapa/mapa-funcionalidades.html) |
+| **Mapa de funcionalidades** | *Qual é a regra?* Funcionalidades separadas por categoria, um diagrama da lógica de cada uma e **106 regras de negócio numeradas** (RN-DASH-01, RN-ANA-06…), com catálogo e filtro. | [`docs/mapa/mapa-funcionalidades.html`](docs/mapa/mapa-funcionalidades.html) |
 | **Canvas de ligações** | *De onde vem esse número?* Canvas de nós ligando fontes → servidor → dados → funções de cálculo → métricas → telas, com **fórmula, regras e código real** de cada função. | [`docs/mapa/canvas-ligacoes.html`](docs/mapa/canvas-ligacoes.html) |
 
 | Mapa de funcionalidades | Canvas de ligações |
@@ -736,7 +736,10 @@ es.addEventListener('scenario', e => console.log(JSON.parse(e.data)));
 ## Segurança
 
 - **Tokens do Jenkins e do Jira ficam só no servidor**, em `.env`, que está no `.gitignore`. Nunca coloque tokens no `index.html`.
-- Defina `API_KEY` e `CORS_ORIGIN` em produção.
+- Defina `API_KEY` e `CORS_ORIGIN` em produção. Sem `API_KEY` e com `CORS_ORIGIN=*`, qualquer página pode disparar e parar builds (o servidor avisa no log ao iniciar).
+- **Executar e Parar só funcionam para jobs listados** em `JENKINS_JOBS` (ou workflows de `GITHUB_WORKFLOWS`). Qualquer outro job recebe 403.
+- Sem a chave, `/api/health` não mostra nomes de jobs/workflows nem o limite do token do GitHub.
+- Variáveis numéricas inválidas voltam ao padrão (por exemplo `POLL_MS=abc`), e uma regex inválida (`LOG_REGEX`) faz o servidor parar dizendo qual é.
 - Publique o servidor atrás de **HTTPS**, por exemplo com Nginx, Caddy ou o load balancer da empresa.
 - Use um usuário técnico no Jenkins e no Jira, com as **permissões mínimas** listadas acima.
 - O `?key=` na URL aparece no histórico do navegador. Para ambientes sensíveis, prefira colocar o servidor e a plataforma atrás do SSO da empresa e deixar `API_KEY` como segunda camada.

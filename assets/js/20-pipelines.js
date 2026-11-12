@@ -83,24 +83,4 @@ $('#pipeSummary').addEventListener('click', e => {
     renderPipes();
   }
 });
-function renderPipesOld() {
-  fillSelect('#pGroup', 'Todos os grupos', groups());
-  const q = $('#pSearch').value.toLowerCase(),
-    g = $('#pGroup').value,
-    st = $('#pStatus').value;
-  const rows = PIPES.map(p => ({ p, last: RUNS.find(r => r.p === p.name) })).filter(
-    ({ p, last }) => p.name.toLowerCase().includes(q) && (!g || p.group === g) && (!st || (last && last.s === st))
-  );
-  $('#pipeRows').innerHTML =
-    rows
-      .map(
-        ({
-          p,
-          last,
-        }) => `<tr><td><div class="pl"><span class="pl-ico">${icoOf(p.name)}</span>${esc(p.name)}</div></td><td>${esc(p.group)}</td><td>${techBadge(p.tech)}</td>
-   <td>${last ? (last.s === 'Executando' ? 'agora' : fmtDate(last.at)) : '—'}</td><td>${last ? pill(last.s) : '<span class="pill off">Sem execuções</span>'}</td><td>${pct(p.rate)}</td>
-   <td><button class="kebab" data-menu="${esc(p.name)}" aria-label="Ações de ${esc(p.name)}">${KEBAB}</button></td></tr>`
-      )
-      .join('') || '<tr><td colspan="7" class="empty">Nenhuma pipeline encontrada.</td></tr>';
-}
 ['#pSearch', '#pGroup', '#pStatus'].forEach(s => $(s).addEventListener('input', renderPipes));
