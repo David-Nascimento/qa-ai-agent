@@ -790,6 +790,10 @@
     [
      "RN-SEG-12",
      "`npm run check:secrets` falha se houver token, chave privada ou senha em texto puro nos arquivos versionados."
+    ],
+    [
+     "RN-SEG-13",
+     "Chave de API e tokens só entram por canal criptografado: fora do loopback, requisição sem HTTPS recebe 403 `tls_required` (`ALLOW_INSECURE_TRANSPORT` libera); a tela não envia token por http:// não local."
     ]
    ]
   },

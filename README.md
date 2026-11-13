@@ -324,7 +324,7 @@ Dois documentos mostram **como a plataforma funciona por dentro**. Abra direto n
 
 | Documento | Responde | Abrir |
 |---|---|---|
-| **Mapa de funcionalidades** | *Qual é a regra?* Funcionalidades separadas por categoria, um diagrama da lógica de cada uma e **125 regras de negócio numeradas** (RN-DASH-01, RN-ANA-06…), com catálogo e filtro. | [`docs/mapa/mapa-funcionalidades.html`](docs/mapa/mapa-funcionalidades.html) |
+| **Mapa de funcionalidades** | *Qual é a regra?* Funcionalidades separadas por categoria, um diagrama da lógica de cada uma e **126 regras de negócio numeradas** (RN-DASH-01, RN-ANA-06…), com catálogo e filtro. | [`docs/mapa/mapa-funcionalidades.html`](docs/mapa/mapa-funcionalidades.html) |
 | **Canvas de ligações** | *De onde vem esse número?* Canvas de nós ligando fontes → servidor → dados → funções de cálculo → métricas → telas, com **fórmula, regras e código real** de cada função. | [`docs/mapa/canvas-ligacoes.html`](docs/mapa/canvas-ligacoes.html) |
 
 | Mapa de funcionalidades | Canvas de ligações |
@@ -482,6 +482,7 @@ O fator de lentidão aparece em `GET /api/health` (`slow`; `1` = normal).
 | `API_KEY` / `API_KEY_HASH` | vazio | Se definida, é exigida no header `x-api-key` (e em `/events` por tíquete). `API_KEY_HASH` guarda só o hash scrypt. Aceitam o formato cifrado; veja [Segurança](#segurança) |
 | `SECRETS_KEY_FILE` | — | Arquivo com a chave-mestra para decifrar valores `enc:v1:…` |
 | `TLS_CERT_FILE` / `TLS_KEY_FILE` | — | HTTPS nativo (opcional) |
+| `TLS_MIN_VERSION`, `ALLOW_INSECURE_TRANSPORT` | `TLSv1.2`, `false` | TLS mínimo; `true` aceita dados sem criptografia vindos de outras máquinas (não recomendado) |
 | `TRUST_PROXY`, `AUTH_MAX_FAILS`, `AUTH_FAIL_WINDOW_MS`, `TICKET_TTL_MS`, `MAX_SSE_CLIENTS` | `false`, `10`, `300000`, `30000`, `200` | Bloqueio de tentativas, tíquete do SSE e limite de conexões |
 | `ALLOW_URL_KEY`, `ALLOW_INSECURE_UPSTREAM` | `false` | Compatibilidade: aceitar `?key=` na URL e upstream `http://` com credencial |
 | `DEMO` | `false` | `true` gera execuções fictícias, sem Jenkins |
@@ -791,6 +792,8 @@ npm run segredos -- verificar .env                        # confere se tudo abre
 ### Transporte
 
 - **TLS no servidor:** `TLS_CERT_FILE` + `TLS_KEY_FILE` ligam HTTPS nativo (TLS 1.2+, HSTS). Ou publique atrás de Nginx, Caddy ou o load balancer com HTTPS.
+- **Dados em trânsito (obrigatório):** a chave de API e os tokens das integrações só são aceitos por canal criptografado. O servidor responde `403 tls_required` a qualquer requisição que não venha por HTTPS, exceto da própria máquina (loopback). Atrás de proxy, defina `TRUST_PROXY=true` e faça o proxy enviar `X-Forwarded-Proto: https`. A tela também se recusa a enviar token por `http://` fora do localhost e mostra 🔒/⚠️ no formulário.
+  Teste local com certificado próprio: `openssl req -x509 -newkey rsa:2048 -nodes -keyout k.pem -out c.pem -days 30 -subj /CN=localhost -addext subjectAltName=DNS:localhost,IP:127.0.0.1` e então `TLS_CERT_FILE=c.pem TLS_KEY_FILE=k.pem`.
 - **Upstreams só por HTTPS:** com token configurado, `JENKINS_URL`, `JIRA_URL` e `GITHUB_API_URL` precisam ser `https://` (exceto `localhost`), ou o servidor não inicia. Em rede interna confiável, `ALLOW_INSECURE_UPSTREAM=true`.
 - Respostas com `X-Content-Type-Options`, `Cache-Control: no-store`, `Referrer-Policy: no-referrer` e CSP restritiva. A interface tem CSP (`script-src 'self'`, sem scripts inline), o que limita o estrago de qualquer XSS.
 

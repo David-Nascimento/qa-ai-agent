@@ -239,3 +239,15 @@
 #igFields .field {
   margin-bottom: 8px;
 }
+
+.int-lock {
+  margin: 0 0 10px;
+  font-size: 12px;
+  font-weight: 600;
+}
+.int-lock.ok {
+  color: var(--green);
+}
+.int-lock.bad {
+  color: var(--red-ink);
+}

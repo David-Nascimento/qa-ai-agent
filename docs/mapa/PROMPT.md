@@ -34,10 +34,10 @@ Os textos aceitam `código` entre crases e **negrito**. Todo o resto é texto pu
   "subtitulo": "Mapa de funcionalidades e regras",
   "lead": "Uma ou duas frases sobre o que o documento mostra.",
   "legenda": [
-    {"tipo": "real", "rotulo": "Implementado", "texto": "funciona de verdade"},
-    {"tipo": "sim",  "rotulo": "Simulado",     "texto": "usa dados de exemplo"},
-    {"tipo": "opt",  "rotulo": "Opcional",     "texto": "desligado por padrão"},
-    {"tipo": "prop", "rotulo": "Proposta",     "texto": "desenhado, ainda não implementado"}
+    { "tipo": "real", "rotulo": "Implementado", "texto": "funciona de verdade" },
+    { "tipo": "sim", "rotulo": "Simulado", "texto": "usa dados de exemplo" },
+    { "tipo": "opt", "rotulo": "Opcional", "texto": "desligado por padrão" },
+    { "tipo": "prop", "rotulo": "Proposta", "texto": "desenhado, ainda não implementado" }
   ],
   "visao_geral": {
     "titulo": "Visão geral da arquitetura",
@@ -62,13 +62,18 @@ Os textos aceitam `código` entre crases e **negrito**. Todo o resto é texto pu
   "canvas": {
     "titulo": "Ligações do Nome do Projeto",
     "categorias": {
-      "fonte":   {"nome": "Fonte",   "cor": "#f2a93b", "detalhe": "Formato"},
-      "calculo": {"nome": "Cálculo", "cor": "#4fd17a", "detalhe": "Fórmula"}
+      "fonte": { "nome": "Fonte", "cor": "#f2a93b", "detalhe": "Formato" },
+      "calculo": { "nome": "Cálculo", "cor": "#4fd17a", "detalhe": "Fórmula" }
     },
-    "colunas": [["Fontes e gatilhos", "De onde os dados nascem"], ["Funções de cálculo", "Onde as métricas são calculadas"]],
+    "colunas": [
+      ["Fontes e gatilhos", "De onde os dados nascem"],
+      ["Funções de cálculo", "Onde as métricas são calculadas"]
+    ],
     "nos": [
       {
-        "id": "c_metrics", "col": 1, "cat": "calculo",
+        "id": "c_metrics",
+        "col": 1,
+        "cat": "calculo",
         "titulo": "Indicadores do período",
         "onde": "50-analises.js · metrics()",
         "descricao": "O que o nó faz, em 1 ou 2 frases.",
@@ -76,16 +81,20 @@ Os textos aceitam `código` entre crases e **negrito**. Todo o resto é texto pu
         "passos": ["Passo 1", "Passo 2"],
         "regras": ["RN-ANA-02"],
         "nota": "Aviso (opcional).",
-        "codigo": [{"arquivo": "assets/js/50-analises.js", "funcao": "metrics"}]
+        "codigo": [{ "arquivo": "assets/js/50-analises.js", "funcao": "metrics" }]
       }
     ],
-    "ligacoes": [["src_jenkins", "c_metrics", "builds"], ["c_metrics", "m_rate"]],
-    "notas": [{"col": 0, "texto": "COMO LER\nPrimeira linha em destaque; as demais explicam."}]
+    "ligacoes": [
+      ["src_jenkins", "c_metrics", "builds"],
+      ["c_metrics", "m_rate"]
+    ],
+    "notas": [{ "col": 0, "texto": "COMO LER\nPrimeira linha em destaque; as demais explicam." }]
   }
 }
 ```
 
 Referências de código aceitas em `codigo`:
+
 - `{"arquivo": "caminho/x.js", "funcao": "nome"}`: a função inteira (o caso normal).
 - `{"arquivo": "...", "bloco": "texto onde o bloco começa"}`: o bloco `{…}` que começa naquela linha.
 - `{"arquivo": "...", "inicio": "texto", "fim": "texto"}`: do marcador inicial até a linha do marcador final (inclusive). Troque `fim` por `antes_de` para parar na linha anterior.
@@ -93,25 +102,30 @@ Referências de código aceitas em `codigo`:
 ## Regras para escrever
 
 **Fidelidade (a mais importante)**
+
 - Escreva só o que o código faz. Confira cada regra e cada fórmula lendo a função. Se um número aparece (7 dias, 95%, 300 eventos), ele vem de uma constante do código.
 - Se algo está desenhado e não existe no código, marque a categoria como **Proposta** (`"status": "Proposta", "status_tipo": "prop"`).
 - Se algo só funciona com dados de exemplo, **Simulado** (`"sim"`). Se vem desligado, **Opcional** (`"opt"`).
 - Não invente nomes de função. Todo `codigo` é validado pelo script e o erro diz qual falhou.
 
 **Regras de negócio**
+
 - IDs no formato `RN-<SIGLA>-<NN>`: sigla de 3 a 5 letras por categoria (DASH, ANA, PIP…), números sequenciais, **nunca reutilizados**.
-- Uma frase por regra, verificável: *"Só contam execuções com status Sucesso ou Falha."*
+- Uma frase por regra, verificável: _"Só contam execuções com status Sucesso ou Falha."_
 - Escreva o que **acontece** e os **limites** (valores, exceções), não como o código foi organizado.
 - Regras também podem ficar no código, num comentário `// RN-ABC-01 texto`: o script as encontra e mostra na lista de coisas descobertas.
 
 **Funcionalidades**
+
 - Cada item é algo que a pessoa usuária reconhece (um card, um filtro, uma ação), com o que ele mostra ou faz.
 
 **Diagramas (Mermaid)**
+
 - `flowchart LR`, no máximo 10 nós por diagrama, rótulos curtos entre aspas, `<br/>` para quebrar linha.
 - Mostre a **lógica de decisão** (losangos para perguntas), não a lista de arquivos.
 
 **Canvas**
+
 - Colunas da esquerda para a direita, na ordem do dado: **fontes → entrada → processamento → dados em memória → funções de cálculo → métricas → telas**. Use as colunas que o projeto realmente tem.
 - **Toda ligação vai de uma coluna para a mesma ou uma posterior.** Nunca para trás (o script recusa).
 - Um nó para cada função ou conceito que **calcula, transforma ou guarda algo**. Nós de métrica levam a **fórmula exata** e o texto de `descricao` diz o que o número significa.

@@ -23,10 +23,12 @@ import {
   blockedMs,
   clientError,
   clientIp,
+  insecure,
   newTicket,
   presentedKey,
   readJson,
   registerFail,
+  secureTransport,
   send,
   tooMany,
   useTicket,
@@ -63,6 +65,7 @@ const handler = async (req, res) => {
   if (url.pathname === '/api/health') {
     // sem chave, mostra só o necessário; nomes de jobs/workflows e limite do token exigem a chave
     const tried = !!presentedKey(req, url);
+    if (tried && !secureTransport(req)) return insecure(res); // a chave não pode trafegar em claro
     if (tried && blockedMs(ip)) return tooMany(res, blockedMs(ip));
     const full = authorized(req, url);
     if (tried && !full) registerFail(ip);
@@ -86,7 +89,12 @@ const handler = async (req, res) => {
       },
       clients: clients.size,
       active: active.size,
+      secure: secureTransport(req),
     });
+  }
+  if (!secureTransport(req)) {
+    log(`Bloqueada requisição sem criptografia: ${req.method} ${url.pathname} (origem ${ip})`);
+    return insecure(res);
   }
   if (blockedMs(ip)) return tooMany(res, blockedMs(ip));
   // o /events também aceita um tíquete de uso único no lugar da chave (ver newTicket)
@@ -206,7 +214,7 @@ if (TLS_ON) {
     tlsOpts = {
       cert: readFileSync(CFG.security.tlsCert),
       key: readFileSync(CFG.security.tlsKey),
-      minVersion: 'TLSv1.2',
+      minVersion: CFG.security.tlsMinVersion,
     };
   } catch (e) {
     fatal(`não consegui ler o certificado TLS (${e.code || e.message})`);
@@ -266,8 +274,18 @@ loadHistory();
 loadIntegrations();
 server.listen(CFG.port, () => {
   log(`QA AI Agent — servidor em ${TLS_ON ? 'https' : 'http'}://localhost:${CFG.port}`);
-  if (!TLS_ON && authRequired())
-    log('Aviso: sem TLS, a chave de API trafega em claro. Use TLS_CERT_FILE/TLS_KEY_FILE ou um proxy HTTPS na frente.');
+  // postura de segurança do transporte, em uma linha, para quem acompanha o log
+  log(
+    `Transporte: ${TLS_ON ? `HTTPS nativo (${CFG.security.tlsMinVersion}+, HSTS)` : 'HTTP'} · ` +
+      (CFG.security.allowInsecureTransport
+        ? 'ATENÇÃO: ALLOW_INSECURE_TRANSPORT=true (aceita dados sem criptografia)'
+        : 'só aceita dados por HTTPS (ou da própria máquina)') +
+      (CFG.security.trustProxy ? ' · confia em X-Forwarded-Proto do proxy' : '')
+  );
+  if (!TLS_ON && !CFG.security.trustProxy && !CFG.security.allowInsecureTransport)
+    log(
+      'Acessos de outras máquinas serão recusados até haver HTTPS: use TLS_CERT_FILE/TLS_KEY_FILE ou um proxy HTTPS com TRUST_PROXY=true.'
+    );
   if (!authRequired() && CFG.cors === '*' && !CFG.demo)
     log(
       'ATENÇÃO: sem API_KEY e com CORS_ORIGIN=*, qualquer página pode disparar e parar builds. Defina API_KEY e CORS_ORIGIN.'

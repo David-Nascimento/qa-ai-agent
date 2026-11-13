@@ -97,11 +97,28 @@ const INT_FIELDS = {
   ],
 };
 
+/* ---------- canal criptografado ---------- */
+// A chave da API e os tokens só devem ir ao servidor por HTTPS (ou para a própria máquina).
+// O servidor também recusa o que chegar sem criptografia; aqui evitamos nem tentar.
+function apiTransport() {
+  try {
+    const u = new URL(API);
+    if (u.protocol === 'https:') return { ok: true, label: 'Conexão criptografada (HTTPS)' };
+    if (['localhost', '127.0.0.1', '[::1]'].includes(u.hostname))
+      return { ok: true, label: 'Servidor local (mesma máquina)' };
+  } catch {
+    /* API inválida */
+  }
+  return { ok: false, label: 'Conexão sem criptografia (http://)' };
+}
+
 /* ---------- carga do estado ---------- */
 async function loadIntegrations() {
   if (!API) return;
   try {
     const r = await fetch(API + '/api/integrations', { headers: apiHeaders(false) });
+    if (r.status === 403 && (await r.json().catch(() => ({}))).code === 'tls_required')
+      return toast('O servidor só aceita dados por HTTPS: abra a plataforma com ?api=https://…');
     if (r.status === 404) return legacyIntegrationStatus(); // servidor antigo
     if (!r.ok) return;
     SRV_INT = await r.json();
@@ -194,19 +211,22 @@ function openIntForm(it) {
   const s = (SRV_INT && SRV_INT.items[it.k]) || { k: it.k, configured: false, source: null, tokenSet: false };
   const edit = (SRV_INT && SRV_INT.edit) || { ok: false, reason: 'Servidor sem suporte à configuração pela tela.' };
   const fromEnv = s.source === 'env';
-  const ctx = { replacing: false, locked: !edit.ok || fromEnv };
-  const notice = fromEnv
-    ? 'Esta integração vem do <code>.env</code> do servidor. Para alterar, edite o arquivo e reinicie o servidor.'
-    : !edit.ok
-      ? esc(edit.reason)
-      : '';
+  const tr = apiTransport();
+  const ctx = { replacing: false, locked: !edit.ok || fromEnv || !tr.ok };
+  const notice = !tr.ok
+    ? 'Esta conexão com o servidor não é criptografada (<code>http://</code>). Por segurança o token só é enviado por HTTPS: abra a plataforma com <code>?api=https://…</code>.'
+    : fromEnv
+      ? 'Esta integração vem do <code>.env</code> do servidor. Para alterar, edite o arquivo e reinicie o servidor.'
+      : !edit.ok
+        ? esc(edit.reason)
+        : '';
   const render = () => {
     $('#igFields').innerHTML = INT_FIELDS[it.k].map(f => fieldHtml(f, s, s, ctx)).join('');
     wire();
   };
   modal(
     `${s.configured ? 'Editar' : 'Configurar'} ${esc(it.name)}`,
-    `${notice ? `<p class="int-note" role="note">${notice}</p>` : ''}<div id="igFields"></div>
+    `<p class="int-lock ${tr.ok ? 'ok' : 'bad'}" role="status">${tr.ok ? '🔒' : '⚠️'} ${tr.label}</p>${notice ? `<p class="int-note" role="note">${notice}</p>` : ''}<div id="igFields"></div>
      <div id="igResult" class="int-result" role="status" aria-live="polite"></div>
      <div class="int-actions"><button type="button" class="btn-out" id="igTest">Testar conexão</button></div>`,
     () => {
@@ -357,7 +377,9 @@ function openIntForm(it) {
       headers: apiHeaders(),
       body: body === undefined ? undefined : JSON.stringify(body),
     });
-    return { ok: r.ok, status: r.status, j: await r.json().catch(() => ({})) };
+    const j = await r.json().catch(() => ({}));
+    if (r.status === 403 && j.code === 'tls_required') j.error = j.error + ' (use ?api=https://…)';
+    return { ok: r.ok, status: r.status, j };
   }
   // dados a enviar: o token só vai se foi digitado agora (o salvo fica no servidor)
   const payload = o => {

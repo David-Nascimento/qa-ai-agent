@@ -149,6 +149,7 @@ if (API) {
     try {
       const r = await fetch(API + '/api/ticket', { method: 'POST', headers: authHeaders });
       if (r.status === 401) return toast('Chave de API inválida: abra a plataforma com &key=… correta');
+      if (r.status === 403) return toast('O servidor só aceita dados por HTTPS: abra a plataforma com ?api=https://…');
       if (r.ok) url += '?ticket=' + encodeURIComponent((await r.json()).ticket);
       else if (r.status === 404)
         url += API_KEY ? '?key=' + encodeURIComponent(API_KEY) : ''; // servidor antigo, sem tíquete

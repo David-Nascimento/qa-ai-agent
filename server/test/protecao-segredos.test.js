@@ -184,3 +184,121 @@ test('varredura de segredos acha token em arquivo versionado e passa em reposit�
   assert.match(r.stderr, /ruim\.js:1\s+token do GitHub/);
   assert.ok(!r.stderr.includes('a'.repeat(36)), 'o relatório não repete o segredo');
 });
+
+test('transporte: dados só entram por canal criptografado (proxy HTTPS confiável, TLS nativo ou máquina local)', async () => {
+  const chave = { 'x-api-key': 'chave-de-transporte-123' };
+  const s = await subir({ API_KEY: 'chave-de-transporte-123', DEMO: 'true' });
+  try {
+    // da própria máquina, direto: ok
+    assert.equal((await fetch(s.base + '/api/state', { headers: chave })).status, 200);
+    // chegou por um proxy (X-Forwarded-*) que não é confiável: recusa, e não conta como tentativa de chave
+    const proxy = { ...chave, 'x-forwarded-for': '203.0.113.9', 'x-forwarded-proto': 'https' };
+    const r = await fetch(s.base + '/api/state', { headers: proxy });
+    assert.equal(r.status, 403);
+    assert.equal((await r.json()).code, 'tls_required');
+    // a chave também não pode ir por "http" ao /api/health
+    assert.equal((await fetch(s.base + '/api/health', { headers: proxy })).status, 403);
+    // health sem chave continua público e informa se a conexão é segura
+    const h = await (await fetch(s.base + '/api/health', { headers: { 'x-forwarded-for': '203.0.113.9' } })).json();
+    assert.equal(h.secure, false);
+  } finally {
+    s.proc.kill();
+  }
+  const conf = await subir({ API_KEY: 'chave-de-transporte-123', DEMO: 'true', TRUST_PROXY: 'true' });
+  try {
+    const base = { ...chave, 'x-forwarded-for': '203.0.113.9' };
+    assert.equal(
+      (await fetch(conf.base + '/api/state', { headers: { ...base, 'x-forwarded-proto': 'https' } })).status,
+      200,
+      'proxy confiável com https'
+    );
+    assert.equal(
+      (await fetch(conf.base + '/api/state', { headers: { ...base, 'x-forwarded-proto': 'http' } })).status,
+      403,
+      'proxy confiável, mas o cliente usou http'
+    );
+    assert.equal(
+      (await fetch(conf.base + '/api/state', { headers: base })).status,
+      403,
+      'proxy sem informar o protocolo'
+    );
+  } finally {
+    conf.proc.kill();
+  }
+  const aberto = await subir({ API_KEY: 'chave-de-transporte-123', DEMO: 'true', ALLOW_INSECURE_TRANSPORT: 'true' });
+  try {
+    assert.equal(
+      (await fetch(aberto.base + '/api/state', { headers: { ...chave, 'x-forwarded-for': '203.0.113.9' } })).status,
+      200
+    );
+    assert.match(
+      aberto.out.text,
+      /ALLOW_INSECURE_TRANSPORT=true/,
+      'o log avisa que está aceitando dados sem criptografia'
+    );
+  } finally {
+    aberto.proc.kill();
+  }
+});
+
+test('HTTPS nativo: certificado real, TLS 1.2+, HSTS e a chave nunca em claro', async () => {
+  const { spawnSync } = await import('node:child_process');
+  const { mkdtempSync } = await import('node:fs');
+  const { tmpdir } = await import('node:os');
+  const { join } = await import('node:path');
+  const d = mkdtempSync(join(tmpdir(), 'tls-'));
+  const gen = spawnSync('openssl', [
+    'req',
+    '-x509',
+    '-newkey',
+    'rsa:2048',
+    '-nodes',
+    '-keyout',
+    join(d, 'k.pem'),
+    '-out',
+    join(d, 'c.pem'),
+    '-days',
+    '1',
+    '-subj',
+    '/CN=localhost',
+    '-addext',
+    'subjectAltName=DNS:localhost,IP:127.0.0.1',
+  ]);
+  if (gen.status !== 0) return; // sem openssl no ambiente: pula
+  const s = await subir({
+    API_KEY: 'chave-tls-123456789',
+    DEMO: 'true',
+    TLS_CERT_FILE: join(d, 'c.pem'),
+    TLS_KEY_FILE: join(d, 'k.pem'),
+  });
+  try {
+    const { default: https } = await import('node:https');
+    const { readFileSync } = await import('node:fs');
+    const ca = readFileSync(join(d, 'c.pem'));
+    const porta = new URL(s.base).port;
+    const pedir = (path, opts = {}) =>
+      new Promise((ok, erro) => {
+        const rq = https.request(
+          { host: '127.0.0.1', port: porta, path, ca, servername: 'localhost', agent: false, ...opts },
+          r => {
+            const proto = r.socket.getProtocol();
+            let t = '';
+            r.on('data', c => (t += c));
+            r.on('end', () => ok({ status: r.statusCode, headers: r.headers, body: t, proto }));
+          }
+        );
+        rq.on('error', erro);
+        rq.end();
+      });
+    const r = await pedir('/api/state', { headers: { 'x-api-key': 'chave-tls-123456789' } });
+    assert.equal(r.status, 200);
+    assert.match(r.proto, /^TLSv1\.[23]$/);
+    assert.match(r.headers['strict-transport-security'], /max-age=31536000/);
+    // TLS 1.1 ou menor é recusado
+    await assert.rejects(pedir('/api/health', { maxVersion: 'TLSv1.1', minVersion: 'TLSv1' }));
+    // pelo canal sem criptografia nem existe resposta HTTP legível
+    assert.match(s.out.text, /HTTPS nativo/);
+  } finally {
+    s.proc.kill();
+  }
+});

@@ -127,6 +127,10 @@ export const CFG = {
     tlsCert: env.TLS_CERT_FILE || '',
     tlsKey: env.TLS_KEY_FILE || '',
     allowInsecureUpstream: env.ALLOW_INSECURE_UPSTREAM === 'true',
+    // Dados que chegam ao servidor (chave da API, tokens das integrações) só são aceitos por conexão criptografada
+    // (HTTPS) ou da própria máquina. ALLOW_INSECURE_TRANSPORT=true desliga essa exigência (não recomendado).
+    allowInsecureTransport: env.ALLOW_INSECURE_TRANSPORT === 'true',
+    tlsMinVersion: /^TLSv1\.[23]$/.test(env.TLS_MIN_VERSION || '') ? env.TLS_MIN_VERSION : 'TLSv1.2',
     // a chave na URL (?key=) vaza em logs, histórico e Referer; por padrão só o cabeçalho x-api-key vale
     allowUrlKey: env.ALLOW_URL_KEY === 'true',
     trustProxy: env.TRUST_PROXY === 'true',
