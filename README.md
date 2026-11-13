@@ -172,9 +172,13 @@ O **filtro de período** (7, 15, 30 ou 90 dias) fica no topo e vale para as trê
 
 ### 8. Integrações
 - **Azure DevOps**, **GitLab CI**, **Jenkins**, **GitHub Actions**, **Jira** e **Importação de Arquivo (JSON)**.
-- Cada uma tem uma tela de configuração (URL, projeto e token), o status *Conectado* e as opções de sincronizar e desconectar.
+- **Jenkins, GitHub Actions e Jira** têm formulário de configuração próprio, com **validação campo a campo** (URL em `https://`, usuário, e-mail, chave do projeto, lista de jobs/workflows, formato do token), **teste de conexão antes de salvar** e as ações *Testar conexão*, *Sincronizar agora* (Jira) e *Desconectar* no menu ⋮.
+- **O token é só de escrita.** Enquanto você digita, o botão *Mostrar* deixa conferir o que foi colado (e volta a mascarar sozinho ao sair do campo ou após 10 s). Depois de salvo, o token **nunca mais é exibido**: o servidor não o devolve, a tela mostra só `••••••••  salvo no servidor` e a única opção é *Substituir*. O token é enviado ao servidor, testado e gravado **cifrado** (AES-256-GCM) em `server/data/integracoes.json`.
+- Para mudar o endereço de uma integração é preciso informar o token de novo (assim ninguém redireciona o token salvo para outro servidor).
+- A edição pela tela só funciona com `API_KEY`/`API_KEY_HASH` e `SECRETS_KEY_FILE` definidos no servidor. Integrações configuradas no `.env` aparecem como *somente leitura*.
+- Sem servidor conectado (`?api=`), o navegador não recebe credenciais: a tela só explica como conectar. **Azure DevOps** e **GitLab CI** ainda não têm conector.
 
-> As telas de integração do front-end guardam só o estado da interface. **A conexão real com Jenkins, GitHub Actions e Jira é feita pelo [servidor](#servidor-de-tempo-real)**, que mantém os tokens fora do navegador. No modo conectado (`?api=`), os cartões dessas três integrações aparecem como *Conectado* quando o servidor as tem configuradas. Azure DevOps e GitLab CI ainda são só cartões de interface, sem conexão no servidor.
+> **A conexão real com Jenkins, GitHub Actions e Jira é feita pelo [servidor](#servidor-de-tempo-real)**, que mantém os tokens fora do navegador.
 
 ### 9. Configurações
 - **Recursos de IA (Agente de QA):** interruptor em *Geral*, desligado por padrão. Mostra ou oculta tudo o que é de IA.
@@ -320,7 +324,7 @@ Dois documentos mostram **como a plataforma funciona por dentro**. Abra direto n
 
 | Documento | Responde | Abrir |
 |---|---|---|
-| **Mapa de funcionalidades** | *Qual é a regra?* Funcionalidades separadas por categoria, um diagrama da lógica de cada uma e **120 regras de negócio numeradas** (RN-DASH-01, RN-ANA-06…), com catálogo e filtro. | [`docs/mapa/mapa-funcionalidades.html`](docs/mapa/mapa-funcionalidades.html) |
+| **Mapa de funcionalidades** | *Qual é a regra?* Funcionalidades separadas por categoria, um diagrama da lógica de cada uma e **125 regras de negócio numeradas** (RN-DASH-01, RN-ANA-06…), com catálogo e filtro. | [`docs/mapa/mapa-funcionalidades.html`](docs/mapa/mapa-funcionalidades.html) |
 | **Canvas de ligações** | *De onde vem esse número?* Canvas de nós ligando fontes → servidor → dados → funções de cálculo → métricas → telas, com **fórmula, regras e código real** de cada função. | [`docs/mapa/canvas-ligacoes.html`](docs/mapa/canvas-ligacoes.html) |
 
 | Mapa de funcionalidades | Canvas de ligações |
@@ -796,7 +800,7 @@ npm run segredos -- verificar .env                        # confere se tudo abre
 - Limites: até 200 conexões SSE (`MAX_SSE_CLIENTS`), cabeçalhos de 16 KB, corpo de 1 MB, timeouts de cabeçalho (15 s) e de requisição (30 s).
 - **Executar e Parar só funcionam para jobs listados** em `JENKINS_JOBS` (ou workflows de `GITHUB_WORKFLOWS`); qualquer outro recebe 403.
 - Defina `API_KEY`/`API_KEY_HASH` e `CORS_ORIGIN` em produção. Sem chave e com `CORS_ORIGIN=*`, qualquer página pode disparar e parar builds (o servidor avisa no log).
-- A tela de Integrações **não pede senha nem token**: credenciais existem só no servidor.
+- A tela de Integrações aceita o token **uma vez**, só de escrita: ele vai ao servidor por HTTPS, é testado e cifrado, e nunca mais volta ao navegador (veja [Integrações](#8-integrações)).
 - Use um usuário técnico no Jenkins, no Jira e no GitHub, com as **permissões mínimas**.
 
 ### Antes de fazer commit
@@ -811,7 +815,7 @@ npm run segredos -- verificar .env                        # confere se tudo abre
 - Pipelines, cenários, integrações e configurações criados na interface ficam no **`localStorage` do navegador**. Eles não são compartilhados entre pessoas ou máquinas. *Configurações → Dados → Restaurar dados de exemplo* limpa tudo.
 - No modo conectado, a plataforma usa **só dados reais**: os de exemplo saem e as execuções finalizadas são gravadas pelo servidor em `server/data/historico.json` (permissão 600, escrita atômica, `HISTORY_FILE` e `HISTORY_MAX` — padrão 5.000 — ajustam; `HISTORY_FILE=off` desliga). Ao abrir a tela, ela reconstrói o histórico por `GET /api/history`. Os cenários vêm do **Jira**. O arquivo basta para uma equipe; um banco de dados continua no roadmap para volumes maiores ou vários servidores.
 - O **agente de IA** responde por regras. As **Configurações → IA e Prompts** já guardam provedor, modelo, prompt e temperatura para a integração real.
-- As telas de **Integrações** do front-end são visuais. A conexão de fato é feita pelo servidor.
+- Integrações salvas pela tela ficam no servidor (`server/data/integracoes.json`, tokens cifrados), não no navegador.
 
 ### Formato do Importar JSON
 

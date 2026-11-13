@@ -37,6 +37,8 @@ server/server.js              entrada: rotas /api, SSE, TLS
 server/config.js · http.js · eventos.js · web.js    configuração, HTTP com retentativa, SSE, autenticação
 server/jenkins.js · github.js · jira.js · demo.js   uma fonte por arquivo
 server/historico.js           histórico de execuções em arquivo (server/data, fora do git)
+server/integracoes.js         cofre das integrações salvas pela tela: valida, testa, cifra o token (só de escrita)
+assets/js/62-integracoes-form.js   formulários de integração e token só de escrita
 server/test/*.test.js         testes com Jenkins, GitHub e Jira falsos
 server/cripto.js              AES-256-GCM + scrypt (segredos cifrados, hash da chave da API)
 server/segredos.js            CLI: gerar-chave, cifrar, hash-chave, verificar

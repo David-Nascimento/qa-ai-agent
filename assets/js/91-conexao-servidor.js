@@ -102,17 +102,8 @@ if (API) {
       liveRefresh(true, true);
     })
     .catch(() => {});
-  // marca como "Conectado" as integrações que o servidor tem configuradas (só na tela, não grava)
-  fetch(API + '/api/health', { headers: API_KEY ? { 'x-api-key': API_KEY } : {} })
-    .then(x => x.json())
-    .then(h => {
-      const on = { jenkins: h.jenkins, github: h.github, jira: h.jira };
-      INTS.forEach(i => {
-        if (i.k in on) i.on = !!on[i.k];
-      });
-      renderInts();
-    })
-    .catch(() => {});
+  // status das integrações (conectada? origem? token salvo?) vem do servidor; o token nunca vem
+  loadIntegrations();
   const authHeaders = API_KEY ? { 'x-api-key': API_KEY } : {};
   const bindEvents = es => {
     const on = (t, f) =>
@@ -332,27 +323,7 @@ document.addEventListener('click', e => {
     ]);
   }
   const im = e.target.closest('[data-intmenu]');
-  if (im) {
-    const it = INTS.find(x => x.k === im.dataset.intmenu);
-    openMenu(im, [
-      { t: it.on ? 'Editar configuração' : 'Configurar', f: () => configInt(it) },
-      ...(it.on
-        ? [
-            { t: 'Sincronizar agora', f: () => toast(`${it.name}: sincronização simulada concluída`) },
-            {
-              t: 'Desconectar',
-              danger: true,
-              f: () => {
-                it.on = false;
-                store.set('ints', INTS);
-                renderInts();
-                toast(`${it.name} desconectado`);
-              },
-            },
-          ]
-        : []),
-    ]);
-  }
+  if (im) openMenu(im, intMenuItems(INTS.find(x => x.k === im.dataset.intmenu)));
   const ci = e.target.closest('[data-int]');
   if (ci) configInt(INTS.find(x => x.k === ci.dataset.int));
   const op = e.target.closest('[data-open]');
@@ -403,17 +374,3 @@ document.addEventListener('click', e => {
       }
     );
 });
-function configInt(it) {
-  if (it.k === 'json') {
-    go('execucoes');
-    setTimeout(() => $('#importJson').click(), 50);
-    return;
-  }
-  modal(
-    `Configurar ${it.name}`,
-    `<p style="margin:0 0 10px"><b>Credenciais não são digitadas aqui.</b> Senhas e tokens ficam só no servidor, no arquivo <code>.env</code>, e de preferência <b>cifrados</b> (AES-256-GCM) com <code>npm run segredos -- cifrar</code>. O navegador nunca recebe nem guarda esses valores.</p>
-   <p style="margin:0;color:var(--muted)">Veja o passo a passo em <i>README › Segurança</i>. O status de conexão desta integração é lido do servidor.</p>`,
-    () => {},
-    { ok: 'Entendi', hideCancel: true }
-  );
-}

@@ -41,6 +41,8 @@ try {
   fatal(e.message);
 }
 delete process.env.SECRETS_KEY;
+// A chave-mestra fica só na memória: serve para decifrar o .env e para cifrar as integrações salvas pela tela
+export const getMaster = () => MASTER;
 export const SECRET_NAMES = ['JENKINS_TOKEN', 'GITHUB_TOKEN', 'JIRA_TOKEN', 'API_KEY'];
 export const sec = name => {
   const v = (env[name] || '').trim();
@@ -134,6 +136,12 @@ export const CFG = {
     maxClients: num(env.MAX_SSE_CLIENTS, 200, 1),
   },
   // Histórico de execuções em arquivo (HISTORY_FILE=off desliga; ignorado no modo DEMO)
+  // Integrações salvas pela tela (tokens cifrados com a chave-mestra); INTEGRATIONS_FILE=off desliga
+  integrations: {
+    file: /^(off|false|0)$/i.test(env.INTEGRATIONS_FILE || '')
+      ? ''
+      : env.INTEGRATIONS_FILE || fileURLToPath(new URL('./data/integracoes.json', import.meta.url)),
+  },
   history: {
     file: /^(off|false|0)$/i.test(env.HISTORY_FILE || '')
       ? ''

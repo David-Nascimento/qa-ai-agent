@@ -799,7 +799,7 @@
    "status": "Implementado",
    "status_tipo": "real",
    "descricao": "Preferências da plataforma e onde cada dado fica guardado.",
-   "codigo": "`70-configuracoes.js` · `60-integracoes.js` · `server/.env`",
+   "codigo": "`70-configuracoes.js` · `60-integracoes.js` · `server/.env` · `62-integracoes-form.js` · `server/integracoes.js`",
    "diagrama": "flowchart LR\n  subgraph NAV2[\"Navegador · localStorage\"]\n    C1[\"Configurações<br/>meta · IA · consulta Jira\"]\n    C2[\"Componentes e cenários<br/>criados na tela\"]\n    C3[\"Estado das integrações\"]\n  end\n  subgraph SRV2[\"Servidor · .env\"]\n    E1[\"Tokens do Jenkins e do Jira\"]\n    E2[\"Jobs · intervalos · regex\"]\n    E3[\"Chave da API · CORS\"]\n  end\n  C1 --> T[\"Telas\"]\n  C2 --> T\n  E1 --> API2[\"Rotas /api e SSE\"] --> T",
    "funcionalidades": [
     [
@@ -839,6 +839,26 @@
     [
      "RN-CFG-06",
      "As telas de Integrações guardam só o estado visual; configurar ali não conecta o serviço."
+    ],
+    [
+     "RN-CFG-07",
+     "Jenkins, GitHub Actions e Jira são configurados por formulário com validação por campo: URL `https://` (ou localhost) sem usuário/senha/parâmetros, usuário, e-mail, chave do projeto (2 a 10 maiúsculas/números), jobs e workflows no formato correto e token (GitHub: `ghp_…`, `github_pat_…` ou 40 hexadecimais). O servidor repete todas as validações."
+    ],
+    [
+     "RN-CFG-08",
+     "Salvar testa a conexão antes: credencial recusada, job/workflow/projeto inexistente ou rede indisponível mostram o erro no campo certo e nada é gravado."
+    ],
+    [
+     "RN-CFG-09",
+     "O token é só de escrita: pode ser visto apenas enquanto é digitado (volta a mascarar ao sair do campo ou em 10 s) e, depois de salvo, nunca mais é exibido nem devolvido pelo servidor; só dá para substituí-lo."
+    ],
+    [
+     "RN-CFG-10",
+     "O token salvo pela tela fica cifrado (AES-256-GCM, amarrado ao nome da integração) em `server/data/integracoes.json` (permissão 600). Mudar o endereço exige informar o token de novo."
+    ],
+    [
+     "RN-CFG-11",
+     "Só edita pela tela com chave da API e chave-mestra no servidor; integração vinda do `.env` é somente leitura; a edição liga ou atualiza o acompanhamento sem reiniciar."
     ]
    ]
   },

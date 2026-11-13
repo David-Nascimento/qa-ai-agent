@@ -140,3 +140,132 @@ test(
     }
   }
 );
+
+test(
+  'integrações: validação por campo e token só de escrita (visível só ao digitar, nunca depois de salvo)',
+  { skip: !chromium && 'playwright não instalado' },
+  async t => {
+    let browser;
+    try {
+      browser = await chromium.launch();
+    } catch {
+      return t.skip('navegador do playwright indisponível');
+    }
+    const TOKEN = 'tok-' + 'front-secreto-98765432';
+    const jenkins = http.createServer((req, res) => {
+      const ok = req.headers.authorization === 'Basic ' + Buffer.from(`qa:${TOKEN}`).toString('base64');
+      res.writeHead(ok ? 200 : 401, { 'content-type': 'application/json' }).end('{}');
+    });
+    await new Promise(r => jenkins.listen(0, '127.0.0.1', r));
+    const dir = mkdtempSync(join(tmpdir(), 'e2e-int-'));
+    const estatico = http.createServer((req, res) => {
+      const f = join(RAIZ, normalize(new URL(req.url, 'http://x').pathname).replace(/^(\.\.[/\\])+/, ''));
+      try {
+        res.writeHead(200, { 'Content-Type': TIPOS[extname(f)] || 'application/octet-stream' });
+        res.end(readFileSync(f));
+      } catch {
+        res.writeHead(404);
+        res.end();
+      }
+    });
+    await new Promise(r => estatico.listen(0, r));
+    const porta = 4500 + Math.floor(Math.random() * 200);
+    const srv = spawn(process.execPath, [join(RAIZ, 'server/server.js')], {
+      env: {
+        ...process.env,
+        PORT: String(porta),
+        API_KEY: 'k-e2e-integ',
+        SECRETS_KEY: 'chave-mestra-e2e-1234567890',
+        INTEGRATIONS_FILE: join(dir, 'i.json'),
+        HISTORY_FILE: 'off',
+        JIRA_SYNC_MS: '0',
+        JENKINS_URL: '',
+        JENKINS_TOKEN: '',
+        GITHUB_TOKEN: '',
+        JIRA_URL: '',
+        HTTPS_PROXY: '',
+        HTTP_PROXY: '',
+      },
+      stdio: 'ignore',
+    });
+    try {
+      await new Promise(r => setTimeout(r, 1200));
+      const p = await browser.newPage({ viewport: { width: 1360, height: 900 } });
+      const erros = [];
+      p.on('pageerror', e => erros.push(e.message));
+      p.on('console', m => {
+        if (m.type() === 'error' && !/Failed to load resource/.test(m.text())) erros.push(m.text());
+      });
+      let puts = 0;
+      p.on('request', r => {
+        if (r.method() === 'PUT') puts++;
+      });
+      await p.goto(
+        `http://127.0.0.1:${estatico.address().port}/index.html?api=http://127.0.0.1:${porta}&key=k-e2e-integ#integracoes`
+      );
+      await p.waitForTimeout(1200);
+      await p.click('[data-int="jenkins"]');
+      await p.waitForSelector('#igToken');
+
+      // token: mascarado, "Mostrar" só habilita ao digitar, volta a mascarar ao sair do campo
+      assert.equal(await p.getAttribute('#igToken', 'type'), 'password');
+      assert.equal(await p.isDisabled('#igShow'), true);
+      await p.fill('#igToken', TOKEN);
+      assert.equal(await p.isDisabled('#igShow'), false);
+      await p.click('#igShow');
+      assert.equal(await p.getAttribute('#igToken', 'type'), 'text');
+      await p.focus('#igUrl');
+      assert.equal(await p.getAttribute('#igToken', 'type'), 'password', 'sair do campo mascara de novo');
+
+      // validações: nada é enviado enquanto houver erro
+      await p.fill('#igUrl', 'http://jenkins.exemplo.com');
+      await p.fill('#igUser', 'qa user!');
+      await p.fill('#igJobs', '../x');
+      await p.click('#mForm .btn-pri');
+      for (const c of ['Url', 'User', 'Jobs'])
+        assert.ok((await p.textContent(`#ig${c}Err`)).length > 5, `erro em ${c}`);
+      assert.equal(await p.getAttribute('#igUrl', 'aria-invalid'), 'true');
+      assert.equal(puts, 0);
+
+      // credencial errada não fecha nem salva; a certa testa, salva e fecha
+      await p.fill('#igUrl', `http://127.0.0.1:${jenkins.address().port}`);
+      await p.fill('#igUser', 'qa');
+      await p.fill('#igJobs', 'Loja/e2e');
+      await p.fill('#igToken', 'token-errado-1234');
+      await p.click('#mForm .btn-pri');
+      await p.waitForFunction(() => document.querySelector('#igTokenErr')?.textContent.length > 5);
+      assert.equal(await p.isHidden('#modal'), false, 'credencial recusada: não fecha');
+      await p.fill('#igToken', TOKEN);
+      await p.click('#mForm .btn-pri');
+      await p.waitForSelector('#modal', { state: 'hidden' });
+      await p.waitForFunction(() => /Token salvo cifrado/.test(document.querySelector('#ints').textContent));
+
+      // depois de salvo: o token não existe mais na tela, no armazenamento nem em campo algum
+      await p.click('[data-intmenu="jenkins"]');
+      await p.click('#menu button:has-text("Editar")');
+      await p.waitForSelector('#igReplace');
+      assert.equal(await p.locator('#igShow').count(), 0, 'sem botão Mostrar para token salvo');
+      assert.equal(await p.locator('input[type=password], input[name=token]').count(), 0, 'sem campo com o token');
+      const vazou = await p.evaluate(
+        t =>
+          [
+            document.documentElement.outerHTML,
+            JSON.stringify(localStorage),
+            JSON.stringify(sessionStorage),
+            [...document.querySelectorAll('input,textarea')].map(i => i.value).join('|'),
+          ].some(x => x.includes(t)),
+        TOKEN
+      );
+      assert.equal(vazou, false);
+      // trocar o token mostra um campo novo, vazio
+      await p.click('#igReplace');
+      assert.equal(await p.inputValue('#igToken'), '');
+      assert.deepEqual(erros, []);
+    } finally {
+      await browser.close();
+      srv.kill();
+      estatico.close();
+      jenkins.close();
+    }
+  }
+);
