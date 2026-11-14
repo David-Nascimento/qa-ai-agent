@@ -45,6 +45,31 @@ export const sameKey = (a, b) => {
     y = Buffer.from(b);
   return x.length === y.length && timingSafeEqual(x, y);
 };
+// A requisição chegou por canal criptografado?
+//  - direto: HTTPS nativo (TLS_CERT_FILE/TLS_KEY_FILE) ou a própria máquina (loopback)
+//  - por proxy (X-Forwarded-*): só vale se TRUST_PROXY=true e o proxy disser que o cliente usou https
+// Um proxy na mesma máquina não torna o cliente "local": os cabeçalhos do proxy são checados primeiro.
+const isLoopbackAddr = a => /^(127\.|::1$|::ffff:127\.)/.test(String(a || ''));
+export function secureTransport(req) {
+  if (CFG.security.allowInsecureTransport) return true;
+  const h = req.headers;
+  if (h['x-forwarded-for'] || h['x-forwarded-proto'] || h.forwarded) {
+    if (!CFG.security.trustProxy) return false;
+    return (
+      String(h['x-forwarded-proto'] || '')
+        .split(',')
+        .pop()
+        .trim()
+        .toLowerCase() === 'https'
+    );
+  }
+  return !!req.socket.encrypted || isLoopbackAddr(req.socket.remoteAddress);
+}
+export const insecure = res =>
+  send(res, 403, {
+    error: 'Conexão não criptografada. Acesse o servidor por HTTPS para enviar a chave da API e os tokens.',
+    code: 'tls_required',
+  });
 export const authRequired = () => !!(CFG.apiKey || CFG.apiKeyHash);
 // Chave apresentada: sempre o cabeçalho; "?key=" só com ALLOW_URL_KEY=true (compatibilidade), pois a URL vai para logs e histórico
 export const presentedKey = (req, url) =>

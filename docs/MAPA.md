@@ -2,10 +2,10 @@
 
 Dois documentos explicam **como a plataforma funciona por dentro**. Ambos são HTML puro: abra direto no navegador ou pelo GitHub Pages.
 
-| Documento | Para que serve | Arquivo |
-|---|---|---|
-| **Mapa de funcionalidades** | Visão por **categoria**: o que cada parte faz, o diagrama da lógica e as **regras de negócio numeradas** (RN-…). Tem um catálogo único com todas as regras e filtro. | [`docs/mapa/mapa-funcionalidades.html`](mapa/mapa-funcionalidades.html) |
-| **Canvas de ligações** | Visão de **fluxo**: como os dados saem do Jenkins, do GitHub Actions e do Jira, passam pelo servidor, viram dados no portal, são calculados e chegam a cada métrica e tela. Cada nó mostra a **fórmula**, as **regras** e o **código real** da função. | [`docs/mapa/canvas-ligacoes.html`](mapa/canvas-ligacoes.html) |
+| Documento                   | Para que serve                                                                                                                                                                                                                                         | Arquivo                                                                 |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------- |
+| **Mapa de funcionalidades** | Visão por **categoria**: o que cada parte faz, o diagrama da lógica e as **regras de negócio numeradas** (RN-…). Tem um catálogo único com todas as regras e filtro.                                                                                   | [`docs/mapa/mapa-funcionalidades.html`](mapa/mapa-funcionalidades.html) |
+| **Canvas de ligações**      | Visão de **fluxo**: como os dados saem do Jenkins, do GitHub Actions e do Jira, passam pelo servidor, viram dados no portal, são calculados e chegam a cada métrica e tela. Cada nó mostra a **fórmula**, as **regras** e o **código real** da função. | [`docs/mapa/canvas-ligacoes.html`](mapa/canvas-ligacoes.html)           |
 
 Os dois se completam: o Mapa responde **"qual é a regra?"** e o Canvas responde **"de onde vem esse número e qual função o calcula?"**. As regras usam a mesma numeração nos dois, e o Canvas tem um link para o Mapa.
 
@@ -59,12 +59,12 @@ O script lê o projeto inteiro e grava `docs/mapa/mapa-funcionalidades.html` e `
 
 ### De onde vem cada coisa
 
-| Conteúdo | Origem |
-|---|---|
-| Funções, código, comentários acima delas e **quem chama quem** | Automático (lido de `assets/js` e `server/`) |
-| Rotas HTTP, eventos emitidos, variáveis de ambiente, chaves do `localStorage`, dados globais | Automático (seção "Descoberto no código" do Mapa) |
-| Regras escritas em comentários (`// RN-ABC-01 texto`) | Automático |
-| Categorias, regras de negócio, fórmulas das métricas, diagramas e a curadoria do Canvas | [`mapa.config.json`](../mapa.config.json), na raiz do projeto |
+| Conteúdo                                                                                     | Origem                                                        |
+| -------------------------------------------------------------------------------------------- | ------------------------------------------------------------- |
+| Funções, código, comentários acima delas e **quem chama quem**                               | Automático (lido de `assets/js` e `server/`)                  |
+| Rotas HTTP, eventos emitidos, variáveis de ambiente, chaves do `localStorage`, dados globais | Automático (seção "Descoberto no código" do Mapa)             |
+| Regras escritas em comentários (`// RN-ABC-01 texto`)                                        | Automático                                                    |
+| Categorias, regras de negócio, fórmulas das métricas, diagramas e a curadoria do Canvas      | [`mapa.config.json`](../mapa.config.json), na raiz do projeto |
 
 ### Por que um script **e** um arquivo de configuração
 
@@ -76,14 +76,14 @@ Havia duas formas de reaproveitar a documentação em outro projeto. Só um prom
 
 ### Comandos
 
-| Comando | O que faz |
-|---|---|
-| `python3 docs/mapa/gerar_docs.py` | Gera o Mapa e o Canvas. |
-| `… --so mapa` ou `--so canvas` | Gera só um dos dois. |
-| `… --init` | Cria um `mapa.config.json` inicial a partir do código (não sobrescreve um existente). |
-| `… --prompt` | Imprime o prompt para uma IA completar o config. |
-| `… --estrito` | Transforma avisos em erro (bom para CI). |
-| `… --config ARQ`, `--saida PASTA`, `--max-nos N`, `--ignorar PADRÃO` | Ajustes de caminho e de tamanho. |
+| Comando                                                              | O que faz                                                                             |
+| -------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| `python3 docs/mapa/gerar_docs.py`                                    | Gera o Mapa e o Canvas.                                                               |
+| `… --so mapa` ou `--so canvas`                                       | Gera só um dos dois.                                                                  |
+| `… --init`                                                           | Cria um `mapa.config.json` inicial a partir do código (não sobrescreve um existente). |
+| `… --prompt`                                                         | Imprime o prompt para uma IA completar o config.                                      |
+| `… --estrito`                                                        | Transforma avisos em erro (bom para CI).                                              |
+| `… --config ARQ`, `--saida PASTA`, `--max-nos N`, `--ignorar PADRÃO` | Ajustes de caminho e de tamanho.                                                      |
 
 ### O que ele valida
 
