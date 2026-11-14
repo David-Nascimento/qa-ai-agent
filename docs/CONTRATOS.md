@@ -137,6 +137,10 @@ Diferenças que vêm da API do GitHub:
 | Método | Rota | Uso |
 |---|---|---|
 | GET | `/api/health` | estado do servidor: `jenkins`, `github` e `jira` (configurados ou não), `workflows`, `githubRate` (`limit`, `remaining`, `reset`), `jiraSync` (`at`, `error`) e `slow` (fator de lentidão por limite de `jenkins`, `jira` e `github`, 1 = normal) |
+| GET | `/api/integrations` | estado das integrações `jenkins`, `github` e `jira`: `{ edit: { ok, reason }, items: { k: { configured, source: 'env' \| 'ui' \| null, tokenSet, …campos públicos } } }`. **Nunca contém o token** |
+| PUT | `/api/integrations/{k}` | salva a integração: valida, **testa a conexão**, grava o token cifrado e aplica na hora. Erros: `400` com `errors` por campo, `422` conexão recusada (com `errors`), `409` sem permissão de edição ou integração do `.env`. Sem `token` no corpo, reaproveita o salvo só se o endereço não mudou |
+| POST | `/api/integrations/{k}/test` | testa sem salvar (corpo com os campos do formulário); corpo vazio testa a configuração atual |
+| DELETE | `/api/integrations/{k}` | apaga a integração salva (e o token) |
 | POST | `/api/ticket` | gera um **tíquete de uso único** (`{ ticket, expiresInMs }`, padrão 30 s) para abrir o SSE sem pôr a chave na URL; exige a chave no cabeçalho |
 | GET | `/events` | eventos SSE; autentica com `x-api-key` ou `?ticket=` (o `?key=` só com `ALLOW_URL_KEY=true`) |
 | GET | `/api/history?limit=` | execuções finalizadas gravadas pelo servidor (mais antigas primeiro, até `HISTORY_MAX`). Cada item: `{ start, scenarios[], end }`, com os mesmos campos dos eventos `build_start`, `scenario` e `build_end` |

@@ -63,8 +63,8 @@ INTS = INTS || [
 function renderInts() {
   $('#ints').innerHTML = INTS.map(
     i => `<div class="card int"><div class="logo" style="background:${i.bg}">${svg(i.ic, 26, i.fg, 1.8)}</div>
-   <div class="txt"><b>${i.name}</b><span>${i.desc}</span></div>
-   ${i.on ? '<span class="conn">Conectado</span>' : `<button class="btn-out pri" data-int="${i.k}">Configurar</button>`}
+   <div class="txt"><b>${i.name}</b><span>${i.desc}</span>${i.on && i.src ? `<span class="int-src">${i.src === 'env' ? 'Configurada no .env do servidor' : 'Token salvo cifrado no servidor'} · o token não é exibido</span>` : ''}</div>
+   ${i.on ? `<span class="conn">Conectado</span>` : `<button class="btn-out pri" data-int="${i.k}">Configurar</button>`}
    <button class="kebab" data-intmenu="${i.k}" aria-label="Mais opções de ${i.name}">${KEBAB}</button></div>`
   ).join('');
 }

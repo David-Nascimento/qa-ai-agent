@@ -13,6 +13,7 @@ import { flushHistory, listHistory, loadHistory } from './historico.js';
 import { ghDiscover, ghParse, ghRate, ghReady, ghStop, ghTrigger, isGhJob } from './github.js';
 import { githubThrottle, jenkinsThrottle, jiraThrottle } from './http.js';
 import { active, discover, stopBuild, triggerBuild } from './jenkins.js';
+import { loadIntegrations, rota as integracoesRota, setOnChange } from './integracoes.js';
 import { jcache, jiraReady, jiraScenarios, jiraState, reportBug, startJiraSync, syncJira } from './jira.js';
 import {
   SEC_HEADERS,
@@ -54,7 +55,7 @@ const handler = async (req, res) => {
     res.writeHead(204, {
       'Access-Control-Allow-Origin': CFG.cors,
       'Access-Control-Allow-Headers': 'Content-Type, x-api-key',
-      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+      'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
       'Access-Control-Max-Age': '600',
     });
     return res.end();
@@ -118,6 +119,8 @@ const handler = async (req, res) => {
       });
       return;
     }
+    const im = url.pathname.match(/^\/api\/integrations(?:\/(jenkins|github|jira)(\/test)?)?$/);
+    if (im) return await integracoesRota(req, res, im, ip);
     if (req.method === 'GET' && url.pathname === '/api/history') {
       return send(res, 200, { runs: listHistory(Number(url.searchParams.get('limit')) || 1000) });
     }
@@ -228,7 +231,39 @@ for (const sig of ['SIGTERM', 'SIGINT'])
     setTimeout(() => process.exit(0), 3000).unref();
   });
 
+// Liga cada fonte uma única vez (na partida ou quando a tela salva uma integração nova)
+const loops = {};
+function startSources() {
+  if (!loops.jira && jiraReady()) {
+    loops.jira = true;
+    log(`Jira: ${CFG.jira.url}`);
+    startJiraSync();
+  }
+  if (!loops.jenkins && CFG.jenkins.url && CFG.jenkins.jobs.length) {
+    loops.jenkins = true;
+    log(`Jenkins: ${CFG.jenkins.url} · jobs: ${CFG.jenkins.jobs.join(', ')}`);
+    discover();
+    setInterval(discover, CFG.jenkins.discoverMs);
+  }
+  if (!loops.github && ghReady()) {
+    loops.github = true;
+    log(`GitHub Actions: ${CFG.github.api} · workflows: ${CFG.github.workflows.join(', ')}`);
+    ghDiscover();
+    setInterval(ghDiscover, CFG.github.discoverMs);
+  }
+}
+// Salvou ou removeu pela tela: liga a fonte se for nova; se já rodava, atualiza na hora
+function onIntegrationChange(k) {
+  const jaRodava = loops[k];
+  startSources();
+  if (!jaRodava) return;
+  if (k === 'jenkins') discover();
+  if (k === 'github') ghDiscover();
+  if (k === 'jira') syncJira({ full: true });
+}
+
 loadHistory();
+loadIntegrations();
 server.listen(CFG.port, () => {
   log(`QA AI Agent — servidor em ${TLS_ON ? 'https' : 'http'}://localhost:${CFG.port}`);
   if (!TLS_ON && authRequired())
@@ -241,23 +276,10 @@ server.listen(CFG.port, () => {
     seedDemoJira();
     return startDemo();
   }
-  startJiraSync();
-  const jenkinsOn = CFG.jenkins.url && CFG.jenkins.jobs.length;
-  if (!jenkinsOn && !ghReady()) {
+  setOnChange(onIntegrationChange);
+  startSources();
+  if (!loops.jenkins && !loops.github)
     log(
-      'Nenhuma fonte configurada (JENKINS_URL/JENKINS_JOBS ou GITHUB_TOKEN/GITHUB_WORKFLOWS). Use DEMO=true para testar.'
+      'Nenhuma fonte configurada (JENKINS_URL/JENKINS_JOBS ou GITHUB_TOKEN/GITHUB_WORKFLOWS, ou Integrações na tela). Use DEMO=true para testar.'
     );
-    return;
-  }
-  log(`Jira: ${jiraReady() ? CFG.jira.url : 'desligado'}`);
-  if (jenkinsOn) {
-    log(`Jenkins: ${CFG.jenkins.url} · jobs: ${CFG.jenkins.jobs.join(', ')}`);
-    discover();
-    setInterval(discover, CFG.jenkins.discoverMs);
-  }
-  if (ghReady()) {
-    log(`GitHub Actions: ${CFG.github.api} · workflows: ${CFG.github.workflows.join(', ')}`);
-    ghDiscover();
-    setInterval(ghDiscover, CFG.github.discoverMs);
-  }
 });
