@@ -273,3 +273,77 @@ test(
     }
   }
 );
+
+test(
+  'meus cards: quadro por status, atrasado em destaque, sem erro e sem rolagem lateral no celular',
+  { skip: !chromium && 'playwright não instalado' },
+  async t => {
+    let browser;
+    try {
+      browser = await chromium.launch();
+    } catch {
+      return t.skip('navegador do playwright indisponível');
+    }
+    const estatico = http.createServer((req, res) => {
+      try {
+        const rel =
+          normalize(decodeURIComponent(new URL(req.url, 'http://x').pathname)).replace(/^([/\\])+/, '') || 'index.html';
+        const f = join(RAIZ, rel);
+        if (!f.startsWith(RAIZ)) throw new Error('fora da raiz');
+        res.writeHead(200, { 'Content-Type': TIPOS[extname(f)] || 'application/octet-stream' });
+        res.end(readFileSync(f));
+      } catch {
+        res.writeHead(404);
+        res.end();
+      }
+    });
+    await new Promise(r => estatico.listen(0, r));
+    const porta = 4800 + Math.floor(Math.random() * 300);
+    const srv = spawn(process.execPath, [join(RAIZ, 'server/server.js')], {
+      env: {
+        ...process.env,
+        PORT: String(porta),
+        DEMO: 'true',
+        HISTORY_FILE: 'off',
+        AUDIT_FILE: 'off',
+        API_KEY: '',
+        API_KEY_HASH: '',
+        JIRA_SYNC_MS: '0',
+        JENKINS_URL: '',
+        GITHUB_TOKEN: '',
+        HTTPS_PROXY: '',
+        HTTP_PROXY: '',
+      },
+      stdio: 'ignore',
+    });
+    try {
+      await new Promise(r => setTimeout(r, 1200));
+      const p = await browser.newPage({ viewport: { width: 1360, height: 860 } });
+      const erros = [];
+      p.on('pageerror', e => erros.push(e.message));
+      p.on('console', m => m.type() === 'error' && !/Failed to load resource/.test(m.text()) && erros.push(m.text()));
+      await p.goto(`http://127.0.0.1:${estatico.address().port}/index.html?api=http://127.0.0.1:${porta}#meus`);
+      await p.waitForSelector('.mc');
+      const colunas = await p
+        .locator('.mine-col')
+        .evaluateAll(cs => cs.map(c => [c.getAttribute('aria-label'), c.querySelectorAll('.mc').length]));
+      assert.deepEqual(colunas, [
+        ['A fazer', 3],
+        ['Em andamento', 2],
+        ['Concluídos', 2],
+      ]);
+      assert.equal(await p.locator('.mc-due.late').count(), 1, 'um card atrasado, em destaque');
+      assert.match(await p.locator('#nav button.active').innerText(), /Meus cards/);
+      await p.setViewportSize({ width: 400, height: 800 });
+      assert.ok(
+        await p.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
+        'sem rolagem horizontal no celular'
+      );
+      assert.deepEqual(erros, [], 'sem erro de JavaScript nem de CSP');
+    } finally {
+      srv.kill();
+      estatico.close();
+      await browser.close();
+    }
+  }
+);

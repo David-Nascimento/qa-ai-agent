@@ -97,6 +97,9 @@ export const CFG = {
     labels: list(env.JIRA_LABELS || 'qa-ai-agent'),
     scenarioJql: env.JIRA_SCENARIOS_JQL || 'project = QA AND issuetype = Test ORDER BY key',
     pipelineField: env.JIRA_PIPELINE_FIELD || 'components',
+    // "Meus cards": cache da consulta (o botão da tela não esgota o limite do Jira) e janela dos já concluídos
+    mineTtlMs: num(env.JIRA_MINE_TTL_MS, 60000, 5000),
+    mineDoneDays: num(env.JIRA_MINE_DONE_DAYS, 7, 0),
     // basic = usuário/e-mail + token · bearer = token pessoal (PAT) do Jira Data Center
     auth: env.JIRA_AUTH === 'bearer' ? 'bearer' : 'basic',
   },

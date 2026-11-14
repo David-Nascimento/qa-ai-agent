@@ -359,6 +359,55 @@
    ]
   },
   {
+   "id": "meus-cards",
+   "titulo": "Meus cards (Jira)",
+   "status": "Implementado",
+   "status_tipo": "real",
+   "descricao": "Área para acompanhar os cards do Jira atribuídos a quem gerou o token: o que está aberto e o que foi concluído há pouco, em colunas por status.",
+   "codigo": "`41-meus-cards.js` (`renderMeus`, `loadMine`, `openMeus`) · `server/jira.js` (`jiraMine`, `mineJql`) · rota `GET /api/jira/mine`",
+   "diagrama": "flowchart LR\n  A[\"Abrir Meus cards<br/>ou Atualizar\"] --> B{\"Cache do servidor<br/>com menos de 1 min?\"}\n  B -- \"sim\" --> E[\"Quadro por status\"]\n  B -- \"não\" --> C[\"Servidor consulta o Jira<br/>assignee = currentUser()\"]\n  C --> D[\"Abertos + concluídos<br/>nos últimos 7 dias\"]\n  D --> E",
+   "funcionalidades": [
+    [
+     "Resumo",
+     "Abertos, em andamento, atrasados e concluídos na janela."
+    ],
+    [
+     "Quadro",
+     "Três colunas pela categoria do status no Jira: A fazer, Em andamento e Concluídos."
+    ],
+    [
+     "Cartão",
+     "Chave com link para o Jira, tipo, resumo, prioridade, status, data de entrega (atrasado em vermelho) e quando foi atualizado."
+    ],
+    [
+     "Atualizar",
+     "Botão que força nova leitura do Jira, no máximo 1 a cada 5 segundos."
+    ]
+   ],
+   "regras": [
+    [
+     "RN-MEU-01",
+     "Os cards são os atribuídos a quem gerou o token do Jira no servidor (`assignee = currentUser()`), sempre dentro do `JIRA_PROJECT`."
+    ],
+    [
+     "RN-MEU-02",
+     "Entram os cards abertos e os resolvidos nos últimos `JIRA_MINE_DONE_DAYS` dias (padrão 7)."
+    ],
+    [
+     "RN-MEU-03",
+     "O servidor guarda a resposta por `JIRA_MINE_TTL_MS` (padrão 60 s) e limita a leitura forçada a 1 a cada 5 s, para não esgotar o limite do Jira."
+    ],
+    [
+     "RN-MEU-04",
+     "Card é “atrasado” quando tem data de entrega anterior a hoje e ainda não foi concluído."
+    ],
+    [
+     "RN-MEU-05",
+     "Só leitura: a área não altera nenhum card. Só links http(s) viram links na tela."
+    ]
+   ]
+  },
+  {
    "id": "analises",
    "titulo": "Análises",
    "status": "Implementado",

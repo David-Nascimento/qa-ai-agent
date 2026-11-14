@@ -15,6 +15,7 @@
 <link rel="stylesheet" href="assets/css/20-dashboard.css">
 <link rel="stylesheet" href="assets/css/30-tabelas.css">
 <link rel="stylesheet" href="assets/css/40-detalhe.css">
+<link rel="stylesheet" href="assets/css/45-meus-cards.css">
 <link rel="stylesheet" href="assets/css/50-integracoes-config.css">
 <link rel="stylesheet" href="assets/css/60-analises.css">
 <link rel="stylesheet" href="assets/css/70-agente.css">
@@ -130,6 +131,15 @@
       </div>
     </section>
 
+    <!-- 5b. MEUS CARDS -->
+    <section class="view" id="v-meus" hidden>
+      <header class="ph"><div><h1>Meus cards</h1><p>Cards do Jira atribuídos a você: o que está aberto e o que você concluiu há pouco.</p></div>
+        <button class="btn-pri" type="button" id="mineRefresh"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M20 11a8 8 0 0 0-14.3-4.9L4 8M4 4v4h4M4 13a8 8 0 0 0 14.3 4.9L20 16m0 4v-4h-4"/></svg> Atualizar</button></header>
+      <div class="jsrc" id="mineNote" role="status"></div>
+      <div class="mine-sum" id="mineSum"></div>
+      <div class="mine-board" id="mineBoard"></div>
+    </section>
+
     <!-- 6. ANÁLISES -->
     <section class="view" id="v-analises" hidden>
       <header class="ph" style="margin-bottom:8px"><div><h1>Análises</h1><p>Indicadores e tendências de qualidade dos testes.</p></div>
@@ -199,6 +209,7 @@
 <script src="assets/js/30-execucoes.js"></script>
 <script src="assets/js/31-detalhe.js"></script>
 <script src="assets/js/40-cenarios.js"></script>
+<script src="assets/js/41-meus-cards.js"></script>
 <script src="assets/js/50-analises.js"></script>
 <script src="assets/js/51-analises-tempo.js"></script>
 <script src="assets/js/60-integracoes.js"></script>
