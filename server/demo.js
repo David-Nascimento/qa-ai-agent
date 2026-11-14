@@ -11,6 +11,35 @@ export const DEMO_SCENARIOS = [
   ['QA-130', 'CT-030 Login no app', 'App do Cliente'],
 ].map(([key, name, pipeline], i) => ({ key, name, status: 'Pronto', pipeline, caseKey: `QA-T${i + 1}`, url: '' }));
 
+// "Meus cards" de exemplo (modo demonstração): datas relativas a agora, para a tela parecer viva
+const dia = n => new Date(Date.now() + n * 86400000).toISOString();
+export const demoMine = () => ({
+  me: 'Você',
+  demo: true,
+  days: 7,
+  at: Date.now(),
+  cards: [
+    ['QA-142', 'Automatizar fluxo de checkout com cupom', 'Em andamento', 'indeterminate', 'High', 'Task', -1, 2],
+    ['QA-151', 'Investigar falha intermitente no pagamento', 'Em andamento', 'indeterminate', 'Highest', 'Bug', 0, -1],
+    ['QA-155', 'Revisar cenários de cadastro', 'A fazer', 'new', 'Medium', 'Task', -3, 5],
+    ['QA-158', 'Criar ciclo de regressão da release 3.9', 'A fazer', 'new', 'Medium', 'Story', -2, 9],
+    ['QA-160', 'Atualizar massa de dados do ambiente de homologação', 'A fazer', 'new', 'Low', 'Task', -6, null],
+    ['QA-131', 'Corrigir timeout no teste de login', 'Concluído', 'done', 'High', 'Bug', -2, null],
+    ['QA-127', 'Documentar execução local dos testes', 'Concluído', 'done', 'Low', 'Task', -5, null],
+  ].map(([key, summary, status, category, priority, type, upd, due]) => ({
+    key,
+    summary,
+    status,
+    category,
+    priority,
+    type,
+    updated: dia(upd),
+    due: due == null ? '' : dia(due).slice(0, 10),
+    resolved: category === 'done' ? dia(upd) : '',
+    url: '',
+  })),
+});
+
 // Dados de exemplo para o modo demonstração (sem Jira)
 export function seedDemoJira() {
   for (const s of DEMO_SCENARIOS) jcache.scenarios.set(s.key, s);

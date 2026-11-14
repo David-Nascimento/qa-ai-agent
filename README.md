@@ -275,6 +275,7 @@ qa-ai-agent/
 │       ├── 30-execucoes.js      Execuções › Histórico
 │       ├── 31-detalhe.js        Detalhe da execução
 │       ├── 40-cenarios.js       Cenários (Jira)
+│       ├── 41-meus-cards.js     Meus cards (Jira): cards atribuídos a você
 │       ├── 50-analises.js       Análises › Qualidade e Estabilidade
 │       ├── 51-analises-tempo.js Análises › Tempo de execução
 │       ├── 60-integracoes.js    Integrações
@@ -324,7 +325,7 @@ Dois documentos mostram **como a plataforma funciona por dentro**. Abra direto n
 
 | Documento | Responde | Abrir |
 |---|---|---|
-| **Mapa de funcionalidades** | *Qual é a regra?* Funcionalidades separadas por categoria, um diagrama da lógica de cada uma e **130 regras de negócio numeradas** (RN-DASH-01, RN-ANA-06…), com catálogo e filtro. | [`docs/mapa/mapa-funcionalidades.html`](docs/mapa/mapa-funcionalidades.html) |
+| **Mapa de funcionalidades** | *Qual é a regra?* Funcionalidades separadas por categoria, um diagrama da lógica de cada uma e **135 regras de negócio numeradas** (RN-DASH-01, RN-ANA-06…), com catálogo e filtro. | [`docs/mapa/mapa-funcionalidades.html`](docs/mapa/mapa-funcionalidades.html) |
 | **Canvas de ligações** | *De onde vem esse número?* Canvas de nós ligando fontes → servidor → dados → funções de cálculo → métricas → telas, com **fórmula, regras e código real** de cada função. | [`docs/mapa/canvas-ligacoes.html`](docs/mapa/canvas-ligacoes.html) |
 
 | Mapa de funcionalidades | Canvas de ligações |
@@ -507,6 +508,7 @@ O fator de lentidão aparece em `GET /api/health` (`slow`; `1` = normal).
 | `JIRA_AUTO_BUG` | `false` | Abre ou comenta um bug para cada cenário que falhar |
 | `JIRA_ISSUE_TYPE` | `Bug` | Tipo de issue criado |
 | `JIRA_LABELS` | `qa-ai-agent` | Labels aplicadas, separadas por vírgula |
+| `JIRA_MINE_TTL_MS`, `JIRA_MINE_DONE_DAYS` | `60000`, `7` | “Meus cards”: tempo de cache da consulta e janela (dias) dos já concluídos |
 | `JIRA_SCENARIOS_JQL` | `project = QA AND issuetype = Test ORDER BY key` | Consulta (JQL) usada na API do Jira para buscar os cenários |
 | `JIRA_PIPELINE_FIELD` | `components` | Campo do Jira que indica o componente do cenário (`components`, `labels` ou `customfield_xxxxx`) |
 | `JIRA_AUTH` | `basic` | `basic` = e-mail/usuário + token · `bearer` = token pessoal (PAT) do Data Center |
@@ -657,6 +659,7 @@ O resultado vem assim:
                    "pipeline": "Checkout", "url": "https://suaempresa.atlassian.net/browse/QA-101" } ] }
 ```
 
+- **Meus cards:** a tela *Meus cards* lista os cards do `JIRA_PROJECT` atribuídos a quem gerou o token (`assignee = currentUser()`), abertos e concluídos nos últimos `JIRA_MINE_DONE_DAYS` dias, em colunas por categoria de status. Só leitura, com cache de `JIRA_MINE_TTL_MS`. Como o token é um só no servidor, “meus” é o dono do token.
 - **Consulta padrão:** `JIRA_SCENARIOS_JQL`. A plataforma pode mandar outra com *Editar consulta*.
 - **Componente/pipeline:** vem do campo `JIRA_PIPELINE_FIELD`: `components` (padrão), `labels` ou `customfield_xxxxx`.
 - **ID do cenário:** se o título da issue começa com `CT-xxx`, esse ID liga o cenário às linhas do log do Jenkins e ao último resultado.

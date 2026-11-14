@@ -8,7 +8,7 @@ import https from 'node:https';
 import { readFileSync } from 'node:fs';
 import { audit } from './auditoria.js';
 import { CFG, bindLoopback, fatal, log, redact } from './config.js';
-import { DEMO_SCENARIOS, seedDemoJira, startDemo } from './demo.js';
+import { DEMO_SCENARIOS, demoMine, seedDemoJira, startDemo } from './demo.js';
 import { clients, recent } from './eventos.js';
 import { flushHistory, listHistory, loadHistory } from './historico.js';
 import { ghDiscover, ghParse, ghRate, ghReady, ghStop, ghTrigger, isGhJob } from './github.js';
@@ -18,6 +18,7 @@ import { loadIntegrations, rota as integracoesRota, setOnChange } from './integr
 import {
   checkScenarioQuery,
   jcache,
+  jiraMine,
   jiraReady,
   jiraScenarios,
   jiraState,
@@ -200,6 +201,12 @@ const handler = async (req, res) => {
       audit('jira_consulta', ip, { jql: jql || '(padrão)' });
       const scenarios = await jiraScenarios({ jql, field });
       return send(res, 200, { scenarios });
+    }
+    // Cards atribuídos a quem gerou o token (assignee = currentUser()); cache curto, "?refresh=1" força (no máx. 1 a cada 5 s)
+    if (req.method === 'GET' && url.pathname === '/api/jira/mine') {
+      if (CFG.demo && !jiraReady()) return send(res, 200, demoMine());
+      if (!jiraReady()) return send(res, 400, { error: 'Jira não configurado no servidor' });
+      return send(res, 200, await jiraMine({ force: url.searchParams.get('refresh') === '1' }));
     }
     // Estado em cache (cenários + ciclos). Não chama o Jira: quem chama é a sincronização periódica.
     if (req.method === 'GET' && url.pathname === '/api/jira/state') {

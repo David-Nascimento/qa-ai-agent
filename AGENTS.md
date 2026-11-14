@@ -23,6 +23,7 @@ assets/js/20-pipelines.js     Pipelines: pastas (projetos) e componentes
 assets/js/30-execucoes.js     Execuções › Histórico, Importar JSON
 assets/js/31-detalhe.js       Detalhe da execução
 assets/js/40-cenarios.js      Cenários lidos do Jira
+assets/js/41-meus-cards.js    Meus cards: issues atribuídas ao dono do token (/api/jira/mine)
 assets/js/50-analises.js      Análises › Qualidade e Estabilidade (filtro de período)
 assets/js/51-analises-tempo.js Análises › Tempo de execução (auditoria, CSV)
 assets/js/60-integracoes.js   Integrações

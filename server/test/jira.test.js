@@ -73,7 +73,11 @@ test('lê os cenários do Jira com paginação e mapeia o componente', async () 
         ['QA-103', 'Pagamento'],
       ]
     );
-    assert.equal(seen[0].searchParams.get('jql'), `(${jql}) AND project = "QA"`, 'a consulta é presa ao projeto configurado');
+    assert.equal(
+      seen[0].searchParams.get('jql'),
+      `(${jql}) AND project = "QA"`,
+      'a consulta é presa ao projeto configurado'
+    );
     assert.ok(d.scenarios[0].url.endsWith('/browse/QA-101'));
   } finally {
     proc.kill();

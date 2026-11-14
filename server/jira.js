@@ -225,6 +225,63 @@ export const jcache = {
   again: false,
 };
 
+// "Meus cards": issues do projeto atribuídas a quem gerou o token (assignee = currentUser()): abertas e as
+// concluídas nos últimos JIRA_MINE_DONE_DAYS dias. Só leitura, presa ao JIRA_PROJECT e com cache curto.
+const mine = { at: 0, data: null, pending: null };
+export const mineJql = () =>
+  `project = "${CFG.jira.project.replace(/"/g, '')}" AND assignee = currentUser() AND (statusCategory != Done` +
+  (CFG.jira.mineDoneDays > 0 ? ` OR resolved >= -${CFG.jira.mineDoneDays}d` : '') +
+  ') ORDER BY updated DESC';
+async function loadMine() {
+  const fields = 'summary,status,priority,issuetype,updated,duedate,resolutiondate';
+  const cards = [];
+  let startAt = 0,
+    token = null;
+  for (;;) {
+    const q = new URLSearchParams({ jql: mineJql(), fields, maxResults: '100' });
+    if (CFG.jira.version === '3') {
+      if (token) q.set('nextPageToken', token);
+    } else q.set('startAt', String(startAt));
+    const d = await jira(`${CFG.jira.version === '3' ? '/search/jql' : '/search'}?${q}`);
+    for (const it of d.issues || []) {
+      const f = it.fields || {};
+      cards.push({
+        key: it.key,
+        summary: f.summary || it.key,
+        status: f.status?.name || '',
+        category: f.status?.statusCategory?.key || 'new', // new | indeterminate | done
+        priority: f.priority?.name || '',
+        type: f.issuetype?.name || '',
+        updated: f.updated || '',
+        due: f.duedate || '',
+        resolved: f.resolutiondate || '',
+        url: `${CFG.jira.url}/browse/${it.key}`,
+      });
+    }
+    startAt += (d.issues || []).length;
+    token = d.nextPageToken || null;
+    const mais = CFG.jira.version === '3' ? !!token : d.total != null && startAt < d.total;
+    if (!mais || !(d.issues || []).length || cards.length >= 200) break;
+  }
+  let me = '';
+  try {
+    me = (await jira('/myself'))?.displayName || '';
+  } catch {
+    /* o nome é só um enfeite da tela */
+  }
+  return { me, cards: cards.slice(0, 200), at: Date.now(), days: CFG.jira.mineDoneDays };
+}
+export async function jiraMine({ force = false } = {}) {
+  const fresh = mine.data && Date.now() - mine.at < CFG.jira.mineTtlMs;
+  if (fresh && !force) return { ...mine.data, cached: true };
+  if (fresh && force && Date.now() - mine.at < 5000) return { ...mine.data, cached: true }; // no máx. 1 consulta a cada 5 s
+  mine.pending ||= loadMine()
+    .then(d => ((mine.data = d), (mine.at = Date.now()), d))
+    .finally(() => (mine.pending = null));
+  return { ...(await mine.pending), cached: false };
+}
+export const resetMine = () => ((mine.data = null), (mine.at = 0));
+
 // Consulta de cenários vinda de fora (query string): limites de tamanho, campo no formato do Jira e, quando há
 // JIRA_PROJECT, a consulta é presa a esse projeto — senão a chave da API leria qualquer projeto que o token enxerga.
 export function checkScenarioQuery(jql, field) {
