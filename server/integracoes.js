@@ -5,6 +5,7 @@
 //  - só edita com chave da API ativa e chave-mestra configurada; integrações vindas do .env são somente leitura
 import { chmodSync, existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import { dirname } from 'node:path';
+import { audit } from './auditoria.js';
 import { CFG, SECRET_VALUES, b64, env, getMaster, isLoopback, log, redact } from './config.js';
 import { abrir, selar } from './cripto.js';
 import { jobPath } from './jenkins.js';
@@ -340,6 +341,7 @@ export async function rota(req, res, m, ip) {
       apply(k, RESET[k], '');
       delete saved[k];
       log(`Integração ${k} removida (origem ${ip})`);
+      audit('integracao_removida', ip, { integracao: k });
       onChange(k);
       return send(res, 200, status(k));
     }
@@ -357,6 +359,7 @@ export async function rota(req, res, m, ip) {
     apply(k, d, token);
     saved[k] = true;
     log(`Integração ${k} salva (origem ${ip})`);
+    audit('integracao_salva', ip, { integracao: k });
     onChange(k);
     return send(res, 200, status(k));
   } finally {

@@ -794,6 +794,22 @@
     [
      "RN-SEG-13",
      "Chave de API e tokens só entram por canal criptografado: fora do loopback, requisição sem HTTPS recebe 403 `tls_required` (`ALLOW_INSECURE_TRANSPORT` libera); a tela não envia token por http:// não local."
+    ],
+    [
+     "RN-SEG-14",
+     "Falha fechado: sem chave de API o servidor escuta só em 127.0.0.1 e recusa iniciar com HOST de rede; API_KEY precisa de 16+ caracteres variados; exposto na rede, o CORS não libera origem externa sem CORS_ORIGIN."
+    ],
+    [
+     "RN-SEG-15",
+     "A consulta de cenários do Jira é presa ao JIRA_PROJECT e `jql`/`field` são validados; `params` de build e `ref` do GitHub só aceitam texto curto e nomes comuns."
+    ],
+    [
+     "RN-SEG-16",
+     "Atrás de proxy confiável o IP do cliente é o último X-Forwarded-For; o primeiro, escrito pelo cliente, não vale para o bloqueio de tentativas."
+    ],
+    [
+     "RN-SEG-17",
+     "Ações sensíveis e falhas de chave vão para o log de auditoria (permissão 600, sem segredos); falhas repetidas não enchem o arquivo."
     ]
    ]
   },

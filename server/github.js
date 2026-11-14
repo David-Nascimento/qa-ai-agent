@@ -1,6 +1,7 @@
 import { CFG, log, redact, sleep } from './config.js';
 import { emit } from './eventos.js';
 import { fetchRetry, githubThrottle, httpError, isTransient } from './http.js';
+import { checkParams, clientError } from './web.js';
 import { active, afterBuild, parseLines } from './jenkins.js';
 
 /* ------------------------------------------------------------------ */
@@ -262,7 +263,10 @@ export async function ghDiscover() {
 // Dispara o workflow (precisa de "on: workflow_dispatch"). Sem "ref", usa a branch padrão do repositório.
 export async function ghTrigger(job, params = {}) {
   const { repo, file } = ghParse(job);
-  const { ref, ...inputs } = params;
+  const { ref, ...inputs } = checkParams(params);
+  // ref é nome de branch/tag e inputs são texto curto: nada de caminho com "..", de caracteres de controle ou de payload gigante
+  if (ref !== undefined && !/^(?!.*\.\.)[A-Za-z0-9._\/-]{1,200}$/.test(String(ref)))
+    throw clientError(400, '"ref" inválido');
   const branch = ref || (await ghJson(`/repos/${repo}`)).default_branch;
   await ghRaw(`/repos/${repo}/actions/workflows/${encodeURIComponent(file)}/dispatches`, {
     method: 'POST',

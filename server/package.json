@@ -10,7 +10,7 @@
   "scripts": {
     "start": "node --env-file=.env server.js",
     "demo": "DEMO=true node server.js",
-    "test": "HISTORY_FILE=off node --test test/*.test.js",
+    "test": "HISTORY_FILE=off AUDIT_FILE=off node --test test/*.test.js",
     "segredos": "node segredos.js",
     "check:secrets": "node scripts/verificar-segredos.mjs"
   },

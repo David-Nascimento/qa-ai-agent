@@ -37,6 +37,7 @@ async function subir(extra = {}) {
       ...process.env,
       PORT: String(port),
       API_KEY: 'chave-de-teste-integracoes',
+      HOST: '127.0.0.1',
       SECRETS_KEY: MESTRA,
       INTEGRATIONS_FILE: arquivo,
       HISTORY_FILE: 'off',

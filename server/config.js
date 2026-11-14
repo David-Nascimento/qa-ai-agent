@@ -57,7 +57,10 @@ export const sec = name => {
 
 export const CFG = {
   port: num(env.PORT, 3000),
-  cors: env.CORS_ORIGIN || '*',
+  // origem permitida pelo CORS; vazio = decidido abaixo (loopback: *, exposto: nenhuma origem externa)
+  cors: (env.CORS_ORIGIN || '').trim(),
+  // interface de rede: sem HOST, escuta só em 127.0.0.1 quando não há chave de API; com chave, em todas
+  host: (env.HOST || '').trim(),
   apiKey: sec('API_KEY'),
   // hash scrypt da chave de API (alternativa a API_KEY: o servidor nunca guarda a chave em si)
   apiKeyHash: (env.API_KEY_HASH || '').trim(),
@@ -146,6 +149,13 @@ export const CFG = {
       ? ''
       : env.INTEGRATIONS_FILE || fileURLToPath(new URL('./data/integracoes.json', import.meta.url)),
   },
+  // Auditoria de ações sensíveis (disparar/parar build, salvar integração, falhas de chave); AUDIT_FILE=off desliga
+  audit: {
+    file: /^(off|false|0)$/i.test(env.AUDIT_FILE || '')
+      ? ''
+      : env.AUDIT_FILE || fileURLToPath(new URL('./data/auditoria.log', import.meta.url)),
+    maxBytes: num(env.AUDIT_MAX_BYTES, 10 * 1024 * 1024, 10000),
+  },
   history: {
     file: /^(off|false|0)$/i.test(env.HISTORY_FILE || '')
       ? ''
@@ -167,6 +177,24 @@ if (!!CFG.security.tlsCert !== !!CFG.security.tlsKey) fatal('TLS_CERT_FILE e TLS
 // Credenciais só viajam por HTTPS: um token em http:// passa em claro pela rede.
 // Exceção: loopback (mesma máquina) ou ALLOW_INSECURE_UPSTREAM=true (rede interna confiável, por sua conta e risco).
 export const isLoopback = h => ['localhost', '127.0.0.1', '::1', '[::1]'].includes(h);
+
+// Falha fechado: sem chave de API o servidor não pode ficar acessível pela rede, e a chave tem de ser forte.
+const MIN_API_KEY = 16;
+const hasAuth = !!(CFG.apiKey || CFG.apiKeyHash);
+if (CFG.apiKey && (CFG.apiKey.length < MIN_API_KEY || new Set(CFG.apiKey).size < 6))
+  fatal(
+    `API_KEY fraca: use pelo menos ${MIN_API_KEY} caracteres variados. Gere uma com \`npm run --silent segredos -- gerar-chave\` ou prefira API_KEY_HASH.`
+  );
+if (!CFG.host) CFG.host = hasAuth ? '' : '127.0.0.1';
+export const bindLoopback = isLoopback(CFG.host);
+if (!hasAuth && !bindLoopback)
+  fatal(
+    `HOST=${CFG.host} deixaria o servidor aberto na rede sem chave. Defina API_KEY_HASH (ou API_KEY), ou use HOST=127.0.0.1.`
+  );
+// CORS: sem CORS_ORIGIN, só a própria máquina aceita qualquer origem; exposto na rede, nenhuma origem externa.
+if (!CFG.cors) CFG.cors = hasAuth && !bindLoopback ? '' : '*';
+if (CFG.cors && CFG.cors !== '*' && !/^https?:\/\/[^\s*]+$/i.test(CFG.cors) && CFG.cors !== 'null')
+  fatal('CORS_ORIGIN inválido: use uma origem exata (ex.: https://qa.suaempresa.com) ou *.');
 export function requireHttps(name, u, hasSecret) {
   if (!u || !hasSecret || CFG.security.allowInsecureUpstream) return;
   let parsed;

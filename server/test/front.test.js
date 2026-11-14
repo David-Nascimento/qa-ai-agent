@@ -80,7 +80,8 @@ test(
       env: {
         ...process.env,
         PORT: String(porta),
-        API_KEY: 'k-e2e',
+        API_KEY: 'k-e2e-chave-teste-0001',
+        HOST: '127.0.0.1',
         HISTORY_FILE: arquivo,
         JIRA_SYNC_MS: '0',
         JENKINS_URL: '',
@@ -100,7 +101,9 @@ test(
         if (m.type() === 'error' && !/Failed to load resource/.test(m.text())) erros.push(m.text());
       });
       p.on('request', r => pedidos.push(r.method() + ' ' + new URL(r.url()).pathname));
-      await p.goto(`http://127.0.0.1:${estatico.address().port}/index.html?api=http://127.0.0.1:${porta}&key=k-e2e`);
+      await p.goto(
+        `http://127.0.0.1:${estatico.address().port}/index.html?api=http://127.0.0.1:${porta}&key=k-e2e-chave-teste-0001`
+      );
       await p.waitForTimeout(1500);
 
       assert.ok(!p.url().includes('key='), 'a chave saiu da URL');
@@ -174,7 +177,8 @@ test(
       env: {
         ...process.env,
         PORT: String(porta),
-        API_KEY: 'k-e2e-integ',
+        API_KEY: 'k-e2e-integ-chave-teste-01',
+        HOST: '127.0.0.1',
         SECRETS_KEY: 'chave-mestra-e2e-1234567890',
         INTEGRATIONS_FILE: join(dir, 'i.json'),
         HISTORY_FILE: 'off',
@@ -201,7 +205,7 @@ test(
         if (r.method() === 'PUT') puts++;
       });
       await p.goto(
-        `http://127.0.0.1:${estatico.address().port}/index.html?api=http://127.0.0.1:${porta}&key=k-e2e-integ#integracoes`
+        `http://127.0.0.1:${estatico.address().port}/index.html?api=http://127.0.0.1:${porta}&key=k-e2e-integ-chave-teste-01#integracoes`
       );
       await p.waitForTimeout(1200);
       await p.click('[data-int="jenkins"]');

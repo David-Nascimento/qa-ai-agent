@@ -6,7 +6,8 @@
 import http from 'node:http';
 import https from 'node:https';
 import { readFileSync } from 'node:fs';
-import { CFG, fatal, log, redact } from './config.js';
+import { audit } from './auditoria.js';
+import { CFG, bindLoopback, fatal, log, redact } from './config.js';
 import { DEMO_SCENARIOS, seedDemoJira, startDemo } from './demo.js';
 import { clients, recent } from './eventos.js';
 import { flushHistory, listHistory, loadHistory } from './historico.js';
@@ -14,15 +15,24 @@ import { ghDiscover, ghParse, ghRate, ghReady, ghStop, ghTrigger, isGhJob } from
 import { githubThrottle, jenkinsThrottle, jiraThrottle } from './http.js';
 import { active, discover, stopBuild, triggerBuild } from './jenkins.js';
 import { loadIntegrations, rota as integracoesRota, setOnChange } from './integracoes.js';
-import { jcache, jiraReady, jiraScenarios, jiraState, reportBug, startJiraSync, syncJira } from './jira.js';
+import {
+  checkScenarioQuery,
+  jcache,
+  jiraReady,
+  jiraScenarios,
+  jiraState,
+  reportBug,
+  startJiraSync,
+  syncJira,
+} from './jira.js';
 import {
   SEC_HEADERS,
   TLS_ON,
-  authRequired,
   authorized,
   blockedMs,
   clientError,
   clientIp,
+  corsHeaders,
   insecure,
   newTicket,
   presentedKey,
@@ -44,6 +54,12 @@ function jenkinsJobOf(job) {
   return hit.length === 1 ? hit[0] : null;
 }
 
+// falhas de chave vão para a auditoria só na 1ª e ao atingir o limite: um invasor não enche nem gira o arquivo
+function auditFail(ip, n) {
+  if (n === 1) audit('chave_invalida', ip);
+  if (n === CFG.security.maxFails) audit('ip_bloqueado', ip, { falhas: n });
+}
+
 const handler = async (req, res) => {
   for (const [k, v] of Object.entries(SEC_HEADERS)) res.setHeader(k, v);
   let url;
@@ -55,7 +71,7 @@ const handler = async (req, res) => {
   const ip = clientIp(req);
   if (req.method === 'OPTIONS') {
     res.writeHead(204, {
-      'Access-Control-Allow-Origin': CFG.cors,
+      ...corsHeaders(),
       'Access-Control-Allow-Headers': 'Content-Type, x-api-key',
       'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
       'Access-Control-Max-Age': '600',
@@ -68,7 +84,7 @@ const handler = async (req, res) => {
     if (tried && !secureTransport(req)) return insecure(res); // a chave não pode trafegar em claro
     if (tried && blockedMs(ip)) return tooMany(res, blockedMs(ip));
     const full = authorized(req, url);
-    if (tried && !full) registerFail(ip);
+    if (tried && !full) auditFail(ip, registerFail(ip));
     return send(res, 200, {
       ok: true,
       demo: CFG.demo,
@@ -100,7 +116,7 @@ const handler = async (req, res) => {
   // o /events também aceita um tíquete de uso único no lugar da chave (ver newTicket)
   const viaTicket = req.method === 'GET' && url.pathname === '/events' && useTicket(url.searchParams.get('ticket'));
   if (!viaTicket && !authorized(req, url)) {
-    registerFail(ip);
+    auditFail(ip, registerFail(ip));
     return send(res, 401, { error: 'API key inválida' });
   }
 
@@ -115,7 +131,7 @@ const handler = async (req, res) => {
         'Content-Type': 'text/event-stream',
         'Cache-Control': 'no-cache',
         Connection: 'keep-alive',
-        'Access-Control-Allow-Origin': CFG.cors,
+        ...corsHeaders(),
       });
       res.write('retry: 3000\n\n');
       for (const m of recent) res.write(m);
@@ -148,13 +164,17 @@ const handler = async (req, res) => {
     if (req.method === 'POST' && url.pathname === '/api/build') {
       const { job, params } = await readJson(req);
       if (!job) return send(res, 400, { error: 'Informe "job"' });
-      if (CFG.demo) return send(res, 202, { ok: true, demo: true });
+      if (CFG.demo) {
+        audit('build_disparado', ip, { job, demo: 'true' });
+        return send(res, 202, { ok: true, demo: true });
+      }
       if (ghParse(job)) await ghTrigger(job, params);
       else {
         const j = jenkinsJobOf(job);
         if (!j) throw clientError(403, `Job "${job}" não está em JENKINS_JOBS`);
         await triggerBuild(j, params);
       }
+      audit('build_disparado', ip, { job });
       return send(res, 202, { ok: true });
     }
     if (req.method === 'POST' && url.pathname === '/api/stop') {
@@ -169,15 +189,16 @@ const handler = async (req, res) => {
           await stopBuild(j, build);
         }
       }
+      audit('build_parado', ip, { job, build: String(build) });
       return send(res, 202, { ok: true });
     }
     if (req.method === 'GET' && url.pathname === '/api/jira/scenarios') {
       if (CFG.demo && !jiraReady()) return send(res, 200, { demo: true, scenarios: DEMO_SCENARIOS });
       if (!jiraReady()) return send(res, 400, { error: 'Jira não configurado no servidor' });
-      const scenarios = await jiraScenarios({
-        jql: url.searchParams.get('jql') || undefined,
-        field: url.searchParams.get('field') || undefined,
-      });
+      // a consulta é validada e presa ao projeto configurado (JIRA_PROJECT): quem tem a chave não lê o Jira inteiro
+      const { jql, field } = checkScenarioQuery(url.searchParams.get('jql'), url.searchParams.get('field'));
+      audit('jira_consulta', ip, { jql: jql || '(padrão)' });
+      const scenarios = await jiraScenarios({ jql, field });
       return send(res, 200, { scenarios });
     }
     // Estado em cache (cenários + ciclos). Não chama o Jira: quem chama é a sincronização periódica.
@@ -198,7 +219,9 @@ const handler = async (req, res) => {
       if (!jiraReady()) return send(res, 400, { error: 'Jira não configurado' });
       const body = await readJson(req);
       if (!body.job || !body.scenario) return send(res, 400, { error: 'Informe "job" e "scenario"' });
-      return send(res, 201, await reportBug(body));
+      const r = await reportBug(body);
+      audit('jira_bug', ip, { job: body.job, scenario: body.scenario, issue: r.key });
+      return send(res, 201, r);
     }
     send(res, 404, { error: 'Rota não encontrada' });
   } catch (e) {
@@ -272,8 +295,13 @@ function onIntegrationChange(k) {
 
 loadHistory();
 loadIntegrations();
-server.listen(CFG.port, () => {
-  log(`QA AI Agent — servidor em ${TLS_ON ? 'https' : 'http'}://localhost:${CFG.port}`);
+server.listen(CFG.port, CFG.host || undefined, () => {
+  log(`QA AI Agent — servidor em ${TLS_ON ? 'https' : 'http'}://${CFG.host || 'localhost'}:${CFG.port}`);
+  log(
+    `Rede: ${bindLoopback ? 'só esta máquina (127.0.0.1)' : 'escutando na rede'} · CORS: ${CFG.cors || 'nenhuma origem externa (defina CORS_ORIGIN para o endereço da plataforma)'}`
+  );
+  if (process.env.SECRETS_KEY && !process.env.SECRETS_KEY_FILE)
+    log('Aviso: SECRETS_KEY no ambiente fica legível em /proc/<pid>/environ. Prefira SECRETS_KEY_FILE (arquivo 600).');
   // postura de segurança do transporte, em uma linha, para quem acompanha o log
   log(
     `Transporte: ${TLS_ON ? `HTTPS nativo (${CFG.security.tlsMinVersion}+, HSTS)` : 'HTTP'} · ` +
@@ -286,10 +314,8 @@ server.listen(CFG.port, () => {
     log(
       'Acessos de outras máquinas serão recusados até haver HTTPS: use TLS_CERT_FILE/TLS_KEY_FILE ou um proxy HTTPS com TRUST_PROXY=true.'
     );
-  if (!authRequired() && CFG.cors === '*' && !CFG.demo)
-    log(
-      'ATENÇÃO: sem API_KEY e com CORS_ORIGIN=*, qualquer página pode disparar e parar builds. Defina API_KEY e CORS_ORIGIN.'
-    );
+  if (CFG.cors === '*' && !bindLoopback)
+    log('ATENÇÃO: CORS_ORIGIN=* com o servidor na rede. Troque pelo endereço exato da plataforma.');
   if (CFG.demo) {
     seedDemoJira();
     return startDemo();
