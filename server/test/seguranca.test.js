@@ -26,7 +26,7 @@ test('rotas de comando só aceitam jobs configurados e exigem a chave', async ()
     env: {
       ...process.env,
       PORT: String(port),
-      API_KEY: 'segredo',
+      API_KEY: 'segredo-de-teste-12345',
       JENKINS_URL: `http://127.0.0.1:${jenkins.address().port}`,
       JENKINS_USER: 'qa',
       JENKINS_TOKEN: 'tok',
@@ -41,7 +41,7 @@ test('rotas de comando só aceitam jobs configurados e exigem a chave', async ()
     stdio: 'ignore',
   });
   const base = `http://127.0.0.1:${port}`;
-  const post = (path, body, key = 'segredo', raw = false) =>
+  const post = (path, body, key = 'segredo-de-teste-12345', raw = false) =>
     fetch(base + path, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...(key ? { 'x-api-key': key } : {}) },
@@ -61,7 +61,7 @@ test('rotas de comando só aceitam jobs configurados e exigem a chave', async ()
       400,
       'build não numérico'
     );
-    assert.equal((await post('/api/build', '{quebrado', 'segredo', true)).status, 400, 'JSON inválido');
+    assert.equal((await post('/api/build', '{quebrado', 'segredo-de-teste-12345', true)).status, 400, 'JSON inválido');
     const jobsChamados = hits.slice(antes).filter(h => h.startsWith('POST'));
     assert.deepEqual(jobsChamados, [], 'nada foi enviado ao Jenkins');
 
@@ -75,7 +75,9 @@ test('rotas de comando só aceitam jobs configurados e exigem a chave', async ()
     const pub = await (await fetch(`${base}/api/health`)).json();
     assert.equal(pub.jobs, undefined);
     assert.equal(pub.jenkins, true);
-    const priv = await (await fetch(`${base}/api/health`, { headers: { 'x-api-key': 'segredo' } })).json();
+    const priv = await (
+      await fetch(`${base}/api/health`, { headers: { 'x-api-key': 'segredo-de-teste-12345' } })
+    ).json();
     assert.deepEqual(priv.jobs, ['Loja/Checkout']);
 
     // POLL_MS=abc e DISCOVER_MS vazio: o servidor não martela o Jenkins (descoberta 1x na partida)

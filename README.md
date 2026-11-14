@@ -324,7 +324,7 @@ Dois documentos mostram **como a plataforma funciona por dentro**. Abra direto n
 
 | Documento | Responde | Abrir |
 |---|---|---|
-| **Mapa de funcionalidades** | *Qual é a regra?* Funcionalidades separadas por categoria, um diagrama da lógica de cada uma e **126 regras de negócio numeradas** (RN-DASH-01, RN-ANA-06…), com catálogo e filtro. | [`docs/mapa/mapa-funcionalidades.html`](docs/mapa/mapa-funcionalidades.html) |
+| **Mapa de funcionalidades** | *Qual é a regra?* Funcionalidades separadas por categoria, um diagrama da lógica de cada uma e **130 regras de negócio numeradas** (RN-DASH-01, RN-ANA-06…), com catálogo e filtro. | [`docs/mapa/mapa-funcionalidades.html`](docs/mapa/mapa-funcionalidades.html) |
 | **Canvas de ligações** | *De onde vem esse número?* Canvas de nós ligando fontes → servidor → dados → funções de cálculo → métricas → telas, com **fórmula, regras e código real** de cada função. | [`docs/mapa/canvas-ligacoes.html`](docs/mapa/canvas-ligacoes.html) |
 
 | Mapa de funcionalidades | Canvas de ligações |
@@ -478,7 +478,9 @@ O fator de lentidão aparece em `GET /api/health` (`slow`; `1` = normal).
 | Variável | Padrão | Descrição |
 |---|---|---|
 | `PORT` | `3000` | Porta HTTP |
-| `CORS_ORIGIN` | `*` | Origem permitida da plataforma (por exemplo `https://usuario.github.io`) |
+| `CORS_ORIGIN` | vazio | Origem permitida da plataforma (por exemplo `https://usuario.github.io`). Vazio: `*` só quando o servidor escuta apenas na máquina local; exposto na rede, nenhuma origem externa |
+| `HOST` | vazio | Interface de rede. Vazio: `127.0.0.1` sem chave de API, todas as interfaces com chave. Sem chave, um `HOST` não local impede o servidor de iniciar |
+| `AUDIT_FILE`, `AUDIT_MAX_BYTES` | `data/auditoria.log`, `10485760` | Log de auditoria (`off` desliga); gira ao passar do tamanho |
 | `API_KEY` / `API_KEY_HASH` | vazio | Se definida, é exigida no header `x-api-key` (e em `/events` por tíquete). `API_KEY_HASH` guarda só o hash scrypt. Aceitam o formato cifrado; veja [Segurança](#segurança) |
 | `SECRETS_KEY_FILE` | — | Arquivo com a chave-mestra para decifrar valores `enc:v1:…` |
 | `TLS_CERT_FILE` / `TLS_KEY_FILE` | — | HTTPS nativo (opcional) |
@@ -802,7 +804,12 @@ npm run segredos -- verificar .env                        # confere se tudo abre
 - Logs e mensagens de erro **mascaram** os tokens conhecidos, valores `Bearer`/`Basic`, `?key=`/`?ticket=` e padrões de token do GitHub.
 - Limites: até 200 conexões SSE (`MAX_SSE_CLIENTS`), cabeçalhos de 16 KB, corpo de 1 MB, timeouts de cabeçalho (15 s) e de requisição (30 s).
 - **Executar e Parar só funcionam para jobs listados** em `JENKINS_JOBS` (ou workflows de `GITHUB_WORKFLOWS`); qualquer outro recebe 403.
-- Defina `API_KEY`/`API_KEY_HASH` e `CORS_ORIGIN` em produção. Sem chave e com `CORS_ORIGIN=*`, qualquer página pode disparar e parar builds (o servidor avisa no log).
+- **Falha fechado:** sem `API_KEY`/`API_KEY_HASH` o servidor escuta só em `127.0.0.1` e se recusa a iniciar com `HOST` de rede. `API_KEY` exige 16+ caracteres variados (gere com `npm run --silent segredos -- gerar-chave`). Exposto na rede, o CORS não libera origem alguma até você definir `CORS_ORIGIN` com o endereço exato da plataforma.
+- **Consultas e parâmetros validados:** `/api/jira/scenarios` aceita `jql` (até 2000 caracteres) e `field` em formato de campo do Jira, e a consulta é presa ao `JIRA_PROJECT`. `params` do `/api/build` e o `ref` do GitHub só aceitam texto curto, nomes comuns e branch/tag sem `..`.
+- **Bloqueio de tentativas atrás de proxy:** vale o último item do `X-Forwarded-For` (o que o seu proxy acrescentou); o primeiro é escrito pelo cliente e pode ser forjado.
+- **Auditoria:** `server/data/auditoria.log` (permissão 600, uma linha JSON por ação): build disparado ou parado, consulta ao Jira, bug aberto, integração salva ou removida, chave inválida e IP bloqueado. Nunca grava chave nem token. Falhas de chave entram só na 1ª e ao bloquear, para um invasor não encher o arquivo.
+- **Chave-mestra:** prefira `SECRETS_KEY_FILE`; `SECRETS_KEY` no ambiente continua legível em `/proc/<pid>/environ` (o servidor avisa no log).
+- **CI:** `.github/workflows/ci.yml` roda `check:secrets` e os testes em Node 20 e 22 a cada PR.
 - A tela de Integrações aceita o token **uma vez**, só de escrita: ele vai ao servidor por HTTPS, é testado e cifrado, e nunca mais volta ao navegador (veja [Integrações](#8-integrações)).
 - Use um usuário técnico no Jenkins, no Jira e no GitHub, com as **permissões mínimas**.
 

@@ -17,16 +17,28 @@ export const SEC_HEADERS = {
   Vary: 'Origin',
   ...(TLS_ON && { 'Strict-Transport-Security': 'max-age=31536000; includeSubDomains' }),
 };
+export const corsHeaders = () => (CFG.cors ? { 'Access-Control-Allow-Origin': CFG.cors } : {});
 export function send(res, code, data, extra = {}) {
   res.writeHead(code, {
     'Content-Type': 'application/json; charset=utf-8',
-    'Access-Control-Allow-Origin': CFG.cors,
+    ...corsHeaders(),
     ...extra,
   });
   res.end(JSON.stringify(data));
 }
 // Erro do cliente (corpo inválido, job fora da lista): responde 4xx em vez de 502
 export const clientError = (status, msg) => Object.assign(new Error(msg), { client: status });
+// Parâmetros de build vindos do cliente: objeto simples, poucas chaves de nome comum e valores de texto curtos
+export function checkParams(params) {
+  if (params == null) return {};
+  if (typeof params !== 'object' || Array.isArray(params)) throw clientError(400, '"params" deve ser um objeto');
+  const e = Object.entries(params);
+  if (e.length > 25) throw clientError(400, 'params demais (máximo 25)');
+  for (const [k, v] of e)
+    if (!/^[A-Za-z0-9_.-]{1,100}$/.test(k) || (v !== null && typeof v === 'object') || String(v).length > 1000)
+      throw clientError(400, `parâmetro "${k}" inválido`);
+  return params;
+}
 export async function readJson(req) {
   let raw = '';
   for await (const c of req) {
@@ -90,10 +102,13 @@ export const authorized = (req, url) => !authRequired() || keyOk(presentedKey(re
 
 // Bloqueio de tentativas: N falhas de autenticação por IP numa janela => 429 (freia adivinhação de chave)
 export const fails = new Map();
+// Atrás de proxy confiável vale o ÚLTIMO item do X-Forwarded-For (o que o nosso proxy acrescentou);
+// o primeiro é escrito pelo cliente e pode ser forjado para fugir do bloqueio ou para trancar outra pessoa.
 export const clientIp = req =>
   (CFG.security.trustProxy &&
     String(req.headers['x-forwarded-for'] || '')
-      .split(',')[0]
+      .split(',')
+      .pop()
       .trim()) ||
   req.socket.remoteAddress ||
   '?';
@@ -111,6 +126,7 @@ export function registerFail(ip) {
   if (!f || Date.now() - f.first > CFG.security.failWindowMs) fails.set(ip, { n: 1, first: Date.now() });
   else f.n++;
   if (fails.size > 10000) fails.clear(); // teto de memória
+  return fails.get(ip).n;
 }
 export const tooMany = (res, ms) =>
   send(res, 429, { error: 'Muitas tentativas inválidas; aguarde' }, { 'Retry-After': String(Math.ceil(ms / 1000)) });

@@ -1,6 +1,7 @@
 import { CFG, b64, log, redact, sleep } from './config.js';
 import { emit } from './eventos.js';
 import { fetchRetry, httpError, isTransient, jiraThrottle } from './http.js';
+import { clientError } from './web.js';
 
 /* ------------------------------------------------------------------ */
 /* Jira                                                                */
@@ -224,6 +225,25 @@ export const jcache = {
   again: false,
 };
 
+// Consulta de cenários vinda de fora (query string): limites de tamanho, campo no formato do Jira e, quando há
+// JIRA_PROJECT, a consulta é presa a esse projeto — senão a chave da API leria qualquer projeto que o token enxerga.
+export function checkScenarioQuery(jql, field) {
+  const out = {};
+  if (field) {
+    if (!/^(customfield_\d{1,6}|[a-z][a-z0-9_]{0,40})$/i.test(field)) throw clientError(400, '"field" inválido');
+    out.field = field;
+  }
+  if (jql) {
+    if (jql.length > 2000 || /[\u0000-\u001f]/.test(jql))
+      throw clientError(400, '"jql" inválida (limite de 2000 caracteres)');
+    const m = jql.match(/^(.*?)(\s+order\s+by\s+.*)?$/is);
+    const base = m[1].trim();
+    out.jql = CFG.jira.project
+      ? `(${base || 'issuetype is not EMPTY'}) AND project = "${CFG.jira.project.replace(/"/g, '')}"${m[2] || ''}`
+      : jql;
+  }
+  return out;
+}
 // Acrescenta "updated >= -Nm" (tempo relativo: não depende do fuso do Jira) antes do ORDER BY
 export function onlyUpdated(jql, mins) {
   const m = jql.match(/^(.*?)(\s+order\s+by\s+.*)?$/is);

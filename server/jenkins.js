@@ -2,6 +2,7 @@ import { CFG, b64, log, redact, sleep } from './config.js';
 import { emit } from './eventos.js';
 import { fetchRetry, httpError, isTransient, jenkinsThrottle } from './http.js';
 import { jiraReady, reportBug, syncSoon } from './jira.js';
+import { checkParams } from './web.js';
 
 /* ------------------------------------------------------------------ */
 /* Jenkins                                                             */
@@ -221,7 +222,8 @@ export async function discover() {
   }
 }
 
-export async function triggerBuild(job, params) {
+export async function triggerBuild(job, rawParams) {
+  const params = checkParams(rawParams);
   const path = `/${jobPath(job)}/${params && Object.keys(params).length ? 'buildWithParameters' : 'build'}`;
   const body = params ? new URLSearchParams(params) : undefined;
   await jenkinsRaw(path, { method: 'POST', body });

@@ -156,9 +156,12 @@ test('API_KEY_HASH, tíquete SSE de uso único, cabeçalhos de segurança e bloq
 });
 
 test('API_KEY cifrada também funciona como chave da API', async () => {
-  const s = await subir({ SECRETS_KEY: MESTRA, API_KEY: selar('minha-api-key', MESTRA), DEMO: 'true' });
+  const s = await subir({ SECRETS_KEY: MESTRA, API_KEY: selar('minha-api-key-de-teste-01', MESTRA), DEMO: 'true' });
   try {
-    assert.equal((await fetch(s.base + '/api/state', { headers: { 'x-api-key': 'minha-api-key' } })).status, 200);
+    assert.equal(
+      (await fetch(s.base + '/api/state', { headers: { 'x-api-key': 'minha-api-key-de-teste-01' } })).status,
+      200
+    );
     assert.equal((await fetch(s.base + '/api/state', { headers: { 'x-api-key': 'enc:v1:x' } })).status, 401);
   } finally {
     s.proc.kill();
